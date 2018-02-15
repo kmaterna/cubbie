@@ -156,6 +156,7 @@ def preprocess(config_params):
     call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
 
     # Automatically decide on super-master. 
+    masterid = sentinel_utilities.choose_master_image();
     # AWKWARD PART: write master into config. 
 
     # MODE 2: Now you have picked a super-master. 

@@ -101,4 +101,32 @@ def make_data_in(polarization, swath, master_date="00000000"):
     return;
 
 
+# after running the baseline calculation from the first pre_proc_batch, choose a new master that is close to the median baseline and timespan.
+def choose_master_image():    
+    # load baseline table
+    baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
+    time = baselineFile[:,1].astype(float)
+    baseline = baselineFile[:,4].astype(float)
+ 
+    #GMTSAR (currently) guarantees that this file has the same order of lines as baseline_table.dat.
+    dataDotIn=np.genfromtxt('raw/data.in',dtype='str').tolist()
+    
+    # calculate shortest distance from median to scenes
+    consider_time=True
+    if consider_time:
+        time_baseline_scale=1 #arbitrary scaling factor, units of (meters/day)
+        sceneDistance = np.sqrt(((time-np.median(time))/time_baseline_scale)**2 + (baseline-np.median(baseline))**2)
+    else:
+        sceneDistance = np.sqrt((baseline-np.median(baseline))**2)
+    
+    minID=np.argmin(sceneDistance)
+    masterID=dataDotIn[minID]    
+   
+    # put masterId in the first line of data.in
+    dataDotIn.pop(dataDotIn.index(masterID))
+    dataDotIn.insert(0,masterID)
+    
+    os.rename('raw/data.in','raw/data.in.old')
+    np.savetxt('raw/data.in',dataDotIn,fmt='%s')
+    return masterID
 
