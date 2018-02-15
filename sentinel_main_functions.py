@@ -125,7 +125,8 @@ def manifest2raw_orig_eof(config_params):
         print file_list;
         print "Copying xml files into raw_orig..."
         print "Copying manifest.safe files into raw_orig..."
-        print "Linking tiff files into raw_orig..."
+        print "Copying tiff files into raw_orig..."
+        # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space. 
         for onefile in file_list:
             xml_files = sentinel_utilities.get_all_xml_names(onefile+'/annotation',config_params.polarization, config_params.swath);
             call(['cp',xml_files[0],'raw_orig'],shell=False);
@@ -133,7 +134,7 @@ def manifest2raw_orig_eof(config_params):
             yyyymmdd=sentinel_utilities.get_date_from_xml(xml_files[0]);
             call(['cp',manifest_safe_file[0],'raw_orig/'+yyyymmdd+'_manifest.safe'],shell=False);
             tiff_files = sentinel_utilities.get_all_tiff_names(onefile+'/measurement',config_params.polarization, config_params.swath);
-            call(['ln','-s',tiff_files[0],'raw_orig'],shell=False);
+            call(['cp',tiff_files[0],'raw_orig'],shell=False);
 
         # STEP 2: get orbit files into the raw_orig directory
         for onefile in file_list:
@@ -152,7 +153,7 @@ def preprocess(config_params):
     write_xml_prep(config_params.polarization, config_params.swath);   # writes the beginning, common part of README_prep.txt
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);  # makes data.in the first time, with no super_master
     write_preproc_mode1();              # writes the bottom of README_prep
-    #call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
+    call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
 
     # Automatically decide on super-master. 
     # AWKWARD PART: write master into config. 
