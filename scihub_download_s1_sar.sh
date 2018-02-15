@@ -9,7 +9,7 @@ am_i_linux=`uname -a | grep 'Linux'`
 
 # Where will the data live? 
 mkdir -p DATA
-mkdir -p MANIFEST
+#mkdir -p MANIFEST
 
 # Processing the raw results to get unique id names
 grep -E 'uuid|<title>S1' $raw_results > $id_results
@@ -43,11 +43,12 @@ while read p; do
   # wget --no-check-certificate --user=kmaterna --password=access_data -O MANIFEST/"$title"_manifest.safe "https://scihub.copernicus.eu/dhus/odata/v1/Products('$uuid')/Nodes('$title.SAFE')/Nodes('manifest.safe')/\$value"
 
   # DATA (full thing- will take a long time)!
-  wget --no-check-certificate --user=kmaterna --password=access_data -O DATA/"$title".SAFE.gz "https://scihub.copernicus.eu/dhus/odata/v1/Products('$uuid')/\$value"
-  # Takes a few hours for each SAFE.gz. 
-  # Each one can be unzipped with gunzip. 
+  wget --no-check-certificate --user=kmaterna --password=access_data -O DATA/"$title".SAFE.zip "https://scihub.copernicus.eu/dhus/odata/v1/Products('$uuid')/\$value"
+  # Takes a few hours for each SAFE.zip. 
+  # Each one can be unzipped with unzip. 
 
-  exit
+  unzip $title.zip
+  rm $title.zip
   counter=0
   
 done <$id_results

@@ -19,11 +19,11 @@
 ###############################
 # Download directory:
 # Uncomment this line and set the correct directory
-DOWN_DIR="ORBITS" # directory for store precise orbits files
-CAL_DIR="AUX_CAL" # directory for store AUX_CAL files
+DOWN_DIR="S1_orbits" # directory for store precise orbits files
+CAL_DIR="S1_orbits" # directory for store AUX_CAL files
 # number of pages to check
 PAGE_START=1; # website pages for precise orbits
-PAGE_END=1 # Pages for precise orbits
+PAGE_END=96 # Pages for precise orbits
 CAL_PAGES=4 # Calibration pages
 
 ###############################
