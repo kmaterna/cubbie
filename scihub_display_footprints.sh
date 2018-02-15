@@ -18,6 +18,7 @@ fi
 echo "Displaying Footprints of Search Results"
 footprints="footprints.txt"
 mapfile="footprint_map.ps"
+am_i_linux=`uname -a | grep 'Linux'`  # this tells us if we're on a linux machine (sed works slightly differently on mac and linux)
 
 # Read the search results. It could be multiple calls of the -i flag. 
 while getopts i: opt; do
@@ -33,15 +34,28 @@ for val in "${multi[@]}"; do
     grep 'name=\"footprint' $val >> $footprints
 done
 
-sed -i '' 's/<str name=\"footprint\">POLYGON //g' $footprints
-sed -i '' 's/))<\/str>//g' $footprints
-sed -i '' $'s/((/>\\\n/g' $footprints
-sed -i '' $'s/,/\\\n/g' $footprints
+am_i_linux=`uname -a | grep 'Linux'`
+if [ ! -z "$am_i_linux" ]; then # WE ARE ON A LINUX MACHINE 
+    sed -i 's/<str name=\"footprint\">POLYGON //g' $footprints
+    sed -i 's/))<\/str>//g' $footprints
+    sed -i $'s/((/>\\\n/g' $footprints
+    sed -i $'s/,/\\\n/g' $footprints
 
-# Making a file with two columns: lon, lat
-cp $footprints new_footprints.txt
-sed -i '' $'s/>//g' new_footprints.txt
-sed -i '' '/^$/d' new_footprints.txt
+    # Making a file with two columns: lon, lat
+    cp $footprints new_footprints.txt
+    sed -i $'s/>//g' new_footprints.txt
+    sed -i '/^$/d' new_footprints.txt
+else       # WE ARE ON A MAC or OTHER non-LINUX MACHINE
+    sed -i '' 's/<str name=\"footprint\">POLYGON //g' $footprints
+    sed -i '' 's/))<\/str>//g' $footprints
+    sed -i '' $'s/((/>\\\n/g' $footprints
+    sed -i '' $'s/,/\\\n/g' $footprints
+
+    # Making a file with two columns: lon, lat
+    cp $footprints new_footprints.txt
+    sed -i '' $'s/>//g' new_footprints.txt
+    sed -i '' '/^$/d' new_footprints.txt
+fi
 
 # find the max and min of the range of footprints. 
 lonmin=`awk '{if(min==""){min=max=$1}; if($1>max) {max=$1}; if($1<min) {min=$1};} END {printf "%.2f", min}' new_footprints.txt`
@@ -57,4 +71,4 @@ gmt pscoast -R$range -J$projection -Dh -N2 -B1.0 -P -Wblack -Gwhite -Swhite -K >
 gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile
 
 rm gmt.history new_footprints.txt
-open $mapfile
+#open $mapfile
