@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','restart','mode','swath','polarization']);
+Params=collections.namedtuple('Params',['SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization']);
 
 def read_config():
     ################################################
@@ -45,6 +45,8 @@ def read_config():
     align_file=config.get('py-config','align_file')
     intf_file=config.get('py-config','intf_file')
     orbit_dir=config.get('py-config','orbit_dir')
+    tbaseline=config.getint('py-config','max_timespan')
+    xbaseline=config.getint('py-config','max_baseline') 
     restart=config.getboolean('py-config','restart')
     mode=config.get('py-config','mode') 
     swath=config.get('py-config','swath') 
@@ -110,7 +112,7 @@ def read_config():
         logtime = comm.bcast(logtime,root=0)
         config_file = comm.bcast(config_file,root=0)
 
-    config_params=Params(SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,restart=restart,mode=mode,swath=swath,polarization=polarization);
+    config_params=Params(SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization);
 
     return config_params; 
 
@@ -119,7 +121,7 @@ def manifest2raw_orig_eof(config_params):
 	# This will set up the raw_orig directory from the DATA/.SAFE directories
 	# Will also go into orbit directory and make copies of the right orbit files into the raw_orig directory. 
 
-        # STEP 1: Unpack the .SAFE directories into raw_orig
+        # Unpack the .SAFE directories into raw_orig
         call(["mkdir","-p","raw_orig"],shell=False);
 	file_list = glob.glob("DATA/*.SAFE");
         print file_list;
@@ -149,6 +151,7 @@ def manifest2raw_orig_eof(config_params):
 	return;
 
 
+# --------------- STEP 1: Pre-processing (also aligning for Sentinel) ------------ # 
 def preprocess(config_params):
 
     # MODE 1: Before you know your super-master
@@ -216,6 +219,43 @@ def write_preproc_mode2():
     outfile.close();
     print "Ready to call README_prep.txt in Mode 2."
     call("chmod +x README_prep.txt",shell=True);
+    return;
+
+
+
+
+# --------------- STEP 3: Make Interferograms ------------ # 
+def make_interferograms(config_params):
+    """
+    1. form interferogram pairs from baseline_table
+    2. make network plot
+    3. write README_proc.txt
+    """
+
+    baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
+    stems = baselineFile[:,0].astype(str)
+    time = baselineFile[:,1].astype(float)
+    baseline = baselineFile[:,4].astype(float)
+    intf_pairs = get_small_baseline_subsets(stems, times, baselines,config_params.tbaseline, config_params.xbaseline)
+
+    # Make the stick plot of baselines 
+    sentinel_utilities.make_network_plot(intf_pairs,stems,config_params.tbaseline, config_params.xbaseline);
+
+    # Writing to process interferograms. 
+    outfile=open("README_proc.txt",'w');
+    outfile.write("#!/bin/bash\n");
+    outfile.write("# Script to batch process Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("# First, create the files needed for intf_tops.csh\n\n");
+    outfile.write("rm -f intf.in\nrm -r intf intf_all\n\n");
+    for item in intf_pairs:
+        outfile.write('echo "' + item +'" >> intf.in\n');
+    outfile.write("\n# Process the interferograms, remember to set your super master in the batch_tops.config file.\n\n")
+    outfile.write("intf_tops.csh intf.in batch_tops.config\n\n\n");
+    outfile.close();
+    print "README_proc.txt printed with tbaseline_max = "+str(tbaseline_max)+" days and xbaseline_max = "+str(xbaseline_max)+"m. "
+    print "Ready to call README_proc.txt."
+    # call("chmod u+x README_proc.txt",shell=True);
+
     return;
 
 
