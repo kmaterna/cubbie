@@ -134,7 +134,9 @@ def manifest2raw_orig_eof(config_params):
             yyyymmdd=sentinel_utilities.get_date_from_xml(xml_files[0]);
             call(['cp',manifest_safe_file[0],'raw_orig/'+yyyymmdd+'_manifest.safe'],shell=False);
             tiff_files = sentinel_utilities.get_all_tiff_names(onefile+'/measurement',config_params.polarization, config_params.swath);
-            call(['cp',tiff_files[0],'raw_orig'],shell=False);
+            one_tiff_file=tiff_files[0].split("/")[-1];
+            if not os.path.isfile('raw_orig/'+one_tiff_file):
+                call(['cp',tiff_files[0],'raw_orig'],shell=False);
 
         # STEP 2: get orbit files into the raw_orig directory
         for onefile in file_list:
@@ -155,16 +157,17 @@ def preprocess(config_params):
     write_preproc_mode1();              # writes the bottom of README_prep
     call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
 
-    # Automatically decide on super-master. 
+    # Automatically decide on super-master and pop it to the front of data.in. 
     masterid = sentinel_utilities.choose_master_image();
-    # AWKWARD PART: write master into config. 
+    print "master image is..."
+    print masterid;
 
     # MODE 2: Now you have picked a super-master. 
-    # write_xml_prep(polarization, swath);                 # writes the beginning, common part of README_prep.txt
-    # make_data_in(polarization, swath, super_master);  # makes data.in with the correct super_master
-    # write_preproc_mode2();                            # This writes the bottom of README_prep
-    # call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
-    # NOTE: You must manually put the super-master into batch_tops.config (format is like [S1A20160829_ALL_F2])   
+    sentinel_utilities.write_super_master_batch_config(masterid);
+    write_xml_prep(config_params.polarization, config_params.swath);                 # writes the beginning, common part of README_prep.txt
+    write_preproc_mode2();                            # This writes the bottom of README_prep
+    #call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
+    # NOTE: We automatically put the super-master into batch_tops.config (format is like [S1A20160829_ALL_F2])   
     return;
 
 
@@ -201,9 +204,19 @@ def write_preproc_mode1():
     outfile.write("cp raw/baseline.ps .\n\n")
     outfile.close();
     print "Ready to call README_prep.txt in Mode 1."
-    call("chmod u+x README_prep.txt",shell=True);
+    call("chmod +x README_prep.txt",shell=True);
     return;
 
+def write_preproc_mode2():
+    outfile=open("README_prep.txt",'a')
+    outfile.write("cd raw\n");
+    outfile.write("echo 'Calling preproc_batch_tops.csh data.in dem.grd 1'\n");
+    outfile.write("preproc_batch_tops.csh data.in dem.grd 2\n\n");
+    outfile.write("cd ../\n");
+    outfile.close();
+    print "Ready to call README_prep.txt in Mode 2."
+    call("chmod +x README_prep.txt",shell=True);
+    return;
 
 
 

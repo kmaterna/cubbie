@@ -107,10 +107,12 @@ def choose_master_image():
     baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
     time = baselineFile[:,1].astype(float)
     baseline = baselineFile[:,4].astype(float)
+    shortform_names = baselineFile[:,0].astype(str);
  
     #GMTSAR (currently) guarantees that this file has the same order of lines as baseline_table.dat.
     dataDotIn=np.genfromtxt('raw/data.in',dtype='str').tolist()
-    
+    print dataDotIn;    
+
     # calculate shortest distance from median to scenes
     consider_time=True
     if consider_time:
@@ -125,8 +127,25 @@ def choose_master_image():
     # put masterId in the first line of data.in
     dataDotIn.pop(dataDotIn.index(masterID))
     dataDotIn.insert(0,masterID)
+    master_shortform = shortform_names[minID];  # because GMTSAR initially puts the baseline_table and data.in in the same order. 
     
     os.rename('raw/data.in','raw/data.in.old')
     np.savetxt('raw/data.in',dataDotIn,fmt='%s')
-    return masterID
+    np.savetxt('data.in',dataDotIn,fmt='%s')
+    return master_shortform
+
+def write_super_master_batch_config(masterid):
+    ifile=open('batch.config','r');
+    ofile=open('batch.config.new','w');
+    for line in ifile:
+        if 'master_image' in line:
+            ofile.write('master_image = '+masterid+'\n');
+        else:        
+            ofile.write(line);
+    ifile.close();
+    ofile.close();
+    call(['mv','batch.config.new','batch.config'],shell=False);
+    print "Writing master_image into batch.config";
+    return;
+
 
