@@ -236,7 +236,7 @@ def topo2ra(config_params):
         return;
     if config_params.endstage<3:   # if we're ending at preproc, we don't do this. 
         return;
-    call("sentinel_dem2topo_ra.csh",shell=True);
+    call("sentinel_dem2topo_ra.csh "+config_params.config_file,shell=True);
     return;
 
 
@@ -268,7 +268,6 @@ def make_interferograms(config_params):
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch process Sentinel-1 TOPS mode data sets.\n\n");
     outfile.write("# First, create the files needed for intf_tops.csh\n\n");
-    outfile.write("rm -f intf.in\nrm -r intf intf_all\n\n");
     for item in intf_pairs:
         outfile.write('echo "' + item +'" >> intf.in\n');
     outfile.write("\n# Process the interferograms, remember to set your super master in the batch.config file.\n\n")
