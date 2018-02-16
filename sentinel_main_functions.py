@@ -169,7 +169,7 @@ def preprocess(config_params):
     sentinel_utilities.write_super_master_batch_config(masterid);
     write_xml_prep(config_params.polarization, config_params.swath);                 # writes the beginning, common part of README_prep.txt
     write_preproc_mode2();                            # This writes the bottom of README_prep
-    # call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
+    call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
     # NOTE: We automatically put the super-master into batch_tops.config (format is like [S1A20160829_ALL_F2])   
     return;
 
@@ -180,8 +180,6 @@ def write_xml_prep(polarization, swath):
     print "Writing xmls in README_prep.txt";	
     outfile=open("README_prep.txt",'w');
     outfile.write("# First, prepare the files.\n");
-    outfile.write("rm -rf raw\n");
-    outfile.write("mkdir raw\n");
     outfile.write("cd raw\n");
     outfile.write("# in order to correct for Elevation Antenna Pattern Change, cat the manifest and aux files to the xmls\n");
     outfile.write("# delete the first line of the manifest file as it's not a typical xml file.\n\n");
@@ -213,7 +211,7 @@ def write_preproc_mode1():
 def write_preproc_mode2():
     outfile=open("README_prep.txt",'a')
     outfile.write("cd raw\n");
-    outfile.write("echo 'Calling preproc_batch_tops.csh data.in dem.grd 1'\n");
+    outfile.write("echo 'Calling preproc_batch_tops.csh data.in dem.grd 2'\n");
     outfile.write("preproc_batch_tops.csh data.in dem.grd 2\n\n");
     outfile.write("cd ../\n");
     outfile.close();
@@ -234,12 +232,12 @@ def make_interferograms(config_params):
 
     baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
     stems = baselineFile[:,0].astype(str)
-    time = baselineFile[:,1].astype(float)
-    baseline = baselineFile[:,4].astype(float)
-    intf_pairs = get_small_baseline_subsets(stems, times, baselines,config_params.tbaseline, config_params.xbaseline)
+    times = baselineFile[:,1].astype(float)
+    baselines = baselineFile[:,4].astype(float)
+    intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline)
 
     # Make the stick plot of baselines 
-    sentinel_utilities.make_network_plot(intf_pairs,stems,config_params.tbaseline, config_params.xbaseline);
+    sentinel_utilities.make_network_plot(intf_pairs,stems,times, baselines);
 
     # Writing to process interferograms. 
     outfile=open("README_proc.txt",'w');
@@ -252,9 +250,11 @@ def make_interferograms(config_params):
     outfile.write("\n# Process the interferograms, remember to set your super master in the batch_tops.config file.\n\n")
     outfile.write("intf_tops.csh intf.in batch_tops.config\n\n\n");
     outfile.close();
-    print "README_proc.txt printed with tbaseline_max = "+str(tbaseline_max)+" days and xbaseline_max = "+str(xbaseline_max)+"m. "
+    print "README_proc.txt printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     print "Ready to call README_proc.txt."
-    # call("chmod u+x README_proc.txt",shell=True);
+    call("chmod +x README_proc.txt",shell=True);
+    call("cp batch.config batch_tops.config",shell=True);
+    call("./README_proc.txt",shell=True);
 
     return;
 
