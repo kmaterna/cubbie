@@ -5,6 +5,7 @@ import os
 import sys
 import glob
 import datetime
+import matplotlib.pyplot as plt 
 import numpy as np
 
 
@@ -147,5 +148,53 @@ def write_super_master_batch_config(masterid):
     call(['mv','batch.config.new','batch.config'],shell=False);
     print "Writing master_image into batch.config";
     return;
+
+
+def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max):
+    """ Grab all the pairs that are below the critical baselines in space and time. 
+    Return format is a list of strings like 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'. 
+    You can adjust this if you have specific processing needs. 
+    """
+    nacq=len(stems);
+    intf_pairs=[];
+    for i in range(0,nacq):
+        for j in range(i+1,nacq):
+            if abs(tbaseline[i]-tbaseline[j]) < tbaseline_max:
+                if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
+                    img1_stem=stems[i];
+                    img2_stem=stems[j];
+                    img1_time=int(img1_stem[3:11]);
+                    img2_time=int(img2_stem[3:11]);
+                    if img1_time<img2_time:  # if the images are listed in chronological order 
+                        intf_pairs.append(stems[i]+":"+stems[j]);
+                    else:                    # if the images are in reverse chronological order
+                        intf_pairs.append(stems[j]+":"+stems[i]);
+    print "Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. "
+    # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
+    return intf_pairs;
+
+
+
+def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
+    plt.figure();
+    for item in intf_pairs:
+        scene1=item[0:18];
+        scene2=item[19:];
+        for x in range(len(stems)):
+            if stems[x]==scene1:
+                xstart=xbaseline[x];
+                tstart=tbaseline[x]-2000000;
+            if stems[x]==scene2:
+                xend=xbaseline[x];
+                tend=tbaseline[x]-2000000;
+        plt.plot(tstart, xstart,'.b');
+        plt.plot(tend, xend,'.b');
+        plt.plot([tstart,tend],[xstart,xend],'b');
+    plt.xlabel("Year-day");
+    plt.ylabel("Baseline (m)");
+    plt.title("Network Geometry");
+    plt.savefig("Network_Geometry.eps");
+    plt.close();
+    return();
 
 

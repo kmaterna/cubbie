@@ -52,9 +52,10 @@ if __name__=="__main__":
 
 	# # Step 2
 	# topo2ra();
+	# Will separate this later! 
 
 	# # Step 3
-	# make_interferograms();
+	sentinel_main_functions.make_interferograms(config_params);
 
 
 
