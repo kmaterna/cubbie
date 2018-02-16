@@ -166,7 +166,7 @@ def preprocess(config_params):
     sentinel_utilities.write_super_master_batch_config(masterid);
     write_xml_prep(config_params.polarization, config_params.swath);                 # writes the beginning, common part of README_prep.txt
     write_preproc_mode2();                            # This writes the bottom of README_prep
-    #call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
+    # call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
     # NOTE: We automatically put the super-master into batch_tops.config (format is like [S1A20160829_ALL_F2])   
     return;
 
