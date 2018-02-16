@@ -236,7 +236,11 @@ def topo2ra(config_params):
         return;
     if config_params.endstage<3:   # if we're ending at preproc, we don't do this. 
         return;
+    call("sentinel_dem2topo_ra.csh",shell=True);
     return;
+
+
+
 
 
 
@@ -276,6 +280,7 @@ def make_interferograms(config_params):
     call("./README_proc.txt",shell=True);
 
     return;
+
 
 
 
