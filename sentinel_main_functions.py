@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization']);
 
 def read_config():
     ################################################
@@ -38,6 +38,7 @@ def read_config():
         rank = 0    
 
     # get options from config file
+    config_file_orig=args.config;
     SAT=config.get('py-config','satellite')
     startstage=config.getint('py-config','startstage')
     endstage=config.getint('py-config','endstage')    
@@ -81,7 +82,7 @@ def read_config():
         #check master in data.in
         dataDotIn=np.genfromtxt('raw/data.in',dtype='str')
         oldmaster=dataDotIn[0]
-        if oldmaster != master:
+        if '-'+master[3:11]+'t' not in oldmaster:  # For sentinel, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...; master is formatted like S1A20171213_ALL_F1
             print('Warning: The master specified in the config file disagrees with the old master in data.in.')
             print('We will re-run starting from pre-processing with the master from the config file.')
             startstage = 1
@@ -112,7 +113,7 @@ def read_config():
         logtime = comm.bcast(logtime,root=0)
         config_file = comm.bcast(config_file,root=0)
 
-    config_params=Params(SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization);
 
     return config_params; 
 
@@ -120,6 +121,9 @@ def read_config():
 def manifest2raw_orig_eof(config_params):
 	# This will set up the raw_orig directory from the DATA/.SAFE directories
 	# Will also go into orbit directory and make copies of the right orbit files into the raw_orig directory. 
+
+        if config_params.startstage>1:  # don't need to set up if we're starting mid-stream. 
+            return;
 
         # Unpack the .SAFE directories into raw_orig
         call(["mkdir","-p","raw_orig"],shell=False);
@@ -154,6 +158,9 @@ def manifest2raw_orig_eof(config_params):
 # --------------- STEP 1: Pre-processing (also aligning for Sentinel) ------------ # 
 def preprocess(config_params):
 
+    if config_params.startstage>1:  # don't need to pre-process if we're starting at topo or intf. 
+        return;
+
     # MODE 1: Before you know your super-master
     write_xml_prep(config_params.polarization, config_params.swath);   # writes the beginning, common part of README_prep.txt
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);  # makes data.in the first time, with no super_master
@@ -180,6 +187,7 @@ def write_xml_prep(polarization, swath):
     print "Writing xmls in README_prep.txt";	
     outfile=open("README_prep.txt",'w');
     outfile.write("# First, prepare the files.\n");
+    outfile.write("mkdir -p raw\n");
     outfile.write("cd raw\n");
     outfile.write("# in order to correct for Elevation Antenna Pattern Change, cat the manifest and aux files to the xmls\n");
     outfile.write("# delete the first line of the manifest file as it's not a typical xml file.\n\n");
@@ -201,8 +209,8 @@ def write_preproc_mode1():
     outfile.write("echo 'Calling preproc_batch_tops.csh data.in dem.grd 1'\n");
     outfile.write("preproc_batch_tops.csh data.in dem.grd 1\n\n");
     outfile.write("cd ../\n");
-    outfile.write("cp raw/baseline_table.dat .\n");
-    outfile.write("cp raw/baseline.ps .\n\n")
+    #outfile.write("cp raw/baseline_table.dat .\n"); # I find these two lines sort of annoying. 
+    #outfile.write("cp raw/baseline.ps .\n\n")
     outfile.close();
     print "Ready to call README_prep.txt in Mode 1."
     call("chmod +x README_prep.txt",shell=True);
@@ -222,13 +230,25 @@ def write_preproc_mode2():
 
 
 
-# --------------- STEP 3: Make Interferograms ------------ # 
+# --------------- STEP 3: DEM topo2ra --------------- # 
+def topo2ra(config_params):
+    if config_params.startstage>3:  # if we're starting at intf, we don't do this. 
+        return;
+    if config_params.endstage<3:   # if we're ending at preproc, we don't do this. 
+        return;
+    return;
+
+
+
+# --------------- STEP 4: Make Interferograms ------------ # 
 def make_interferograms(config_params):
     """
     1. form interferogram pairs from baseline_table
     2. make network plot
     3. write README_proc.txt
     """
+    if config_params.endstage<4:  # if we're ending at topo, we don't need to do this. 
+        return;
 
     baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
     stems = baselineFile[:,0].astype(str)
@@ -247,13 +267,12 @@ def make_interferograms(config_params):
     outfile.write("rm -f intf.in\nrm -r intf intf_all\n\n");
     for item in intf_pairs:
         outfile.write('echo "' + item +'" >> intf.in\n');
-    outfile.write("\n# Process the interferograms, remember to set your super master in the batch_tops.config file.\n\n")
-    outfile.write("intf_tops.csh intf.in batch_tops.config\n\n\n");
+    outfile.write("\n# Process the interferograms, remember to set your super master in the batch.config file.\n\n")
+    outfile.write("intf_tops.csh intf.in "+config_params.config_file+"\n\n\n");
     outfile.close();
     print "README_proc.txt printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    call("cp batch.config batch_tops.config",shell=True);
     call("./README_proc.txt",shell=True);
 
     return;
