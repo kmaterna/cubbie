@@ -14,6 +14,10 @@ if [[ "$#" -eq 0 ]]; then
   exit 1
 fi
 
+
+
+
+
 # Configure the output files
 echo "Displaying Footprints of Search Results"
 footprints="footprints.txt"

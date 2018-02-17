@@ -2,8 +2,28 @@
 # Download data as shown in the search_results. 
 # Feb. 14, 2018.
 
+if [[ "$#" -eq 0 ]]; then
+  echo ""
+  echo "This script downloads the results of data queries"
+  echo "Usage: ./scihub_download_s1_sar.sh -options"
+  echo "Example: ./scihub_download_s1_sar.sh -i search_results1.txt -i search_results2.txt"
+  echo "Please provide one or more input files."
+  echo ""
+  exit 1
+fi
+
+
+# Read the search results. It could be multiple calls of the -i flag. 
+while getopts i: opt; do
+    case $opt in
+        i) multi+=("$OPTARG");;
+    esac
+done
+shift $((OPTIND -1))
+# echo "The whole list of values is '${multi[@]}'"  # a debugging line. 
+
+
 # Defining parameters
-raw_results=search_results.txt
 id_results=uuid_file.txt
 am_i_linux=`uname -a | grep 'Linux'`
 
@@ -11,8 +31,15 @@ am_i_linux=`uname -a | grep 'Linux'`
 mkdir -p DATA
 #mkdir -p MANIFEST
 
+
+# WILL FIX THIS TO CAT ANY DATA IN ANY FILE
+# THIS WILL BE IN A LOOP OVER POTENTIALLY MULTIPLE $RAW_RESULTS files
 # Processing the raw results to get unique id names
-grep -E 'uuid|<title>S1' $raw_results > $id_results
+rm $id_results
+for val in "${multi[@]}"; do
+    grep -E 'uuid|<title>S1' $val >> $id_results
+done
+
 
 # the -i '' is because of mac computers. Might need to delete the '' on a linux machine. 
 if [ ! -z am_i_linux ]; then  # I am on a linux machine

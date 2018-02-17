@@ -5,7 +5,7 @@
 	your starting configuration should be:
 
 	--DATA (has a pile of .SAFE directories, each 3.5 or 7.0 GB)
-	--batch_tops.config   (very important file!)
+	--batch.config   (very important file!)
 	--topo
 	    >> dem.grd
 	    >>  If you've already run README_proc once before, you will also have other files related to topographic phase:
@@ -24,8 +24,8 @@
 	In order to decide on your supermaster, you will first produce: 
 	--README_prep.txt
 	--data.in
-	--baseline_table.dat
-	--baseline.ps 
+	--raw/baseline_table.dat
+	--raw/baseline.ps 
 
 	For actual processing with your supermaster, you will then produce:
 	--README_proc.txt
@@ -35,8 +35,7 @@
 	--intf_all/*
 	--SBAS/*
 
-	When you are ready to have GMTSAR do processing, 
-	you comment/uncomment the appropriate "call" lines. 
+        You will control how the program operates through the processing stages specified in the batch.config file. 
 """
 
 import sentinel_main_functions
