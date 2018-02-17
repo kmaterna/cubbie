@@ -8,10 +8,10 @@
 	--batch.config   (very important file!)
 	--topo
 	    >> dem.grd
-	    >>  If you've already run README_proc once before, you will also have other files related to topographic phase:
+	    >>  If you've already run dem2topo_ra once before, you will also have other files related to topographic phase:
 		[S1A20150403_ALL_F1.LED, gmt.history, topo_ra.grd, trans.dat dem.grd, master.PRM, topo_ra.ps].
-		These files take a long time to generate, and only need to be done once I think. 
-		At that point you can keep these files and just start at phase 2 in the preproc_batch_tops file. 
+		These files take a long time to generate, and only need to be done once. 
+		This is why we run it once through the topo2ra() function, and set batch.config proc_stage = 2 always in the intf stage.
 
 	Will Make:
 	--raw_orig
@@ -21,13 +21,13 @@
 	    >> yyyymmdd_manifest.safe
 	    >> s1a-aux-cal.xml  (for the satellite)
 
-	In order to decide on your supermaster, you will first produce: 
+	In order to automatically decide on the supermaster, it will first produce: 
 	--README_prep.txt
 	--data.in
 	--raw/baseline_table.dat
 	--raw/baseline.ps 
 
-	For actual processing with your supermaster, you will then produce:
+	For actual processing with supermaster, it will then produce:
 	--README_proc.txt
 	--intf.in 
 	--Network_Geometry.eps
