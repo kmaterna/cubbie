@@ -102,7 +102,7 @@ while getopts :s:e:r:p:o:d:b:z: opt; do
       b_row=$OPTARG
       ;; 
     z)  # the name of the output file
-      echo "-b was triggered, parameter: $OPTARG" >&2
+      echo "-z was triggered, parameter: $OPTARG" >&2
       output_file=$OPTARG
       ;; 
     \?)
@@ -166,15 +166,19 @@ search_query+=$b_row
 search_query+="&rows=100"
 echo $search_query
 
-# Execute the search using wget
-wget --no-check-certificate --user=kmaterna --password=access_data --output-document="$output_file" "$search_query"
+echo "Input options:" > $output_file
+echo $@ >> $output_file
+echo "wget --no-check-certificate --user=kmaterna --password=access_data "$search_query >> $output_file
 
-grep 'title>S1' $output_file
+# Execute the search using wget
+wget --no-check-certificate --user=kmaterna --password=access_data "$search_query" -O ->> $output_file
+
+grep 'title>S1' $output_file   # displaying the results
 
 echo "number of total results is:"
 grep 'total results' $output_file
 echo "number of displayed results is: "
-grep 'title>S1' $output_file | wc -l
+grep 'title>S1' $output_file | wc -l  # counting the results 
 
 
 

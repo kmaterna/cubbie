@@ -268,6 +268,7 @@ def make_interferograms(config_params):
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch process Sentinel-1 TOPS mode data sets.\n\n");
     outfile.write("# First, create the files needed for intf_tops.csh\n\n");
+    outfile.write("rm intf.in\n");
     for item in intf_pairs:
         outfile.write('echo "' + item +'" >> intf.in\n');
     outfile.write("\n# Process the interferograms, remember to set your super master in the batch.config file.\n\n")
