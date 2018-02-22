@@ -74,8 +74,9 @@ while read p; do
   # Takes a few hours for each SAFE.zip. 
   # Each one can be unzipped with unzip. 
 
-  unzip $title.zip
-  rm $title.zip
+  unzip DATA/$title.SAFE.zip
+  rm DATA/$title.SAFE/measurement/*-slc-vh-*.tiff
+  rm DATA/$title.SAFE.zip
   counter=0
   
 done <$id_results
