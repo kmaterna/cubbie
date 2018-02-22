@@ -67,7 +67,12 @@ def get_eof_from_xml(xml_name, eof_dir):
     mydate=get_date_from_xml(xml_name);
     [previous_day,following_day]=get_previous_and_following_day(mydate);
     eof_name=glob.glob(eof_dir+"/*"+previous_day+"*"+following_day+"*.EOF"); 
-    eof_name=eof_name[0];
+    if eof_name==[]:
+        print "ERROR: did not find any EOF files matching the pattern "+eof_dir+"/*"+previous_day+"*"+following_day+"*.EOF";
+        print "Exiting..."
+        sys.exit(1);
+    else:
+        eof_name=eof_name[0];
     return eof_name;
 
 
