@@ -39,7 +39,7 @@
 #
 # clean up
 #
-  cleanup.csh topo
+  #cleanup.csh topo
 #
 # make topo_ra
 #
