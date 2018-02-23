@@ -23,6 +23,7 @@ echo "Displaying Footprints of Search Results"
 footprints="footprints.txt"
 timing="timing.txt"
 mapfile="footprint_map.ps"
+timing_file="acquisitions.ps"
 am_i_linux=`uname -a | grep 'Linux'`  # this tells us if we're on a linux machine (sed works slightly differently on mac and linux)
 
 # Read the search results. It could be multiple calls of the -i flag. 
@@ -44,8 +45,11 @@ done
 # Find descriptive numbers for summarizing the search results
 num_results=`cat $footprints | wc -l`  # counting the results 
 cut -c25-32 $timing > temp_timing.txt  # finding the timing of the acquisitions. 
-mv temp_timing.txt $timing
-exit
+rm $timing
+while IFS='' read -r line || [[ -n "$line" ]]; do
+    echo "$line 0.5" >> $timing
+done < temp_timing.txt
+rm temp_timing.txt;
 
 am_i_linux=`uname -a | grep 'Linux'`
 if [ ! -z "$am_i_linux" ]; then # WE ARE ON A LINUX MACHINE 
@@ -85,6 +89,16 @@ echo "Results displayed: " $num_results
 gmt pscoast -R$range -J$projection -Dh -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
 gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile
 
+
+# Make the timing plot
+projection="X10iTi/4i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
+region="2014-10-01T00:00/2018-05-30T00:00/0.1/1"  # The beginning and end of Sentinel. 
+
+gmt psbasemap -R$region -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K --FORMAT_DATE_MAP=mm/dd > $timing_file
+# -Bpx = primary x-axis; -Bs = secondary. a6O means primary annotate every 6 months; f2O means secondary annotate every 2 months
+gmt psxy $timing -R$region -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
+
 rm gmt.history new_footprints.txt
 rm $footprints
 #open $mapfile
+#open $timing_file
