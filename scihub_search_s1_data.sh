@@ -166,8 +166,7 @@ search_query+=$b_row
 search_query+="&rows=100"
 echo $search_query
 
-echo "Input options:" > $output_file
-echo $@ >> $output_file
+echo "Input options:" $@ > $output_file
 echo "wget --no-check-certificate --user=kmaterna --password=access_data "$search_query >> $output_file
 
 # Execute the search using wget
