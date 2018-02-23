@@ -58,25 +58,31 @@ counter=0
 while read p; do
   if [ $counter = 0 ]; then
   	title=$p
+    
+    # In this version, I actually download from the ASF. The download goes about 5x faster for some reason. 
+    wget -c --http-user=kmaterna@berkeley.edu --http-password=Access_d4t4 -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
   	counter=1
   	continue
   else
     uuid=$p
   fi
   echo $title
-  echo $uuid
+  #echo $uuid
   
+  # I have the option to download the Manifest or Data from ESA. It's pretty slow though. 
   # MANIFEST only
   # wget --no-check-certificate --user=kmaterna --password=access_data -O MANIFEST/"$title"_manifest.safe "https://scihub.copernicus.eu/dhus/odata/v1/Products('$uuid')/Nodes('$title.SAFE')/Nodes('manifest.safe')/\$value"
 
-  # DATA (full thing- will take a long time)!
-  wget --no-check-certificate --user=kmaterna --password=access_data -O DATA/"$title".SAFE.zip "https://scihub.copernicus.eu/dhus/odata/v1/Products('$uuid')/\$value"
+  # DATA FROM COPERNICUS (full thing- will take a long time)!
+  # wget --no-check-certificate --user=kmaterna --password=access_data -O DATA/"$title".SAFE.zip "https://scihub.copernicus.eu/dhus/odata/v1/Products('$uuid')/\$value"
   # Takes a few hours for each SAFE.zip. 
   # Each one can be unzipped with unzip. 
-
-  unzip DATA/$title.SAFE.zip
-  rm DATA/$title.SAFE/measurement/*-slc-vh-*.tiff
-  rm DATA/$title.SAFE.zip
+  
+  cd DATA
+  unzip $title.zip
+  rm $title.SAFE/measurement/*-slc-vh-*.tiff
+  rm $title.zip
+  cd ../
   counter=0
   
 done <$id_results
