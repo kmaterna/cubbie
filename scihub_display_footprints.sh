@@ -24,6 +24,7 @@ footprints="footprints.txt"
 timing="timing.txt"
 mapfile="footprint_map.ps"
 timing_file="acquisitions.ps"
+bounds_file="bounds_file.txt"
 am_i_linux=`uname -a | grep 'Linux'`  # this tells us if we're on a linux machine (sed works slightly differently on mac and linux)
 
 # Read the search results. It could be multiple calls of the -i flag. 
@@ -38,6 +39,7 @@ shift $((OPTIND -1))
 rm $footprints
 rm $timing
 for val in "${multi[@]}"; do
+    search_file_name=$val
     grep 'name=\"footprint' $val >> $footprints
     grep 'title>S1' $val >> $timing
 done
@@ -81,13 +83,28 @@ latmin=`awk '{if(min==""){min=max=$2}; if($2>max) {max=$2}; if($2<min) {min=$2};
 latmax=`awk '{if(min==""){min=max=$2}; if($2>max) {max=$2}; if($2<min) {min=$2};} END {printf "%.2f", max}' new_footprints.txt`
 
 
-# Make GMT plot 
+# Make GMT plot of footprints 
 # In the best case scenario I would also plot a timeseries of the acquisition dates (nice and fancy)
 projection="M6.1i"
 range="$lonmin/$lonmax/$latmin/$latmax"
 echo "Results displayed: " $num_results
 gmt pscoast -R$range -J$projection -Dh -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
 gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile
+
+
+# Nice little thing (but crazy implementation): adding the point or rectangle that was used for searching. 
+dirname `which scihub_search_s1_data.sh`>temp.txt  # where is the source for the github repo? 
+source_directory=`cat temp.txt`
+rm temp.txt
+python $source_directory/get_search_bounds.py $search_file_name $bounds_file
+num_lines=`cat $bounds_file | wc -l` 
+if [ $num_lines -eq 1 ]; then
+  gmt psxy $bounds_file -R$range -J$projection -Sc0.25 -Gblack -K -O -P >> $mapfile
+else
+  gmt psxy $bounds_file -R$range -J$projection -Wthick,black -K -O -P >> $mapfile
+fi
+
+# Spent a few hours to make this awk, but reverted to python
 
 
 # Make the timing plot
@@ -100,5 +117,6 @@ gmt psxy $timing -R$region -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gbla
 
 rm gmt.history new_footprints.txt
 rm $footprints
+rm $bounds_file
 #open $mapfile
 #open $timing_file
