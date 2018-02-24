@@ -101,7 +101,7 @@
         ext_orb_s1a tmp2.PRM $orb tmp2   # I think this works okay as well. 
         set tmpazi = `echo $pin1 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5)}'`
         # refinie the calculation
-        shift_atime_PRM.csh tmp2.PRM $tmpazi  # THE PROBLEM IS HAPPENING HERE. this script is not on my computer. 
+        shift_atime_PRM.csh tmp2.PRM $tmpazi  #
         set azi1 = `echo $pin1 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5 + '$tmpazi')}'`
         
         set pin2 = `tail -1 $2`
@@ -109,14 +109,16 @@
         make_s1a_tops $f2/annotation/*iw1*vv*xml $f2/measurement/*iw1*vv*tiff tmp2 0
         ext_orb_s1a tmp2.PRM $orb tmp2
         set tmpazi = `echo $pin2 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5)}'`
-        shift_atime_PRM.csh tmp2.PRM $tmpazi   # THE PROBLEM IS THIS COMMAND IS NOT FOUND. 
+        shift_atime_PRM.csh tmp2.PRM $tmpazi   # 
         set azi2 = `echo $pin2 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5 + '$tmpazi')}'`
 
         set nl = `grep num_lines tmp2.PRM | awk '{print $3}'`  # This was 12192 when I printed it. 
         echo $nl
-        echo "We are past the shift_PRM step. "
-        exit
+        echo "We are past the shift_PRM step. "  # we get to here, and I think it's successful. 
 
+        # I want to debug this block of code come monday. It seems like we never get into the middle of this block. We skip the data. 
+        echo $azi1
+        echo $azi2
         if ($azi1 > 0 && $azi2 < $nl ) then  
           awk '{print $1","$2}' $2 > tmpllt
           set pin0 = `awk NR==1'{print $0}' tmpllt`
@@ -125,8 +127,7 @@
               echo $pin0 | awk -F"," '{print $1,$2}' > tmp1llt
               echo $line2 | awk -F"," '{print $1,$2}' >> tmp1llt
               if ($mode != 1) then
-                echo "we are inside mode2"
-                exit
+                echo "we are inside mode2"  # however, we never get into here. 
                 create_frame_tops.csh tmprecord_new $orb tmp1llt 1
                 set newfile = `cat newfile`
                 echo "Created new file " $newfile
