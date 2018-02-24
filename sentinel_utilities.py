@@ -61,7 +61,9 @@ def pad_string_zeros(num):
         numstring=str(num);
     return numstring;
 
-def get_eof_from_xml(xml_name, eof_dir):
+
+# NOTE: Eventually I will have to add a functionality to distinguish between S1A and S1B. 
+def get_eof_from_xml(xml_name, eof_dir): 
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF. 
     """
     mydate=get_date_from_xml(xml_name);
@@ -69,6 +71,21 @@ def get_eof_from_xml(xml_name, eof_dir):
     eof_name=glob.glob(eof_dir+"/*"+previous_day+"*"+following_day+"*.EOF"); 
     if eof_name==[]:
         print "ERROR: did not find any EOF files matching the pattern "+eof_dir+"/*"+previous_day+"*"+following_day+"*.EOF";
+        print "Exiting..."
+        sys.exit(1);
+    else:
+        eof_name=eof_name[0];
+    return eof_name;
+
+
+def get_eof_from_date_sat(mydate, sat, eof_dir):
+    """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
+        It takes something like 20171204, s1a, eof_dir 
+    """
+    [previous_day,following_day]=get_previous_and_following_day(mydate);
+    eof_name=glob.glob(eof_dir+"/"+sat.upper()+"*"+previous_day+"*"+following_day+"*.EOF"); 
+    if eof_name==[]:
+        print "ERROR: did not find any EOF files matching the pattern "+eof_dir+"/"+sat.upper()+"*"+previous_day+"*"+following_day+"*.EOF";
         print "Exiting..."
         sys.exit(1);
     else:

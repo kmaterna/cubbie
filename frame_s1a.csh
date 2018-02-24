@@ -30,17 +30,20 @@
 
   set ii = 0
   set mode = $3
-  set dirname = $4
+  set dirname = $4   # maybe it wasn't so great for someone to name a variable dirname? 
+  dirname `which scihub_search_s1_data.sh`>temp.txt  # where is the source for the github repo? 
+  set code_path = `cat temp.txt`
+  rm temp.txt
 
   if (-f frame.list) rm -f frame.list
   if (-f tmprecord)  rm -f tmprecord
 
   # divide the list of files into sets, and create frames based on the given pins
   foreach line (`awk '{print $0}' $1`)
-    set file1 = `echo $line | awk -F"," '{print $1}'`
-    set date1 = `echo $file1 | awk '{print substr($1,length($1)-54,8)}'`
-    set SAT1 = `echo $file1 | awk '{print substr($1,length($1)-71,3)}'`
-    
+    set file1 = `echo $line | awk -F"," '{print $1}'`  # a full path to a .SAFE directory
+    set date1 = `echo $file1 | awk '{print substr($1,length($1)-54,8)}'`   # something like 20171201
+    set SAT1 = `echo $file1 | awk '{print substr($1,length($1)-71,3)}'`    # something like S1A
+
     if ($ii == 0) then
       set file0 = `echo $file1`
       set date0 = `echo $date1`
@@ -81,21 +84,24 @@
         set n1 = ` date --date="$date0 - 1 day" +%Y%m%d `
         set n2 = ` date --date="$date0 + 1 day" +%Y%m%d `
         if ($SAT0 == "S1A") then
-            get_s1a_orbit.csh $date0
-            set orb = "ORBIT_S1A_"$date0".EOF"
+            python $code_path/get_s1_orbits.py $date0 s1a
+            #get_s1a_orbit.csh $date0
+            set orb = ` find . -name "$SAT0*$n1*$n2*.EOF" ` # the name of the file we just copied
         else
-            get_s1b_orbit.csh $date0
-            set orb = "ORBIT_S1B_"$date0".EOF"
+            python $code_path/get_s1_orbits.py $date0 s1b
+            #get_s1b_orbit.csh $date0
+            set orb = ` find . -name "$SAT0*$n1*$n2*.EOF" ` # the name of the file we just copied
         endif
 
 
         set pin1 = `head -1 $2` 
         set f1 = `head -1 tmprecord_new`
-        make_s1a_tops $f1/annotation/*iw1*vv*xml $f1/measurement/*iw1*vv*tiff tmp2 0
-        ext_orb_s1a tmp2.PRM $orb tmp2
+        echo $f1
+        make_s1a_tops $f1/annotation/*iw1*vv*xml $f1/measurement/*iw1*vv*tiff tmp2 0  # seems to go okay? Makes a PRM file with 53 lines. 
+        ext_orb_s1a tmp2.PRM $orb tmp2   # I think this works okay as well. 
         set tmpazi = `echo $pin1 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5)}'`
         # refinie the calculation
-        shift_atime_PRM.csh tmp2.PRM $tmpazi
+        shift_atime_PRM.csh tmp2.PRM $tmpazi  # THE PROBLEM IS HAPPENING HERE. this script is not on my computer. 
         set azi1 = `echo $pin1 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5 + '$tmpazi')}'`
         
         set pin2 = `tail -1 $2`
@@ -103,10 +109,13 @@
         make_s1a_tops $f2/annotation/*iw1*vv*xml $f2/measurement/*iw1*vv*tiff tmp2 0
         ext_orb_s1a tmp2.PRM $orb tmp2
         set tmpazi = `echo $pin2 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5)}'`
-        shift_atime_PRM.csh tmp2.PRM $tmpazi
+        shift_atime_PRM.csh tmp2.PRM $tmpazi   # THE PROBLEM IS THIS COMMAND IS NOT FOUND. 
         set azi2 = `echo $pin2 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5 + '$tmpazi')}'`
 
-        set nl = `grep num_lines tmp2.PRM | awk '{print $3}'`
+        set nl = `grep num_lines tmp2.PRM | awk '{print $3}'`  # This was 12192 when I printed it. 
+        echo $nl
+        echo "We are past the shift_PRM step. "
+        exit
 
         if ($azi1 > 0 && $azi2 < $nl ) then  
           awk '{print $1","$2}' $2 > tmpllt
@@ -116,6 +125,8 @@
               echo $pin0 | awk -F"," '{print $1,$2}' > tmp1llt
               echo $line2 | awk -F"," '{print $1,$2}' >> tmp1llt
               if ($mode != 1) then
+                echo "we are inside mode2"
+                exit
                 create_frame_tops.csh tmprecord_new $orb tmp1llt 1
                 set newfile = `cat newfile`
                 echo "Created new file " $newfile
@@ -189,11 +200,13 @@
   set n1 = ` date --date="$date0 - 1 day" +%Y%m%d `
   set n2 = ` date --date="$date0 + 1 day" +%Y%m%d `
   if ($SAT0 == "S1A") then
-    get_s1a_orbit.csh $date0
-    set orb = "ORBIT_S1A_"$date0".EOF"
+    python $code_path/get_s1_orbits.py $date0 s1a
+    #get_s1a_orbit.csh $date0
+    set orb = ` find . -name "$SAT0*$n1*$n2*.EOF" ` # the name of the file we just copied
   else
-    get_s1b_orbit.csh $date0
-    set orb = "ORBIT_S1B_"$date0".EOF"
+    python $code_path/get_s1_orbits.py $date0 s1b
+    #get_s1b_orbit.csh $date0
+    set orb = ` find . -name "$SAT0*$n1*$n2*.EOF" ` # the name of the file we just copied
   endif
 
   set pin1 = `head -1 $2` 
@@ -252,6 +265,6 @@
 
 
   rm tmp*
-  rm *.EOF
+  #rm *.EOF
 
 
