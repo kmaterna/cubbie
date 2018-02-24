@@ -15,7 +15,7 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 
-
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 
 # Configure the output files
@@ -91,20 +91,14 @@ echo "Results displayed: " $num_results
 gmt pscoast -R$range -J$projection -Dh -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
 gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile
 
-
-# Nice little thing (but crazy implementation): adding the point or rectangle that was used for searching. 
-dirname `which scihub_search_s1_data.sh`>temp.txt  # where is the source for the github repo? 
-source_directory=`cat temp.txt`
-rm temp.txt
-python $source_directory/get_search_bounds.py $search_file_name $bounds_file
+# Nice little thing: adding the point or rectangle that was used for searching. 
+python $DIR/get_search_bounds.py $search_file_name $bounds_file
 num_lines=`cat $bounds_file | wc -l` 
 if [ $num_lines -eq 1 ]; then
   gmt psxy $bounds_file -R$range -J$projection -Sc0.25 -Gblack -K -O -P >> $mapfile
 else
   gmt psxy $bounds_file -R$range -J$projection -Wthick,black -K -O -P >> $mapfile
 fi
-
-# Spent a few hours to make this awk, but reverted to python
 
 
 # Make the timing plot
