@@ -31,9 +31,10 @@
   set ii = 0
   set mode = $3
   set dirname = $4   # maybe it wasn't so great for someone to name a variable dirname? 
-  dirname `which scihub_search_s1_data.sh`>temp.txt  # where is the source for the github repo? 
-  set code_path = `cat temp.txt`
-  rm temp.txt
+  code_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"  # does this command work in cshell as well? 
+  #dirname `which scihub_search_s1_data.sh`>temp.txt  # where is the source for the github repo? 
+  #set code_path = `cat temp.txt`
+  #rm temp.txt
 
   if (-f frame.list) rm -f frame.list
   if (-f tmprecord)  rm -f tmprecord
