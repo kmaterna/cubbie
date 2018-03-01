@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame_name']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame']);
 
 def read_config():
     ################################################
@@ -52,7 +52,7 @@ def read_config():
     mode=config.get('py-config','mode') 
     swath=config.get('py-config','swath') 
     polarization=config.get('py-config','polarization') 
-    frame_name=config.get('py-config','frame_name')
+    frame=config.get('py-config','frame')
     
     
     # print config options
@@ -115,7 +115,7 @@ def read_config():
         logtime = comm.bcast(logtime,root=0)
         config_file = comm.bcast(config_file,root=0)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame_name=frame_name);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame);
 
     return config_params; 
 
@@ -127,12 +127,12 @@ def manifest2raw_orig_eof(config_params):
     if config_params.startstage>1:  # don't need to set up if we're starting mid-stream. 
         return;
 
+    file_list = get_frames_for_raw_orig(config_params);  # will assemble frames if necessary. Otherwise will just return the DATA/*.SAFE files
+    print file_list;
+
     # Unpack the .SAFE directories into raw_orig
     call(["mkdir","-p","raw_orig"],shell=False);
-    
-    if config_params.frame_name != '': file_list = glob.glob(config_params.frame_name+"/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
-	else: file_list = glob.glob("DATA/*.SAFE");   # if we're not assembling frames, we use the DATA directory. 
-    print file_list;
+    print file_list;    
     print "Copying xml files into raw_orig..."
     print "Copying manifest.safe files into raw_orig..."
     print "Copying tiff files into raw_orig..."
@@ -154,9 +154,41 @@ def manifest2raw_orig_eof(config_params):
         eof_name = sentinel_utilities.get_eof_from_xml(xml_name, config_params.orbit_dir);
         print "Copying %s to raw_orig..." % eof_name;
         call(['cp',eof_name,'raw_orig'],shell=False);
-	print "copying s1a-aux-cal.xml to raw_orig..."
+    print "copying s1a-aux-cal.xml to raw_orig..."
     call(['cp',config_params.orbit_dir+'/s1a-aux-cal.xml','raw_orig'],shell=False);
-	return;
+    return;
+
+
+def get_frames_for_raw_orig(config_params):
+    # This will read the batch.config file, make frames, and put the results into the file_list 
+    # (for later porting into raw_orig)
+    if config_params.frame != '':
+        # Here we want a frame to be made. 
+        call(['mkdir','-p','FRAMES'],shell=False);
+        frame_def = config_params.frame.split('/');
+
+        # write the data list to data.list
+        outfile=open("make_frame_commands.sh",'w');
+        outfile.write("#!/bin/bash\n")
+        outfile.write("cd FRAMES\n");
+        outfile.write("if [ -z \"$(ls -A $1 )\" ]; then\n"); # if the directory is empty, then we make more frames. 
+        outfile.write("  readlink -f ../DATA/*.SAFE > data.list\n");
+        outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame_def[0], frame_def[3]) );  # write the corners of the frame to frame.ll
+        outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame_def[1], frame_def[2]) );
+        outfile.write("  make_s1a_frame.csh data.list frames.ll\n");
+        outfile.write("  echo \"Assembling new frames!\"\n")
+        outfile.write("else\n")
+        outfile.write("  echo \"FRAMES contains files already... not assembling new frames\"\n")
+        outfile.write("fi\n")
+        outfile.write("cd ../\n");
+        outfile.close();
+        call(['chmod','+x','make_frame_commands.sh'],shell=False);
+        call(['./make_frame_commands.sh'],shell=False)
+        call(['rm','make_frame_commands.sh'],shell=False)
+        file_list = glob.glob("FRAMES/FRAME_1/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
+    else: 
+        file_list = glob.glob("DATA/*.SAFE");   # if we're not assembling frames, we use the DATA directory.     
+    return file_list;
 
 
 # --------------- STEP 1: Pre-processing (also aligning for Sentinel) ------------ # 

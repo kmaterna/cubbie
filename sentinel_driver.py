@@ -39,13 +39,12 @@
 """
 
 import sentinel_main_functions
-import sys
 
 if __name__=="__main__":
 
 	# Step 0
 	config_params = sentinel_main_functions.read_config();
-	sentinel_main_functions.manifest2raw_orig_eof(config_params); sys.exit(0);
+	sentinel_main_functions.manifest2raw_orig_eof(config_params); 
 
 	# # Step 1: choose master and preprocess (Step 2 = aligning; combined for Sentinel)
 	sentinel_main_functions.preprocess(config_params);
