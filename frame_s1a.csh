@@ -31,10 +31,13 @@
   set ii = 0
   set mode = $3
   set dirname = $4   # maybe it wasn't so great for someone to name a variable dirname? 
-  code_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"  # does this command work in cshell as well? 
-  #dirname `which scihub_search_s1_data.sh`>temp.txt  # where is the source for the github repo? 
-  #set code_path = `cat temp.txt`
-  #rm temp.txt
+  set called=($_)
+  if ( "$called" != "" ) then ### called by source
+    set script_fn = `readlink -f $called[1]`
+  else 
+    set script_fn = `readlink -f $0`
+  endif
+  set code_path = `dirname $script_fn`  # the place where the scripts all live. 
 
   if (-f frame.list) rm -f frame.list
   if (-f tmprecord)  rm -f tmprecord
@@ -102,6 +105,7 @@
         ext_orb_s1a tmp2.PRM $orb tmp2   # I think this works okay as well. 
         set tmpazi = `echo $pin1 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5)}'`
         # refinie the calculation
+        echo "Starting shift_atime_PRM"
         shift_atime_PRM.csh tmp2.PRM $tmpazi  #
         set azi1 = `echo $pin1 | awk '{print $1,$2,0}' | SAT_llt2rat tmp2.PRM 1 | awk '{printf("%d",$2+0.5 + '$tmpazi')}'`
         
@@ -117,7 +121,7 @@
         echo $nl
         echo "We are past the shift_PRM step. "  # we get to here, and I think it's successful. 
 
-        # I want to debug this block of code come monday. It seems like we never get into the middle of this block. We skip the data. 
+        # It looks like this block of code works!
         echo $azi1
         echo $azi2
         if ($azi1 > 0 && $azi2 < $nl ) then  
@@ -128,7 +132,7 @@
               echo $pin0 | awk -F"," '{print $1,$2}' > tmp1llt
               echo $line2 | awk -F"," '{print $1,$2}' >> tmp1llt
               if ($mode != 1) then
-                echo "we are inside mode2"  # however, we never get into here. 
+                echo "we are inside mode2"  #  
                 create_frame_tops.csh tmprecord_new $orb tmp1llt 1
                 set newfile = `cat newfile`
                 echo "Created new file " $newfile
