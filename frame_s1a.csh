@@ -30,7 +30,7 @@
 
   set ii = 0
   set mode = $3
-  set dirname = $4   # maybe it wasn't so great for someone to name a variable dirname? 
+  set direname = $4   # maybe it wasn't so great for someone to name a variable dirname? 
   set called=($_)
   if ( "$called" != "" ) then ### called by source
     set script_fn = `readlink -f $called[1]`
@@ -134,13 +134,8 @@
               if ($mode != 1) then
                 echo "we are inside mode2"  #  
                 create_frame_tops.csh tmprecord_new $orb tmp1llt 1
-                set newfile = `cat newfile`
-                echo "Created new file " $newfile
-                echo ""
-                if (! -d $dirname) mkdir $dirname
-                  if (! -d $dirname/data) mkdir $dirname/data
-#                mv $newfile $dirname
-                mv $newfile $dirname/data
+                mkdir -p $direname
+                mv *.SAFE $direname
               else
                 echo ""
                 echo "Frames on date $date0 will be re-organized..."
@@ -150,9 +145,9 @@
             endif
           end 
          
-          echo $date0 >> dates.merge.$dirname
+          echo $date0 >> dates.merge.$direname
         else
-          echo $date0 >> dates.skip.$dirname
+          echo $date0 >> dates.skip.$direname
           if ($jj == 0) then
             echo ""
             echo "SKIP $date0, as it stopped observation in the middle ..."
@@ -241,12 +236,12 @@
         echo $line2 | awk -F"," '{print $1,$2}' >> tmp1llt
         if ($mode != 1) then
           create_frame_tops.csh tmprecord_new $orb tmp1llt 1
-         set newfile = `cat newfile`
-         echo "Created new file " $newfile
-          echo ""
-          if (! -d $dirname) mkdir $dirname
-          if (! -d $dirname/data) mkdir $dirname/data
-          mv $newfile $dirname/data
+         #set newfile = `cat newfile`
+         #echo "Created new file " $newfile
+          #echo ""
+          if (! -d $direname) mkdir $direname
+          #if (! -d $direname/data) mkdir $direname/data
+          mv *.SAFE $direname
         else
           echo ""
           echo "Frames on date $date0 will be re-organized..."
@@ -255,9 +250,9 @@
         set pin0 = `echo $line2`
       endif
     end
-   echo $date0 >>dates.merge.$dirname
+   echo $date0 >>dates.merge.$direname
   else 
-    echo $date0 >> dates.skip.$dirname
+    echo $date0 >> dates.skip.$direname
     if ($jj == 0) then
       echo ""
       echo "SKIP $date0, as it stopped observation in the middle ..."
