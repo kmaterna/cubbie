@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame_name']);
 
 def read_config():
     ################################################
@@ -52,6 +52,8 @@ def read_config():
     mode=config.get('py-config','mode') 
     swath=config.get('py-config','swath') 
     polarization=config.get('py-config','polarization') 
+    frame_name=config.get('py-config','frame_name')
+    
     
     # print config options
     if args.debug:
@@ -113,7 +115,7 @@ def read_config():
         logtime = comm.bcast(logtime,root=0)
         config_file = comm.bcast(config_file,root=0)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame_name=frame_name);
 
     return config_params; 
 
@@ -122,36 +124,38 @@ def manifest2raw_orig_eof(config_params):
 	# This will set up the raw_orig directory from the DATA/.SAFE directories
 	# Will also go into orbit directory and make copies of the right orbit files into the raw_orig directory. 
 
-        if config_params.startstage>1:  # don't need to set up if we're starting mid-stream. 
-            return;
+    if config_params.startstage>1:  # don't need to set up if we're starting mid-stream. 
+        return;
 
-        # Unpack the .SAFE directories into raw_orig
-        call(["mkdir","-p","raw_orig"],shell=False);
-	file_list = glob.glob("DATA/*.SAFE");
-        print file_list;
-        print "Copying xml files into raw_orig..."
-        print "Copying manifest.safe files into raw_orig..."
-        print "Copying tiff files into raw_orig..."
-        # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space. 
-        for onefile in file_list:
-            xml_files = sentinel_utilities.get_all_xml_names(onefile+'/annotation',config_params.polarization, config_params.swath);
-            call(['cp',xml_files[0],'raw_orig'],shell=False);
-            manifest_safe_file = sentinel_utilities.get_manifest_safe_names(onefile);
-            yyyymmdd=sentinel_utilities.get_date_from_xml(xml_files[0]);
-            call(['cp',manifest_safe_file[0],'raw_orig/'+yyyymmdd+'_manifest.safe'],shell=False);
-            tiff_files = sentinel_utilities.get_all_tiff_names(onefile+'/measurement',config_params.polarization, config_params.swath);
-            one_tiff_file=tiff_files[0].split("/")[-1];
-            if not os.path.isfile('raw_orig/'+one_tiff_file):
-                call(['cp',tiff_files[0],'raw_orig'],shell=False);
+    # Unpack the .SAFE directories into raw_orig
+    call(["mkdir","-p","raw_orig"],shell=False);
+    
+    if config_params.frame_name != '': file_list = glob.glob(config_params.frame_name+"/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
+	else: file_list = glob.glob("DATA/*.SAFE");   # if we're not assembling frames, we use the DATA directory. 
+    print file_list;
+    print "Copying xml files into raw_orig..."
+    print "Copying manifest.safe files into raw_orig..."
+    print "Copying tiff files into raw_orig..."
+    # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space. 
+    for onefile in file_list:
+        xml_files = sentinel_utilities.get_all_xml_names(onefile+'/annotation',config_params.polarization, config_params.swath);
+        call(['cp',xml_files[0],'raw_orig'],shell=False);
+        manifest_safe_file = sentinel_utilities.get_manifest_safe_names(onefile);
+        yyyymmdd=sentinel_utilities.get_date_from_xml(xml_files[0]);
+        call(['cp',manifest_safe_file[0],'raw_orig/'+yyyymmdd+'_manifest.safe'],shell=False);
+        tiff_files = sentinel_utilities.get_all_tiff_names(onefile+'/measurement',config_params.polarization, config_params.swath);
+        one_tiff_file=tiff_files[0].split("/")[-1];
+        if not os.path.isfile('raw_orig/'+one_tiff_file):
+            call(['cp',tiff_files[0],'raw_orig'],shell=False);
 
         # STEP 2: get orbit files into the raw_orig directory
-        for onefile in file_list:
-            xml_name = glob.glob(onefile+'/annotation/*vv*.xml')[0];
-            eof_name = sentinel_utilities.get_eof_from_xml(xml_name, config_params.orbit_dir);
-            print "Copying %s to raw_orig..." % eof_name;
-            call(['cp',eof_name,'raw_orig'],shell=False);
+    for onefile in file_list:
+        xml_name = glob.glob(onefile+'/annotation/*vv*.xml')[0];
+        eof_name = sentinel_utilities.get_eof_from_xml(xml_name, config_params.orbit_dir);
+        print "Copying %s to raw_orig..." % eof_name;
+        call(['cp',eof_name,'raw_orig'],shell=False);
 	print "copying s1a-aux-cal.xml to raw_orig..."
-        call(['cp',config_params.orbit_dir+'/s1a-aux-cal.xml','raw_orig'],shell=False);
+    call(['cp',config_params.orbit_dir+'/s1a-aux-cal.xml','raw_orig'],shell=False);
 	return;
 
 
