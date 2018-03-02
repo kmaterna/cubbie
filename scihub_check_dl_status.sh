@@ -63,11 +63,11 @@ echo "Files we failed to download:" > undownloaded.txt
 echo "The files we should have downloaded, but are not in the DATA directory: "
 while IFS= read -r var
 do
-  if [ ! -f $relpath/"$var" ]; then  # if the files that we searched are NOT in the DATA directory after downloading, then we have to chase them down some other way. 
-  	echo "$var" >> undownloaded.txt
-  	echo "$var"
+  if [ ! -d $relpath/"$var" ]; then  # if the files that we searched are NOT in the DATA directory after downloading, then we have to chase them down some other way. 
+   	echo "$var" >> undownloaded.txt
+    echo "do not have file"
+    echo $relpath/"$var"
   fi
-  #echo "$var"
 done < "$safe_results"
 
 rm $safe_results
