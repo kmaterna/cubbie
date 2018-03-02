@@ -197,6 +197,10 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
     return intf_pairs;
 
 
+def get_chain_subsets(stems, tbaseline, xbaseline):
+    # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs. 
+    return intf_pairs;
+
 
 def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
     plt.figure();
