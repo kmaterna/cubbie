@@ -15,21 +15,19 @@ if [[ "$#" -eq 0 ]]; then
   echo " -p point [lon/lat]"
   echo " -o orbit_number [0-175]"
   echo " -d direction [Ascending/Descending]"
-  echo " -b beginrows [0] (Copernicus can only display 100 rows at once)"
   echo " -z output_file"
   echo ""
   echo "  outputs:"
   echo "    search_results.txt or specified output_file (contains xml-style information on 0-100 results)"
   echo ""
   echo "  Note: The scihub system will only print a maximum of 100 results to a file."
-  echo "    If you want to see more than 100 results, you will have to change the &start=0 through the -b option"
+  echo "    If you want to see more than 100 results, this script will cat them, but only up to a few hundred."
   echo "    More details at https://scihub.copernicus.eu/twiki/do/view/SciHubUserGuide/5APIsAndBatchScripting#URI_components"
   echo ""
   exit 1
 fi
 
 # Initial values
-b_row=0
 output_file=search_results.txt
 
 # Parse arguments (:after options means it expects an argument)
@@ -97,10 +95,6 @@ while getopts :s:e:r:p:o:d:b:z: opt; do
       	exit 1
       fi
       ;;      
-    b)  # the beginning row
-      echo "-b was triggered, parameter: $OPTARG" >&2
-      b_row=$OPTARG
-      ;; 
     z)  # the name of the output file
       echo "-z was triggered, parameter: $OPTARG" >&2
       output_file=$OPTARG
@@ -161,21 +155,35 @@ fi
 
 # how many rows to display and where to start? 
 # Max rows = 100 (slightly annoying rule from the Copernicus server)
-search_query+="&start="
-search_query+=$b_row
-search_query+="&rows=100"
-echo $search_query
+search_query0=$search_query"&start=0&rows=100"
+echo $search_query0
 
 echo "Input options:" $@ > $output_file
-echo "wget --no-check-certificate --user=kmaterna --password=access_data "$search_query >> $output_file
+echo "wget --no-check-certificate --user=kmaterna --password=access_data "$search_query0 >> $output_file
 
 # Execute the search using wget
-wget --no-check-certificate --user=kmaterna --password=access_data "$search_query" -O ->> $output_file
+wget --no-check-certificate --user=kmaterna --password=access_data "$search_query0" -O ->> $output_file
+num_results=`grep 'title>S1' $output_file | wc -l`
 
+
+# Execute again if we think there's more search results to be found (100-200 and 200-300 range). 
+if [ $num_results -eq "100" ]; then
+  echo "We have 100 results... automatically searching for results #100-200"
+  search_query1=$search_query"&start=100&rows=100"
+  wget --no-check-certificate --user=kmaterna --password=access_data "$search_query1" -O ->> $output_file
+fi
+if [ $num_results -eq "200" ]; then
+  echo "We have 100 results... automatically searching for results #200-300"
+  search_query2=$search_query"&start=200&rows=100"
+  wget --no-check-certificate --user=kmaterna --password=access_data "$search_query2" -O ->> $output_file
+fi
+
+
+# Displaying a summary of the results 
 grep 'title>S1' $output_file   # displaying the results
-
 echo "number of total results is:"
 grep 'total results' $output_file
+
 echo "number of displayed results is: "
 grep 'title>S1' $output_file | wc -l  # counting the results 
 
