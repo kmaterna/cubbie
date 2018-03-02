@@ -214,13 +214,13 @@ def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
         for x in range(len(stems)):
             if stems[x]==scene1:
                 xstart=xbaseline[x];
-                tstart=dt.datetime.strptime(string(int(tbaseline[x])),'%Y%j');
+                tstart=dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j');
             if stems[x]==scene2:
                 xend=xbaseline[x];
-                tend=dt.datetime.strptime(string(int(tbaseline[x])),'%Y%j');
-        plt.plotdate(tstart, xstart,'.b');
-        plt.plotdate(tend, xend,'.b');
-        plt.plotdate([tstart,tend],[xstart,xend],'b');
+                tend=dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j');
+        plt.plot_date(tstart, xstart,'.b');
+        plt.plot_date(tend, xend,'.b');
+        plt.plot_date([tstart,tend],[xstart,xend],'b');
     plt.xlabel("Year-day");
     plt.ylabel("Baseline (m)");
     plt.title("Network Geometry");

@@ -294,7 +294,8 @@ def make_interferograms(config_params):
     stems = baselineFile[:,0].astype(str)
     times = baselineFile[:,1].astype(float)
     baselines = baselineFile[:,4].astype(float)
-    intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline)
+    #intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline)
+    intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines)
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_pairs,stems,times, baselines);
