@@ -7,6 +7,7 @@ import glob
 import datetime
 import matplotlib.pyplot as plt 
 import numpy as np
+import datetime as dt
 
 
 def get_all_xml_names(directory, polarization, swath):
@@ -200,18 +201,18 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
 def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
     plt.figure();
     for item in intf_pairs:
-        scene1=item[0:18];
+        scene1=item[0:18];    # has some format like S1A20160817_ALL_F2
         scene2=item[19:];
         for x in range(len(stems)):
             if stems[x]==scene1:
                 xstart=xbaseline[x];
-                tstart=tbaseline[x]-2000000;
+                tstart=dt.datetime.strptime(string(int(tbaseline[x])),'%Y%j');
             if stems[x]==scene2:
                 xend=xbaseline[x];
-                tend=tbaseline[x]-2000000;
-        plt.plot(tstart, xstart,'.b');
-        plt.plot(tend, xend,'.b');
-        plt.plot([tstart,tend],[xstart,xend],'b');
+                tend=dt.datetime.strptime(string(int(tbaseline[x])),'%Y%j');
+        plt.plotdate(tstart, xstart,'.b');
+        plt.plotdate(tend, xend,'.b');
+        plt.plotdate([tstart,tend],[xstart,xend],'b');
     plt.xlabel("Year-day");
     plt.ylabel("Baseline (m)");
     plt.title("Network Geometry");
