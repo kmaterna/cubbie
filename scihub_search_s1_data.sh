@@ -172,6 +172,7 @@ if [ $num_results -eq "100" ]; then
   search_query1=$search_query"&start=100&rows=100"
   wget --no-check-certificate --user=kmaterna --password=access_data "$search_query1" -O ->> $output_file
 fi
+num_results=`grep 'title>S1' $output_file | wc -l`
 if [ $num_results -eq "200" ]; then
   echo "We have 100 results... automatically searching for results #200-300"
   search_query2=$search_query"&start=200&rows=100"
