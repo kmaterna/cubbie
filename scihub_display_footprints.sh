@@ -14,6 +14,7 @@ if [[ "$#" -eq 0 ]]; then
   exit 1
 fi
 
+# I will add some new comments and functions. 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
