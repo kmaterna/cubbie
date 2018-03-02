@@ -199,7 +199,10 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
 
 def get_chain_subsets(stems, tbaseline, xbaseline):
     # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs. 
-    # I will be writing this tomorrow when I want to make a fun little project. 
+    intf_pairs=[];
+    sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value
+    for i in range(len(sorted_stems)-1):
+        intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
     return intf_pairs;
 
 
