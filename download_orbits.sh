@@ -62,9 +62,7 @@ if [ -z $DOWN_DIR ]; then
 fi
 
 # check if DOWN_DIR exists
-if [ ! -d "$DOWN_DIR" ]; then
-  mkdir $DOWN_DIR
-fi
+mkdir -p $DOWN_DIR
 
 # check if CAL_DIR exists
 if [ ! -d "$CAL_DIR" ] && [ ! -z "$CAL_DIR" ]; then
