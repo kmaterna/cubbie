@@ -55,28 +55,18 @@ def get_date_from_xml(xml_name):
     mydate=xml_name[15:23];
     return mydate;
 
+def get_sat_from_xml(xml_name):
+    xml_name=xml_name.split('/')[-1];
+    sat=xml_name[0:3];
+    return sat;
+
+
 def pad_string_zeros(num):
     if num<10:
         numstring="0"+str(num);
     else:
         numstring=str(num);
     return numstring;
-
-
-# NOTE: Eventually I will have to add a functionality to distinguish between S1A and S1B. 
-def get_eof_from_xml(xml_name, eof_dir): 
-    """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF. 
-    """
-    mydate=get_date_from_xml(xml_name);
-    [previous_day,following_day]=get_previous_and_following_day(mydate);
-    eof_name=glob.glob(eof_dir+"/*"+previous_day+"*"+following_day+"*.EOF"); 
-    if eof_name==[]:
-        print "ERROR: did not find any EOF files matching the pattern "+eof_dir+"/*"+previous_day+"*"+following_day+"*.EOF";
-        print "Exiting..."
-        sys.exit(1);
-    else:
-        eof_name=eof_name[0];
-    return eof_name;
 
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
@@ -110,7 +100,9 @@ def make_data_in(polarization, swath, master_date="00000000"):
     if master_date=="00000000":
         for item in list_of_images:
             item=item.split("/")[-1];  # getting rid of the directory
-            eof_name=get_eof_from_xml(item,"raw_orig");
+            mydate=get_date_from_xml(item);
+            sat=get_sat_from_xml(item);
+            eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
             outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
     else:
         # write the master date first. 
@@ -118,14 +110,18 @@ def make_data_in(polarization, swath, master_date="00000000"):
             mydate=get_date_from_xml(item);
             if mydate==master_date:
                 item=item.split("/")[-1];  # getting rid of the directory
-                eof_name=get_eof_from_xml(item,"raw_orig");
+                mydate=get_date_from_xml(item);
+                sat=get_sat_from_xml(item);                
+                eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
                 outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
         # then write the other dates. 
         for item in list_of_images:
             mydate = get_date_from_xml(item);
             if mydate != master_date:
                 item=item.split("/")[-1];  # getting rid of the directory
-                eof_name=get_eof_from_xml(item,"raw_orig");
+                mydate=get_date_from_xml(item);
+                sat=get_sat_from_xml(item);                     
+                eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
                 outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
     outfile.close();
     print "data.in successfully printed."
