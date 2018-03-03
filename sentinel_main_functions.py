@@ -287,13 +287,12 @@ def make_interferograms(config_params):
     2. make network plot
     3. write README_proc.txt
     """
-    if config_params.endstage<4:  # if we're ending at topo, we don't need to do this. 
+    if config_params.startstage>4:  # if we're starting at sbas, we don't do this. 
+        return;
+    if config_params.endstage<4:   # if we're ending at topo, we don't do this. 
         return;
 
-    baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
-    stems = baselineFile[:,0].astype(str)
-    times = baselineFile[:,1].astype(float)
-    baselines = baselineFile[:,4].astype(float)
+    [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     #intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline)
     intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines)
 
@@ -317,6 +316,84 @@ def make_interferograms(config_params):
     call("./README_proc.txt",shell=True);
 
     return;
+
+
+
+# --------------- STEP 5: Make SBAS ------------ # 
+def do_sbas(config_params):
+
+    if config_params.startstage>5:  # if we're starting after, we don't do this. 
+        return;
+    if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
+        return;
+
+    [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table();
+    t_int=[];
+    for t in tbaseline:
+        t_int.append(round(float(t)));  # a list of integers like 2016214 for 2016-day-214.
+
+    mission_days_sorted=[x for (y, x) in sorted(zip(t_int,mission_days))];
+    t_int.sort();
+
+    intf_computed=sentinel_utilities.glob_intf_computed();  # looks like a list of labels like 2016217_2016205
+    n_intf=len(intf_computed);
+    outfile=open("README_sbas.txt",'w');
+    outfile.write("# First, prepare the input files needed for sbas\n#\n");
+    outfile.write("rm -f SBAS\nmkdir SBAS\ncd SBAS\nrm intf.tab scene.tab\n\n\n");
+    outfile.write("# based on baseline_table.dat create the intf.tab and scene.tab for sbas\n");
+
+    # writing intf.tab
+    outfile.write("# phase  corherence  ref_id  rep_id  baseline\n")
+    for img_pair in intf_computed:
+        first_image=img_pair[0:7]
+        second_image=img_pair[8:]
+        for a, b in zip(xbaseline, t_int):
+            if b == int(first_image):
+                master_xbaseline=a;
+            if b == int(second_image):
+                slave_xbaseline=a;
+        total_baseline=slave_xbaseline - master_xbaseline;
+        outfile.write('echo "../intf_all/'+img_pair+'/unwrap.grd ')
+        outfile.write('../intf_all/'+img_pair+'/corr.grd ')
+        outfile.write(first_image+' '+second_image+' ')
+        outfile.write(str(total_baseline))
+        outfile.write('" >> intf.tab\n');
+    outfile.write("#\n\n");
+
+    # writing scene.tab (only the scenes that are actually used in SBAS processing)
+    outfile.write("# scene_id  day\n");
+    scenes_used='';
+    n_scenes=0;
+    for intf in intf_computed:
+        scenes_used=scenes_used+intf;  # catch which scenes are actually used in SBAS processing. 
+    for x in range(len(t_int)):
+        temp=str(t_int[x]);
+        temp=temp[0:7]  # a string that looks like 2016217
+        if temp in scenes_used:
+            outfile.write('echo "'+temp[0:7]+' '+mission_days_sorted[x]+'" >> scene.tab\n');
+            n_scenes+=1;
+
+    intf_ex=intf_computed[0];  # an example interferogram where we get the geographic coordinates for grdinfo
+    outfile.write("xdim=`gmt grdinfo -C ../intf_all/"+intf_ex+"/unwrap.grd | awk '{print $10}'`\n");
+    outfile.write("ydim=`gmt grdinfo -C ../intf_all/"+intf_ex+"/unwrap.grd | awk '{print $11}'`\n\n\n");
+
+    outfile.write("# run sbas\n");
+    outfile.write("sbas intf.tab scene.tab "+str(n_intf)+" "+str(n_scenes)+" $xdim $ydim -smooth 1.0 -wavelength 0.0554658 -incidence 30 -range 800184.946186 -rms -dem\n\n\n")
+
+    outfile.write("# project the velocity to Geocooridnates\n");
+    outfile.write("ln -s ../topo/trans.dat .\n");
+    outfile.write("proj_ra2ll.csh trans.dat vel.grd vel_ll.grd\n");
+    outfile.write("gmt grd2cpt vel_ll.grd -T= -Z -Cjet > vel_ll.cpt\n");
+    outfile.write("grd2kml.csh vel_ll vel_ll.cpt\n");
+    outfile.write("cd ..\n\n");
+    outfile.write('echo "SBAS operation performed!"\n\n')
+
+    outfile.close();
+    print "README_sbas.txt written. Ready to call README_sbas.txt."
+    call("chmod u+x README_sbas.txt",shell=True);
+    call("./README_sbas.txt",shell=True); # Make sbas!
+    return;
+
 
 
 

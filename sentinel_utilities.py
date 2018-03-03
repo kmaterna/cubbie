@@ -93,6 +93,13 @@ def get_eof_from_date_sat(mydate, sat, eof_dir):
         eof_name=eof_name[0];
     return eof_name;
 
+def glob_intf_computed():
+    full_names=glob.glob("intf_all/*");
+    intf_computed=[];
+    for item in full_names:
+        intf_computed.append(item[9:]);
+    return intf_computed;
+
 
 def make_data_in(polarization, swath, master_date="00000000"):
     """
@@ -123,6 +130,14 @@ def make_data_in(polarization, swath, master_date="00000000"):
     outfile.close();
     print "data.in successfully printed."
     return;
+
+def read_baseline_table(baselinefilename):
+    baselineFile = np.genfromtxt(baselinefilename,dtype=str);
+    stems = baselineFile[:,0].astype(str);
+    times = baselineFile[:,1].astype(float);
+    missiondays = baselineFile[:,2].astype(str);
+    baselines = baselineFile[:,4].astype(float);    
+    return [stems, times, baselines, missiondays];
 
 
 # after running the baseline calculation from the first pre_proc_batch, choose a new master that is close to the median baseline and timespan.
