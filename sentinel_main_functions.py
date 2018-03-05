@@ -145,8 +145,8 @@ def manifest2raw_orig_eof(config_params):
         call(['cp',manifest_safe_file[0],'raw_orig/'+yyyymmdd+'_manifest.safe'],shell=False);
         tiff_files = sentinel_utilities.get_all_tiff_names(onefile+'/measurement',config_params.polarization, config_params.swath);
         one_tiff_file=tiff_files[0].split("/")[-1];
-        #if not os.path.isfile('raw_orig/'+one_tiff_file):
-            #call(['cp',tiff_files[0],'raw_orig'],shell=False);
+        if not os.path.isfile('raw_orig/'+one_tiff_file):
+            call(['cp',tiff_files[0],'raw_orig'],shell=False);
 
         # STEP 2: get orbit files into the raw_orig directory
     for onefile in file_list:
@@ -309,7 +309,7 @@ def make_interferograms(config_params):
     outfile.write("rm intf.in\n");
     for item in intf_pairs:
         outfile.write('echo "' + item +'" >> intf.in\n');
-    outfile.write("\n# Process the interferograms, remember to set your super master in the batch.config file.\n\n")
+    outfile.write("\n# Process the interferograms.\n\n")
     outfile.write("intf_tops.csh intf.in "+config_params.config_file+"\n\n\n");
     outfile.close();
     print "README_proc.txt printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
