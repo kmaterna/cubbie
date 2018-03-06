@@ -20,3 +20,7 @@ sudo apt-get install screen
 sudo apt-get install gmt gmt-dcw gmt-gshhg
 # Not sure if gmt requires more dependencies
 # Not sure how to install GMTSAR with just scripting. 
+
+
+# Whatever is necessary for installing gnu-parallel
+sudo apt-get install parallel

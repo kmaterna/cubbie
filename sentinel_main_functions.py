@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc']);
 
 def read_config():
     ################################################
@@ -23,19 +23,8 @@ def read_config():
     config.optionxform = str #make the config file case-sensitive
     config.read(args.config)
     
-    # Setup MPI (optional) or python multiprocessing pool
-    if args.mpi:
-        from mpi4py import MPI
-        import mpi4py_map
-        comm = MPI.COMM_WORLD
-        ver  = MPI.Get_version()
-        numproc = comm.Get_size()
-        rank = comm.Get_rank()
-        fstSec  = MPI.Wtime()
-    else:
-        import multiprocessing
-        numproc=config.getint('py-config','num_processors')
-        rank = 0    
+    # Setup gnu parallel multiprocessing tool
+    numproc=config.getint('py-config','num_processors')
 
     # get options from config file
     config_file_orig=args.config;
@@ -99,23 +88,14 @@ def read_config():
     if endstage < startstage:
         print('Warning: endstage is less than startstage. Setting endstage = startstage.')
         endstage = startstage
-    
-    # write the new config file to use for processing
 
-    if rank == 0:
-        #logtime is the timestamp added to all logfiles created during this run
-        logtime=time.strftime("%Y_%m_%d-%H_%M_%S")
-        config_file='batch.run.'+ logtime +'.cfg'
-        with open(config_file, 'w') as configfilehandle:
-            config.write(configfilehandle)
-    else:
-        logtime = None
-        config_file = None
-    if args.mpi:
-        logtime = comm.bcast(logtime,root=0)
-        config_file = comm.bcast(config_file,root=0)
+    #logtime is the timestamp added to all logfiles created during this run
+    logtime=time.strftime("%Y_%m_%d-%H_%M_%S")
+    config_file='batch.run.'+ logtime +'.cfg'
+    with open(config_file, 'w') as configfilehandle:
+        config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc);
 
     return config_params; 
 
@@ -306,11 +286,13 @@ def make_interferograms(config_params):
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch process Sentinel-1 TOPS mode data sets.\n\n");
     outfile.write("# First, create the files needed for intf_tops.csh\n\n");
-    outfile.write("rm intf.in\n");
-    for item in intf_pairs:
-        outfile.write('echo "' + item +'" >> intf.in\n');
+    outfile.write("rm intf*.in\n");
+    for i,item in enumerate(intf_pairs):
+        outfile.write('echo "' + item +'" >> intf_record.in\n');
+    for i,item in enumerate(intf_pairs):
+        outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');        
     outfile.write("\n# Process the interferograms.\n\n")
-    outfile.write("intf_tops.csh intf.in "+config_params.config_file+"\n\n\n");
+    outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_km.csh {} "+config_params.config_file+"'\n\n\n");
     outfile.close();
     print "README_proc.txt printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     print "Ready to call README_proc.txt."

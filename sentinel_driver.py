@@ -57,6 +57,6 @@ if __name__=="__main__":
 	sentinel_main_functions.make_interferograms(config_params);
 
 	# # Step 5
-	sentinel_main_funtctions.do_sbas(config_params);
+	sentinel_main_functions.do_sbas(config_params);
 
 
