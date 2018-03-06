@@ -276,6 +276,7 @@ def make_interferograms(config_params):
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     if config_params.ts_type=="SBAS":
         intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline);
+        print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     elif config_params.ts_type=="CHAIN":
         intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines);
     else:
@@ -298,10 +299,9 @@ def make_interferograms(config_params):
     outfile.write("\n# Process the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_km.csh {} "+config_params.config_file+"'\n\n\n");
     outfile.close();
-    print "README_proc.txt printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    #call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
 
     return;
 

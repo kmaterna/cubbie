@@ -191,9 +191,14 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
     """
     nacq=len(stems);
     intf_pairs=[];
+    datetimearray=[];
+    for k in tbaseline:
+        datetimearray.append(dt.datetime.strptime(str(int(k)),"%Y%j"));  # convert to datetime arrays. 
     for i in range(0,nacq):
         for j in range(i+1,nacq):
-            if abs(tbaseline[i]-tbaseline[j]) < tbaseline_max:
+            dtdelta=datetimearray[i]-datetimearray[j];
+            dtdeltadays=dtdelta.days;  # how many days exist between the two acquisitions? 
+            if abs(dtdeltadays) < tbaseline_max:
                 if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
                     img1_stem=stems[i];
                     img2_stem=stems[j];
@@ -214,6 +219,7 @@ def get_chain_subsets(stems, tbaseline, xbaseline):
     sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value
     for i in range(len(sorted_stems)-1):
         intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
+    print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
     return intf_pairs;
 
 
