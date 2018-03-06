@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc','ts_type']);
 
 def read_config():
     ################################################
@@ -42,7 +42,7 @@ def read_config():
     swath=config.get('py-config','swath') 
     polarization=config.get('py-config','polarization') 
     frame=config.get('py-config','frame')
-    
+    ts_type=config.get('timeseries-config','ts_type')
     
     # print config options
     if args.debug:
@@ -55,7 +55,6 @@ def read_config():
         print(config.write(sys.stdout))
     
     # check config options
-    
     #default names for files
     if align_file == '':
         align_file = 'align_batch.in'
@@ -95,7 +94,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc, ts_type=ts_type);
 
     return config_params; 
 
@@ -275,8 +274,13 @@ def make_interferograms(config_params):
         return;
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
-    #intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline)
-    intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines)
+    if config_params.ts_type=="SBAS":
+        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline);
+    elif config_params.ts_type=="CHAIN":
+        intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines);
+    else:
+        print "config_params.ts_type is not a valid ts_type";
+        sys.exit(1);
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_pairs,stems,times, baselines);
@@ -297,18 +301,37 @@ def make_interferograms(config_params):
     print "README_proc.txt printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    call("./README_proc.txt",shell=True);
+    #call("./README_proc.txt",shell=True);
 
     return;
 
 
 
-# --------------- STEP 5: Make SBAS ------------ # 
-def do_sbas(config_params):
+# --------------- STEP 5: Unwrapping ------------ # 
 
+def unwrapping(config_params):
     if config_params.startstage>5:  # if we're starting after, we don't do this. 
         return;
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
+        return;   
+
+
+
+
+    return;
+
+
+
+
+
+
+
+# --------------- STEP 6: Make SBAS ------------ # 
+def do_sbas(config_params):
+
+    if config_params.startstage>6:  # if we're starting after, we don't do this. 
+        return;
+    if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
 
     [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table();

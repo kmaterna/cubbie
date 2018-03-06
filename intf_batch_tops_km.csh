@@ -145,6 +145,10 @@ if ($stage <= 2) then
 
     echo ""
     echo "INTF.CSH, FILTER.CSH - START"
+    if(-d "intf_all/"$ref_id"_"$rep_id) then
+      echo "Skipping "$ref_id"_"$rep_id": already in intf_all."
+      continue;
+    endif
     cd intf
     mkdir $ref_id"_"$rep_id
     cd $ref_id"_"$rep_id
@@ -169,33 +173,7 @@ if ($stage <= 2) then
     filter.csh $ref.PRM $rep.PRM $filter $dec $range_dec $azimuth_dec
     echo "INTF.CSH, FILTER.CSH - END"
 
-#
-# unwrapping
-#
-    if ($region_cut == "") then
-      set region_cut = `gmt grdinfo phase.grd -I- | cut -c3-20`
-    endif
-    
-    if ($threshold_snaphu != 0 ) then
-      if ($switch_land == 1) then
-        cd ../../topo
-        if (! -f landmask_ra.grd) then
-          landmask.csh $region_cut
-        endif
-        cd ../intf
-        cd $ref_id"_"$rep_id
-        ln -s ../../topo/landmask_ra.grd .
-      endif
 
-      echo ""
-      echo "SNAPHU.CSH - START"
-      echo "threshold_snaphu: $threshold_snaphu"
-      snaphu_interp.csh $threshold_snaphu $defomax $region_cut
-      echo "SNAPHU.CSH - END"
-    else
-      echo ""
-      echo "SKIP UNWRAP PHASE"
-    endif
 #
 # geocoding
 #
