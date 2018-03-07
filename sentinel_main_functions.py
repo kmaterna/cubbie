@@ -176,6 +176,10 @@ def get_frames_for_raw_orig(config_params):
         # Might as well make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
         # We already have the GMT script that plots this... 
 
+        call('compare_frames_acquisitions.sh',shell=True);
+        print "Please check the frames and acquisitions and see if all your data has been included. "
+
+
         file_list = glob.glob("FRAMES/FRAME_1/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
     else: 
         file_list = glob.glob("DATA/*.SAFE");   # if we're not assembling frames, we use the DATA directory.     
@@ -311,7 +315,7 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    call("./README_proc.txt",shell=True);
+    #call("./README_proc.txt",shell=True);
 
     return;
 
