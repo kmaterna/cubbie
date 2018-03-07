@@ -16,7 +16,7 @@
     echo "  format of data.in:"
     echo "    master_image_stem:slave_image_stem"
     echo ""
-    echo "  example of data.in"
+    echo "  example of intf.in"
     echo "    S1A20150628_ALL_F1:S1A20150720_ALL_F1"
     echo "    S1A20150720_ALL_F1:S1A20150809_ALL_F1"
     echo ""
@@ -66,6 +66,11 @@
 #
 # unwrapping
 #
+
+
+    cd intf_all
+    cd $ref_id"_"$rep_id
+
     if ($region_cut == "") then
       set region_cut = `gmt grdinfo phase.grd -I- | cut -c3-20`
     endif
@@ -86,6 +91,8 @@
       echo "threshold_snaphu: $threshold_snaphu"
       snaphu_interp.csh $threshold_snaphu $defomax $region_cut
       echo "SNAPHU.CSH - END"
+    cd ../../
+
     else
       echo ""
       echo "SKIP UNWRAP PHASE"

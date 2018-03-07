@@ -125,7 +125,7 @@ def manifest2raw_orig_eof(config_params):
         tiff_files = sentinel_utilities.get_all_tiff_names(onefile+'/measurement',config_params.polarization, config_params.swath);
         one_tiff_file=tiff_files[0].split("/")[-1];
         if not os.path.isfile('raw_orig/'+one_tiff_file):
-            call(['cp',tiff_files[0],'raw_orig'],shell=False);
+            call(['cp',tiff_files[0],'raw_orig'],shell=False);  # only copy the tiff files if they don't already exist. 
 
         # STEP 2: get orbit files into the raw_orig directory
     for onefile in file_list:
@@ -148,7 +148,7 @@ def get_frames_for_raw_orig(config_params):
         call(['mkdir','-p','FRAMES'],shell=False);
         frame_def = config_params.frame.split('/');
 
-        # write the data list to data.list
+        # # write the data list to data.list
         outfile=open("make_frame_commands.sh",'w');
         outfile.write("#!/bin/bash\n")
         outfile.write("cd FRAMES\n");
@@ -166,6 +166,16 @@ def get_frames_for_raw_orig(config_params):
         call(['chmod','+x','make_frame_commands.sh'],shell=False);
         call(['./make_frame_commands.sh'],shell=False)
         call(['rm','make_frame_commands.sh'],shell=False)
+
+        # Copy the scenes where only one scene is exactly covering the pre-defined frame (otherwise will be skipped because there's no combining to do)
+        # It turns out that sometimes, the second scene that covers the frame doesn't exist, so there's only one scene for that given date.  
+        # Other times, one scene covers the whole frame. 
+        # I haven't figured out a way to automate this quite yet. 
+        # Thankfully, make_s1a_frame.csh already copies the orbit files into the FRAMES directory, even if the .SAFE isn't copied. 
+
+        # Might as well make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
+        # We already have the GMT script that plots this... 
+
         file_list = glob.glob("FRAMES/FRAME_1/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
     else: 
         file_list = glob.glob("DATA/*.SAFE");   # if we're not assembling frames, we use the DATA directory.     
@@ -182,7 +192,7 @@ def preprocess(config_params):
     write_xml_prep(config_params.polarization, config_params.swath);   # writes the beginning, common part of README_prep.txt
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);  # makes data.in the first time, with no super_master
     write_preproc_mode1();              # writes the bottom of README_prep
-    call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
+    #call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
 
     # Automatically decide on super-master and pop it to the front of data.in. 
     masterid = sentinel_utilities.choose_master_image();
@@ -315,8 +325,12 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
-
-
+    outfile=open("unwrap.sh",'w');
+    outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_params.config_file+"'\n\n\n");
+    outfile.close();
+    print "Ready to call unwrap.sh."
+    call("chmod +x unwrap.sh",shell=True);
+    call("./unwrap.sh",shell=True);
 
     return;
 
