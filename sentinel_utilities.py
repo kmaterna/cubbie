@@ -183,6 +183,37 @@ def write_super_master_batch_config(masterid):
     print "Writing master_image into batch.config";
     return;
 
+def write_ordered_unwrapping(numproc, sh_file, config_file):
+    [stem1, stem2, mean_corr] = read_corr_results("corr_results.txt");
+
+    stem1_ordered = [x for y, x in sorted(zip(mean_corr,stem1),reverse=True)];
+    stem2_ordered = [x for y, x in sorted(zip(mean_corr,stem2),reverse=True)];
+    mean_corr_ordered = sorted(mean_corr,reverse=True);
+
+    outfile=open(sh_file,'w');
+    outfile.write("#!/bin/bash\n");
+    outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("rm intf?.in\n");
+    for i,item in enumerate(stem1_ordered):
+        outfile.write('echo "' + stem1_ordered[i]+":"+stem2_ordered[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n');        
+    outfile.write("\n# Unwrap the interferograms.\n\n")
+    outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_file+"'\n\n\n");
+    outfile.close();
+
+    return;
+
+
+def read_corr_results(corr_file):
+    stem1=[]; stem2=[]; mean_corr=[];
+    ifile=open(corr_file,'r');
+    for line in ifile:
+        temp=line.split();
+        if len(temp)==4:
+            stem1.append(temp[1].split('.')[0]);
+            stem2.append(temp[2].split('.')[0]);
+            mean_corr.append(float(temp[3]));
+    return [stem1, stem2, mean_corr];
+
 
 def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max):
     """ Grab all the pairs that are below the critical baselines in space and time. 

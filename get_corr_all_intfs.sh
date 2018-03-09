@@ -20,3 +20,4 @@ while IFS='' read line; do
 	echo $line $slcs $correlation >> $results
 
 done < intf_data.txt
+rm intf_data.txt

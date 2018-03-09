@@ -74,9 +74,9 @@ def read_config():
         oldmaster=dataDotIn[0]
         if '-'+master[3:11]+'t' not in oldmaster:  # For sentinel, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...; master is formatted like S1A20171213_ALL_F1
             print('Warning: The master specified in the config file disagrees with the old master in data.in.')
-            print('We will re-run starting from pre-processing with the master from the config file.')
-            startstage = 1
-            restart = True
+            #print('We will re-run starting from pre-processing with the master from the config file.')
+            #startstage = 1
+            #restart = True
     
     # if data.in is not found, we must do pre-processing.
     if startstage > 1 and not os.path.isfile('raw/data.in'):
@@ -196,7 +196,7 @@ def preprocess(config_params):
     write_xml_prep(config_params.polarization, config_params.swath);   # writes the beginning, common part of README_prep.txt
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);  # makes data.in the first time, with no super_master
     write_preproc_mode1();              # writes the bottom of README_prep
-    #call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
+    call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
 
     # Automatically decide on super-master and pop it to the front of data.in. 
     masterid = sentinel_utilities.choose_master_image();
@@ -316,7 +316,9 @@ def make_interferograms(config_params):
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
     #call("./README_proc.txt",shell=True);
-    #call("get_corr_all_intfs.sh",shell=True);
+
+    print "Summarizing correlation for all interferograms."
+    call("get_corr_all_intfs.sh",shell=True);
 
     return;
 
@@ -330,17 +332,15 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
-    outfile=open("unwrap.sh",'w');
-    outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_params.config_file+"'\n\n\n");
-    outfile.close();
-    print "Ready to call unwrap.sh."
-    call("chmod +x unwrap.sh",shell=True);
-    call("./unwrap.sh",shell=True);
+    call("rm intf?.in",shell=True);
+    unwrap_sh_file="unwrap.sh";
+    sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+
+    print "Ready to call "+unwrap_sh_file
+    call(['chmod','+x',unwrap_sh_file],shell=False);
+    call("./"+unwrap_sh_file,shell=True);
 
     return;
-
-
-
 
 
 
