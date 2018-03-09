@@ -316,6 +316,7 @@ def make_interferograms(config_params):
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
     #call("./README_proc.txt",shell=True);
+    #call("get_corr_all_intfs.sh",shell=True);
 
     return;
 
