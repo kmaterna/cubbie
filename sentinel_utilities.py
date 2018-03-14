@@ -197,7 +197,8 @@ def write_ordered_unwrapping(numproc, sh_file, config_file):
     for i,item in enumerate(stem1_ordered):
         outfile.write('echo "' + stem1_ordered[i]+":"+stem2_ordered[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n');        
     outfile.write("\n# Unwrap the interferograms.\n\n")
-    outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_file+"'\n\n\n");
+    outfile.write("unwrap_km.csh intf0.in batch.config\n");
+    #outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_file+"'\n\n\n");
     outfile.close();
 
     return;
@@ -244,12 +245,15 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
     return intf_pairs;
 
 
-def get_chain_subsets(stems, tbaseline, xbaseline):
+def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
     # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs. 
     intf_pairs=[];
+    bypass_items=bypass.split("/");    
     sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value
     for i in range(len(sorted_stems)-1):
         intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
+        if i>1 and sorted_stems[i][3:11] in bypass_items:
+            intf_pairs.append(sorted_stems[i-1]+':'+sorted_stems[i+1])
     print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
     return intf_pairs;
 

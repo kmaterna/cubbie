@@ -91,9 +91,28 @@
       echo "threshold_snaphu: $threshold_snaphu"
       snaphu_interp.csh $threshold_snaphu $defomax $region_cut
       echo "SNAPHU.CSH - END"
-    cd ../../
+
+
+
+      echo ""
+      echo "GEOCODE.CSH - START"
+      rm raln.grd ralt.grd
+      if ($topo_phase == 1 && $threshold_geocode != 0) then
+        rm trans.dat
+        ln -s  ../../topo/trans.dat .
+        echo "threshold_geocode: $threshold_geocode"
+        geocode.csh $threshold_geocode
+      else if($topo_phase == 1 && $threshold_geocode == 0) then
+        echo "SKIP GEOCODING"
+      else
+        echo "topo_ra is needed to geocode"
+        exit 1
+      endif
+      cd ../../
 
     else
       echo ""
       echo "SKIP UNWRAP PHASE"
-    endif
+    endif    
+ 
+  end

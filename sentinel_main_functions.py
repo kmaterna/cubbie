@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc','ts_type']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc','ts_type','bypass']);
 
 def read_config():
     ################################################
@@ -43,6 +43,7 @@ def read_config():
     polarization=config.get('py-config','polarization') 
     frame=config.get('py-config','frame')
     ts_type=config.get('timeseries-config','ts_type')
+    bypass=config.get('timeseries-config','bypass')
     
     # print config options
     if args.debug:
@@ -94,7 +95,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc, ts_type=ts_type);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc, ts_type=ts_type, bypass=bypass);
 
     return config_params; 
 
@@ -292,7 +293,7 @@ def make_interferograms(config_params):
         intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline);
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     elif config_params.ts_type=="CHAIN":
-        intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines);
+        intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
     else:
         print "config_params.ts_type is not a valid ts_type";
         sys.exit(1);

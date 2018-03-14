@@ -41,7 +41,7 @@ def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
 	summer1=300;
 
 	f, axarr = plt.subplots(3, figsize=(15, 15));
-	axarr[0].set_title('Mean Coherence of Sentinel-1A Interferograms',fontsize=24)
+	axarr[0].set_title('Mean Coherence of Sentinel-1A Interferograms in Mendocino',fontsize=24)
 	axarr[0].plot(temporal_baseline, mean_corr,'.',markersize=13);
 	axarr[0].set_xlabel('Time (days)',fontsize=20)
 	axarr[0].set_ylabel('Mean Coherence',fontsize=20)
