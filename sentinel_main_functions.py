@@ -290,8 +290,10 @@ def make_interferograms(config_params):
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     if config_params.ts_type=="SBAS":
-        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline);
+        startdate="2016291";
+        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, startdate);
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
+    
     elif config_params.ts_type=="CHAIN":
         intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
     else:
@@ -361,6 +363,7 @@ def do_sbas(config_params):
 
     mission_days_sorted=[x for (y, x) in sorted(zip(t_int,mission_days))];
     t_int.sort();
+    tbaseline.sort();
 
     intf_computed=sentinel_utilities.glob_intf_computed();  # looks like a list of labels like 2016217_2016205
     n_intf=len(intf_computed);
@@ -418,6 +421,7 @@ def do_sbas(config_params):
     outfile.write("sbas intf.tab scene.tab "+str(n_intf)+" "+str(n_scenes)+" $xdim $ydim -smooth 1.0 -wavelength 0.0554658 -incidence 30 -range 800184.946186 -rms -dem\n\n\n")
 
     outfile.write("# project the velocity to Geocooridnates\n");
+    outfile.write('echo "writing to georeferenced coordinates..."\n');
     outfile.write("ln -s ../topo/trans.dat .\n");
     outfile.write("proj_ra2ll.csh trans.dat vel.grd vel_ll.grd\n");
     outfile.write("gmt grd2cpt vel_ll.grd -T= -Z -Cjet > vel_ll.cpt\n");

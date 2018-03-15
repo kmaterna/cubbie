@@ -216,12 +216,13 @@ def read_corr_results(corr_file):
     return [stem1, stem2, mean_corr];
 
 
-def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max):
+def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max, startdate):
     """ Grab all the pairs that are below the critical baselines in space and time. 
     Return format is a list of strings like 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'. 
     You can adjust this if you have specific processing needs. 
     """
     nacq=len(stems);
+    startdate_dt=dt.datetime.strptime(startdate,"%Y%j");
     intf_pairs=[];
     datetimearray=[];
     for k in tbaseline:
@@ -230,16 +231,17 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
         for j in range(i+1,nacq):
             dtdelta=datetimearray[i]-datetimearray[j];
             dtdeltadays=dtdelta.days;  # how many days exist between the two acquisitions? 
-            if abs(dtdeltadays) < tbaseline_max:
-                if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
-                    img1_stem=stems[i];
-                    img2_stem=stems[j];
-                    img1_time=int(img1_stem[3:11]);
-                    img2_time=int(img2_stem[3:11]);
-                    if img1_time<img2_time:  # if the images are listed in chronological order 
-                        intf_pairs.append(stems[i]+":"+stems[j]);
-                    else:                    # if the images are in reverse chronological order
-                        intf_pairs.append(stems[j]+":"+stems[i]);
+            if datetimearray[i]>startdate_dt and datetimearray[j]>startdate_dt:
+                if abs(dtdeltadays) < tbaseline_max:
+                    if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
+                        img1_stem=stems[i];
+                        img2_stem=stems[j];
+                        img1_time=int(img1_stem[3:11]);
+                        img2_time=int(img2_stem[3:11]);
+                        if img1_time<img2_time:  # if the images are listed in chronological order 
+                            intf_pairs.append(stems[i]+":"+stems[j]);
+                        else:                    # if the images are in reverse chronological order
+                            intf_pairs.append(stems[j]+":"+stems[i]);
     print "Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. "
     # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
     return intf_pairs;
