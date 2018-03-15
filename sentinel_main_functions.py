@@ -316,7 +316,7 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    #call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
 
     print "Summarizing correlation for all interferograms."
     call("get_corr_all_intfs.sh",shell=True);

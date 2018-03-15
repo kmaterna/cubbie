@@ -6,8 +6,8 @@ mkdir phasefilt
 while IFS= read -r var
 do 
   echo $var
-  newname=$var"_phasefilt.png"
+  newname=$var"_phasefilt_mask.ps"
   echo $newname
-  cp $var/phasefilt_mask_ll.png $newname
+  cp $var/phasefilt_mask.ps $newname
 done < filelist.txt
-mv *.png phasefilt
+mv *.ps phasefilt
