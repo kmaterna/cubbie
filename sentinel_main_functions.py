@@ -354,7 +354,7 @@ def do_sbas(config_params):
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
 
-    [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table();
+    [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table('raw/baseline_table.dat');
     t_int=[];
     for t in tbaseline:
         t_int.append(round(float(t)));  # a list of integers like 2016214 for 2016-day-214.
@@ -375,10 +375,16 @@ def do_sbas(config_params):
         first_image=img_pair[0:7]
         second_image=img_pair[8:]
         for a, b in zip(xbaseline, t_int):
-            if b == int(first_image):
+            if abs(int(np.floor(b)) - int(first_image))<=1:
+                # print "first image found";
+                # print int(np.floor(b))
+                # print int(first_image)
                 master_xbaseline=a;
-            if b == int(second_image):
+            if abs(int(np.floor(b)) - int(second_image))<=1:
                 slave_xbaseline=a;
+                # print "second image found";
+                # print int(np.floor(b))
+                # print int(second_image)                
         total_baseline=slave_xbaseline - master_xbaseline;
         outfile.write('echo "../intf_all/'+img_pair+'/unwrap.grd ')
         outfile.write('../intf_all/'+img_pair+'/corr.grd ')
@@ -388,17 +394,21 @@ def do_sbas(config_params):
     outfile.write("#\n\n");
 
     # writing scene.tab (only the scenes that are actually used in SBAS processing)
+    # Right now this isn't producing anything. 
     outfile.write("# scene_id  day\n");
     scenes_used='';
     n_scenes=0;
+    scenes_used=[];
     for intf in intf_computed:
-        scenes_used=scenes_used+intf;  # catch which scenes are actually used in SBAS processing. 
-    for x in range(len(t_int)):
-        temp=str(t_int[x]);
-        temp=temp[0:7]  # a string that looks like 2016217
-        if temp in scenes_used:
-            outfile.write('echo "'+temp[0:7]+' '+mission_days_sorted[x]+'" >> scene.tab\n');
+        scenes_used.append(intf[0:7]);  # catch which scenes are actually used in SBAS processing. 
+        scenes_used.append(intf[8:15]);
+    for x in range(len(tbaseline)):
+        temp = tbaseline[x];
+        tempint = int(np.round(temp))
+        if str(tempint) in scenes_used or str(tempint+1) in scenes_used or str(tempint-1) in scenes_used:
+            outfile.write('echo "'+str(tempint)+' '+mission_days_sorted[x]+'" >> scene.tab\n');
             n_scenes+=1;
+    outfile.write("\n\n");
 
     intf_ex=intf_computed[0];  # an example interferogram where we get the geographic coordinates for grdinfo
     outfile.write("xdim=`gmt grdinfo -C ../intf_all/"+intf_ex+"/unwrap.grd | awk '{print $10}'`\n");
