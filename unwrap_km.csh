@@ -57,16 +57,19 @@
   set azimuth_dec = `grep azimuth_dec $2 | awk '{print $3}'`
 
 
+
+
   foreach line (`awk '{print $0}' $1`)
     set ref = `echo $line | awk -F: '{print $1}'`
     set rep = `echo $line | awk -F: '{print $2}'`
     set ref_id  = `grep SC_clock_start ./raw/$ref.PRM | awk '{printf("%d",int($3))}' `
     set rep_id  = `grep SC_clock_start ./raw/$rep.PRM | awk '{printf("%d",int($3))}' `
 
-#
-# unwrapping
-#
+    #
+    # unwrapping
+    #
 
+    echo $ref_id"_"$rep_id
 
     cd intf_all
     cd $ref_id"_"$rep_id
@@ -76,6 +79,7 @@
     endif
     
     if ($threshold_snaphu != 0 ) then
+      echo "will unwrap"
       if ($switch_land == 1) then
         cd ../../topo
         if (! -f landmask_ra.grd) then
@@ -91,9 +95,29 @@
       echo "threshold_snaphu: $threshold_snaphu"
       snaphu_interp.csh $threshold_snaphu $defomax $region_cut
       echo "SNAPHU.CSH - END"
-    cd ../../
+
+      echo ""
+      echo "GEOCODE.CSH - START"
+      rm raln.grd ralt.grd
+      if ($topo_phase == 1 && $threshold_geocode != 0) then
+        rm trans.dat
+        ln -s  ../../topo/trans.dat .
+        echo "threshold_geocode: $threshold_geocode"
+        geocode.csh $threshold_geocode
+      else if($topo_phase == 1 && $threshold_geocode == 0) then
+        echo "SKIP GEOCODING"
+      else
+        echo "topo_ra is needed to geocode"
+        exit 1
+      endif
 
     else
       echo ""
       echo "SKIP UNWRAP PHASE"
-    endif
+    endif  
+
+    cd ../..
+
+  end
+ # for some reason I need an extra line here. 
+ # Ending the file on "end" forces the loop to exit after 1 iteration

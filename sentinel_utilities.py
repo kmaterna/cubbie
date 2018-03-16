@@ -183,13 +183,46 @@ def write_super_master_batch_config(masterid):
     print "Writing master_image into batch.config";
     return;
 
+def write_ordered_unwrapping(numproc, sh_file, config_file):
+    [stem1, stem2, mean_corr] = read_corr_results("corr_results.txt");
 
-def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max):
+    stem1_ordered = [x for y, x in sorted(zip(mean_corr,stem1),reverse=True)];
+    stem2_ordered = [x for y, x in sorted(zip(mean_corr,stem2),reverse=True)];
+    mean_corr_ordered = sorted(mean_corr,reverse=True);
+
+    outfile=open(sh_file,'w');
+    outfile.write("#!/bin/bash\n");
+    outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("rm intf?.in\n");
+    for i,item in enumerate(stem1_ordered):
+        outfile.write('echo "' + stem1_ordered[i]+":"+stem2_ordered[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n');        
+    outfile.write("\n# Unwrap the interferograms.\n\n")
+    #outfile.write("unwrap_km.csh intf0.in batch.config\n");
+    outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_file+"'\n\n\n");
+    outfile.close();
+
+    return;
+
+
+def read_corr_results(corr_file):
+    stem1=[]; stem2=[]; mean_corr=[];
+    ifile=open(corr_file,'r');
+    for line in ifile:
+        temp=line.split();
+        if len(temp)==4:
+            stem1.append(temp[1].split('.')[0]);
+            stem2.append(temp[2].split('.')[0]);
+            mean_corr.append(float(temp[3]));
+    return [stem1, stem2, mean_corr];
+
+
+def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max, startdate):
     """ Grab all the pairs that are below the critical baselines in space and time. 
     Return format is a list of strings like 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'. 
     You can adjust this if you have specific processing needs. 
     """
     nacq=len(stems);
+    startdate_dt=dt.datetime.strptime(startdate,"%Y%j");
     intf_pairs=[];
     datetimearray=[];
     for k in tbaseline:
@@ -198,27 +231,31 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
         for j in range(i+1,nacq):
             dtdelta=datetimearray[i]-datetimearray[j];
             dtdeltadays=dtdelta.days;  # how many days exist between the two acquisitions? 
-            if abs(dtdeltadays) < tbaseline_max:
-                if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
-                    img1_stem=stems[i];
-                    img2_stem=stems[j];
-                    img1_time=int(img1_stem[3:11]);
-                    img2_time=int(img2_stem[3:11]);
-                    if img1_time<img2_time:  # if the images are listed in chronological order 
-                        intf_pairs.append(stems[i]+":"+stems[j]);
-                    else:                    # if the images are in reverse chronological order
-                        intf_pairs.append(stems[j]+":"+stems[i]);
+            if datetimearray[i]>startdate_dt and datetimearray[j]>startdate_dt:
+                if abs(dtdeltadays) < tbaseline_max:
+                    if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
+                        img1_stem=stems[i];
+                        img2_stem=stems[j];
+                        img1_time=int(img1_stem[3:11]);
+                        img2_time=int(img2_stem[3:11]);
+                        if img1_time<img2_time:  # if the images are listed in chronological order 
+                            intf_pairs.append(stems[i]+":"+stems[j]);
+                        else:                    # if the images are in reverse chronological order
+                            intf_pairs.append(stems[j]+":"+stems[i]);
     print "Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. "
     # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
     return intf_pairs;
 
 
-def get_chain_subsets(stems, tbaseline, xbaseline):
+def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
     # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs. 
     intf_pairs=[];
+    bypass_items=bypass.split("/");    
     sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value
     for i in range(len(sorted_stems)-1):
         intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
+        if i>1 and sorted_stems[i][3:11] in bypass_items:
+            intf_pairs.append(sorted_stems[i-1]+':'+sorted_stems[i+1])
     print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
     return intf_pairs;
 

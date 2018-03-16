@@ -6,8 +6,22 @@ mkdir phasefilt
 while IFS= read -r var
 do 
   echo $var
-  newname=$var"_phasefilt.png"
+  newname=$var"_phasefilt_mask.grd"
   echo $newname
-  cp $var/phasefilt_mask_ll.png $newname
+  cp $var/phasefilt_mask.grd $newname
 done < filelist.txt
-mv *.png phasefilt
+mv *.grd phasefilt
+
+
+
+# # Unwrapped radar coordinates
+# ls . > filelist.txt
+# mkdir unwrap_ra
+# while IFS= read -r var
+# do
+# 	echo $var
+# 	newname=$var"_unwrap.grd"
+# 	echo $newname
+# 	cp $var/unwrap.grd $newname
+# done < filelist.txt
+# mv *.grd unwrap_ra

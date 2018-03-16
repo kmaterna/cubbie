@@ -171,6 +171,7 @@ if ($stage <= 2) then
       intf.csh $ref.PRM $rep.PRM
     endif
     filter.csh $ref.PRM $rep.PRM $filter $dec $range_dec $azimuth_dec
+
     echo "INTF.CSH, FILTER.CSH - END"
 
 

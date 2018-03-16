@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc','ts_type']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc','ts_type','bypass']);
 
 def read_config():
     ################################################
@@ -43,6 +43,7 @@ def read_config():
     polarization=config.get('py-config','polarization') 
     frame=config.get('py-config','frame')
     ts_type=config.get('timeseries-config','ts_type')
+    bypass=config.get('timeseries-config','bypass')
     
     # print config options
     if args.debug:
@@ -74,9 +75,9 @@ def read_config():
         oldmaster=dataDotIn[0]
         if '-'+master[3:11]+'t' not in oldmaster:  # For sentinel, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...; master is formatted like S1A20171213_ALL_F1
             print('Warning: The master specified in the config file disagrees with the old master in data.in.')
-            print('We will re-run starting from pre-processing with the master from the config file.')
-            startstage = 1
-            restart = True
+            #print('We will re-run starting from pre-processing with the master from the config file.')
+            #startstage = 1
+            #restart = True
     
     # if data.in is not found, we must do pre-processing.
     if startstage > 1 and not os.path.isfile('raw/data.in'):
@@ -94,7 +95,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc, ts_type=ts_type);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc, ts_type=ts_type, bypass=bypass);
 
     return config_params; 
 
@@ -196,7 +197,7 @@ def preprocess(config_params):
     write_xml_prep(config_params.polarization, config_params.swath);   # writes the beginning, common part of README_prep.txt
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);  # makes data.in the first time, with no super_master
     write_preproc_mode1();              # writes the bottom of README_prep
-    #call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
+    call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
 
     # Automatically decide on super-master and pop it to the front of data.in. 
     masterid = sentinel_utilities.choose_master_image();
@@ -289,10 +290,12 @@ def make_interferograms(config_params):
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     if config_params.ts_type=="SBAS":
-        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline);
+        startdate="2016291";
+        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, startdate);
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
+    
     elif config_params.ts_type=="CHAIN":
-        intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines);
+        intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
     else:
         print "config_params.ts_type is not a valid ts_type";
         sys.exit(1);
@@ -315,7 +318,10 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    #call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
+
+    print "Summarizing correlation for all interferograms."
+    call("get_corr_all_intfs.sh",shell=True);
 
     return;
 
@@ -329,17 +335,15 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
-    outfile=open("unwrap.sh",'w');
-    outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_params.config_file+"'\n\n\n");
-    outfile.close();
-    print "Ready to call unwrap.sh."
-    call("chmod +x unwrap.sh",shell=True);
-    call("./unwrap.sh",shell=True);
+    call("rm intf?.in",shell=True);
+    unwrap_sh_file="unwrap.sh";
+    sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+
+    print "Ready to call "+unwrap_sh_file
+    call(['chmod','+x',unwrap_sh_file],shell=False);
+    call("./"+unwrap_sh_file,shell=True);
 
     return;
-
-
-
 
 
 
@@ -352,13 +356,14 @@ def do_sbas(config_params):
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
 
-    [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table();
+    [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table('raw/baseline_table.dat');
     t_int=[];
     for t in tbaseline:
         t_int.append(round(float(t)));  # a list of integers like 2016214 for 2016-day-214.
 
     mission_days_sorted=[x for (y, x) in sorted(zip(t_int,mission_days))];
     t_int.sort();
+    tbaseline.sort();
 
     intf_computed=sentinel_utilities.glob_intf_computed();  # looks like a list of labels like 2016217_2016205
     n_intf=len(intf_computed);
@@ -373,10 +378,16 @@ def do_sbas(config_params):
         first_image=img_pair[0:7]
         second_image=img_pair[8:]
         for a, b in zip(xbaseline, t_int):
-            if b == int(first_image):
+            if abs(int(np.floor(b)) - int(first_image))<=1:
+                # print "first image found";
+                # print int(np.floor(b))
+                # print int(first_image)
                 master_xbaseline=a;
-            if b == int(second_image):
+            if abs(int(np.floor(b)) - int(second_image))<=1:
                 slave_xbaseline=a;
+                # print "second image found";
+                # print int(np.floor(b))
+                # print int(second_image)                
         total_baseline=slave_xbaseline - master_xbaseline;
         outfile.write('echo "../intf_all/'+img_pair+'/unwrap.grd ')
         outfile.write('../intf_all/'+img_pair+'/corr.grd ')
@@ -386,17 +397,21 @@ def do_sbas(config_params):
     outfile.write("#\n\n");
 
     # writing scene.tab (only the scenes that are actually used in SBAS processing)
+    # Right now this isn't producing anything. 
     outfile.write("# scene_id  day\n");
     scenes_used='';
     n_scenes=0;
+    scenes_used=[];
     for intf in intf_computed:
-        scenes_used=scenes_used+intf;  # catch which scenes are actually used in SBAS processing. 
-    for x in range(len(t_int)):
-        temp=str(t_int[x]);
-        temp=temp[0:7]  # a string that looks like 2016217
-        if temp in scenes_used:
-            outfile.write('echo "'+temp[0:7]+' '+mission_days_sorted[x]+'" >> scene.tab\n');
+        scenes_used.append(intf[0:7]);  # catch which scenes are actually used in SBAS processing. 
+        scenes_used.append(intf[8:15]);
+    for x in range(len(tbaseline)):
+        temp = tbaseline[x];
+        tempint = int(np.round(temp))
+        if str(tempint) in scenes_used or str(tempint+1) in scenes_used or str(tempint-1) in scenes_used:
+            outfile.write('echo "'+str(tempint)+' '+mission_days_sorted[x]+'" >> scene.tab\n');
             n_scenes+=1;
+    outfile.write("\n\n");
 
     intf_ex=intf_computed[0];  # an example interferogram where we get the geographic coordinates for grdinfo
     outfile.write("xdim=`gmt grdinfo -C ../intf_all/"+intf_ex+"/unwrap.grd | awk '{print $10}'`\n");
@@ -406,6 +421,7 @@ def do_sbas(config_params):
     outfile.write("sbas intf.tab scene.tab "+str(n_intf)+" "+str(n_scenes)+" $xdim $ydim -smooth 1.0 -wavelength 0.0554658 -incidence 30 -range 800184.946186 -rms -dem\n\n\n")
 
     outfile.write("# project the velocity to Geocooridnates\n");
+    outfile.write('echo "writing to georeferenced coordinates..."\n');
     outfile.write("ln -s ../topo/trans.dat .\n");
     outfile.write("proj_ra2ll.csh trans.dat vel.grd vel_ll.grd\n");
     outfile.write("gmt grd2cpt vel_ll.grd -T= -Z -Cjet > vel_ll.cpt\n");

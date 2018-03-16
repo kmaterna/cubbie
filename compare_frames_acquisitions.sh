@@ -39,3 +39,4 @@ gmt psxy $acq_timing -R$region -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -
 gmt psxy $frame_timing -R$region -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gred -K -O >> $timing_file  # plotting the actual data. 
 
 rm gmt.history
+rm $acq_timing
