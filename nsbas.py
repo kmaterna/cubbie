@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.io import netcdf_file as netcdf
 import collections
 import glob, sys, math
+import datetime as dt 
 
 
 # ------------- CONFIGURE ------------ # 
@@ -12,8 +13,8 @@ def configure():
 	file_dir="unwrap_ra";
 	
 	# Regular parameters
-	nsbas_num_toss=6;  # out of 62, how many interferograms can be incoherent? 
-	smoothing = 0;  # 
+	nsbas_num_toss=8;  # out of 62, how many interferograms can be incoherent? 
+	smoothing = 3;  # 
 	wavelength = 56;  # mm 
 
 	file_names=glob.glob(file_dir+"/*.grd");
@@ -57,15 +58,13 @@ def read_grd_xy(filename):
 
 
 
-
-
 # ------------ COMPUTE ------------ #
 def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
 	[zdim, xdim, ydim] = np.shape(zdata_all)
 	print(np.shape(zdata_all[::]))
 	# number_of_datas = analyze_coherent_number(zdata_all);
-	analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
-	return ;
+	vel = analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	return vel;
 
 
 def analyze_velocity_nsbas(zdata, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
@@ -90,13 +89,12 @@ def analyze_velocity_nsbas(zdata, nsbas_num_toss, dates, date_pairs, smoothing, 
 				# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image
 				# This solves Gm = d for the movement of the pixel with smoothing. 
 
-				sys.exit(0);
 
 			else:
 				vel[i][j]=np.nan;
 				continue;
 
-	return;
+	return vel;
 
 
 
@@ -106,9 +104,74 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image	
 	# for x in range(len(dates)-1):
 
-	return 0;
+	dates=sorted(dates);
+	d = np.array([]);
+	date_pairs_used=[];
+	for i in range(len(pixel_value)):
+		if not math.isnan(pixel_value[i]):
+			d = np.append(d, pixel_value[i]);  # removes the nans from the computation. 
+			date_pairs_used.append(date_pairs[i]);  # might be a slightly shorter array of which interferograms actually got used. 
+	model_num=len(dates)-1;
+
+	G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
+	
+	for i in range(len(d)):  # building G matrix line by line. 
+		ith_intf = date_pairs_used[i];
+		first_image=ith_intf.split('_')[0]; # in format '2017082'
+		second_image=ith_intf.split('_')[1]; # in format '2017082'
+		first_index=dates.index(first_image);
+		second_index=dates.index(second_image);
+		for j in range(second_index-first_index):
+			G[i][first_index+j]=1;
+		# break;
+
+	# Building the smoothing matrix with 1, -1 pairs
+	for i in range(len(date_pairs_used),len(date_pairs_used)+model_num-1):
+		position=i-len(date_pairs_used);
+		G[i][position]=1*smoothing;
+		G[i][position+1]=-1*smoothing;
+		d = np.append(d,0);
+
+	# solving the SBAS linear least squares equation for displacement between each epoch. 
+	m = np.linalg.lstsq(G,d)[0];  
+
+	# Adding up all the displacement. 
+	m_cumulative=[];
+	m_cumulative.append(0);
+	for i in range(len(m)):
+		m_cumulative.append(np.sum(m[0:i]));  # The cumulative phase from start to finish! 
 
 
+	# Solving for linear velocity
+	x_axis_datetimes=[dt.datetime.strptime(x,"%Y%j") for x in dates];
+	x_axis_days=[(x - x_axis_datetimes[0]).days for x in x_axis_datetimes];  # number of days since first acquisition. 
+
+	x=np.zeros([len(x_axis_days),2]);
+	y=np.array([]);
+	for i in range(len(x_axis_days)):
+		x[i][0]=x_axis_days[i];
+		x[i][1]=1;  
+		y=np.append(y,[m_cumulative[i]]);
+	model_slopes = np.linalg.lstsq(x,y)[0];  # units: phase per day. 
+	model_line = [model_slopes[1]+ x*model_slopes[0] for x in x_axis_days];
+
+	# Velocity conversion: units in mm / year
+	vel=model_slopes[0];
+	vel=vel*wavelength*365.24/2.0;
+
+	# plt.figure();
+	# plt.plot(x_axis_days[0:-1],m,'b.');
+	# plt.plot(x_axis_days,m_cumulative,'g.');
+	# plt.plot(x_axis_days, model_line,'--g');
+	# plt.savefig('m_model.eps');
+	# plt.close();
+
+	if vel>1000:
+		vel=1000;
+	if vel<-1000:
+		vel=-1000;
+
+	return vel;
 
 
 def analyze_coherent_number(zdata):
@@ -137,12 +200,23 @@ def analyze_coherent_number(zdata):
 
 
 
+
+
 # ------------ COMPUTE ------------ #
-def outputs():
+def outputs(vel):
 	
+	plt.figure();
+	plt.imshow(vel);
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	plt.title("NSBAS LOS Velocity");
+	plt.gca().set_xlabel("Range",fontsize=16);
+	plt.gca().set_ylabel("Azimuth",fontsize=16);
+	plt.colorbar();
+	plt.savefig("vels.eps");
+	plt.close();
+
 	return;
-
-
 
 
 
@@ -152,5 +226,5 @@ def outputs():
 if __name__=="__main__":
 	[file_names, nsbas_num_toss, smoothing, wavelength] = configure();
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	compute(xdata, ydata, data_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
-	outputs();
+	vel = compute(xdata, ydata, data_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	outputs(vel);
