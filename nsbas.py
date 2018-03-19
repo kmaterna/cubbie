@@ -2,7 +2,7 @@
 
 import numpy as np 
 import matplotlib.pyplot as plt 
-from scipy.io import netcdf_file as netcdf
+from scipy.io import netcdf
 import collections
 import glob, sys, math
 import datetime as dt 
@@ -13,7 +13,7 @@ def configure():
 	file_dir="unwrap_ra";
 	
 	# Regular parameters
-	nsbas_num_toss=8;  # out of 62, how many interferograms can be incoherent? 
+	nsbas_num_toss=10;  # out of 62, how many interferograms can be incoherent? 
 	smoothing = 3;  # 
 	wavelength = 56;  # mm 
 
@@ -46,12 +46,12 @@ def inputs(file_names):
 	return [xdata, ydata, data_all, dates, date_pairs];
 
 def read_grd(filename):
-	data0 = netcdf(filename,'r').variables['z'][::-1];
+	data0 = netcdf.netcdf_file(filename,'r').variables['z'][::-1];
 	data=data0.copy();
 	return data;
 def read_grd_xy(filename):
-	xdata0 = netcdf(filename,'r').variables['x'][::-1];
-	ydata0 = netcdf(filename,'r').variables['y'][::-1];
+	xdata0 = netcdf.netcdf_file(filename,'r').variables['x'][::-1];
+	ydata0 = netcdf.netcdf_file(filename,'r').variables['y'][::-1];
 	xdata=xdata0.copy();
 	ydata=ydata0.copy();
 	return [xdata, ydata]; 
@@ -214,7 +214,7 @@ def analyze_coherent_number(zdata):
 
 
 # ------------ COMPUTE ------------ #
-def outputs(vel):
+def outputs(xdata, ydata, vel):
 	
 	plt.figure();
 	plt.imshow(vel);
@@ -227,6 +227,23 @@ def outputs(vel):
 	plt.savefig("vels.eps");
 	plt.close();
 
+	# # Write the netcdf velocity grid file.  This works, but doesn't get read from gmt grdinfo. Not sure why. 
+	f=netcdf.netcdf_file('vel.nc','w')
+	f.createDimension('x',len(xdata));
+	f.createDimension('y',len(ydata));
+	print(np.shape(vel));
+	f.createDimension('z',np.shape(vel));
+	x=f.createVariable('x',float,('x',))
+	x[:]=xdata;
+	x.units = 'range';
+	y=f.createVariable('y',float,('y',))
+	y[:]=ydata;
+	y.units = 'azimuth';
+	z=f.createVariable('z',float,('y','x',));
+	z[:,:]=vel;
+	z.units = 'mm/yr';
+	f.close();
+
 	return;
 
 
@@ -238,4 +255,4 @@ if __name__=="__main__":
 	[file_names, nsbas_num_toss, smoothing, wavelength] = configure();
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
 	vel = compute(xdata, ydata, data_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
-	outputs(vel);
+	outputs(xdata, ydata, vel);
