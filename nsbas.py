@@ -29,7 +29,7 @@ def configure():
 def inputs(file_names):
 	[xdata,ydata] = read_grd_xy(file_names[0]);
 	data_all=[];
-	for ifile in file_names:
+	for ifile in file_names:  # this happens to be in date order on my mac
 		data = read_grd(ifile);
 		data_all.append(data);
 	date_pairs=[];
@@ -41,6 +41,8 @@ def inputs(file_names):
 		dates.append(splitname[0])
 		dates.append(splitname[1])
 	dates=list(set(dates));
+	dates=sorted(dates);
+	print(dates);
 	return [xdata, ydata, data_all, dates, date_pairs];
 
 def read_grd(filename):
@@ -61,7 +63,6 @@ def read_grd_xy(filename):
 # ------------ COMPUTE ------------ #
 def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
 	[zdim, xdim, ydim] = np.shape(zdata_all)
-	print(np.shape(zdata_all[::]))
 	# number_of_datas = analyze_coherent_number(zdata_all);
 	vel = analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
 	return vel;
@@ -104,8 +105,8 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image	
 	# for x in range(len(dates)-1):
 
-	dates=sorted(dates);
 	d = np.array([]);
+	dates=sorted(dates);
 	date_pairs_used=[];
 	for i in range(len(pixel_value)):
 		if not math.isnan(pixel_value[i]):
@@ -114,16 +115,16 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 	model_num=len(dates)-1;
 
 	G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
+	print(np.shape(G));
 	
 	for i in range(len(d)):  # building G matrix line by line. 
 		ith_intf = date_pairs_used[i];
 		first_image=ith_intf.split('_')[0]; # in format '2017082'
-		second_image=ith_intf.split('_')[1]; # in format '2017082'
+		second_image=ith_intf.split('_')[1]; # in format '2017094'
 		first_index=dates.index(first_image);
 		second_index=dates.index(second_image);
 		for j in range(second_index-first_index):
 			G[i][first_index+j]=1;
-		# break;
 
 	# Building the smoothing matrix with 1, -1 pairs
 	for i in range(len(date_pairs_used),len(date_pairs_used)+model_num-1):
@@ -134,6 +135,13 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 
 	# solving the SBAS linear least squares equation for displacement between each epoch. 
 	m = np.linalg.lstsq(G,d)[0];  
+
+	# modeled_data=np.dot(G,m);
+	# plt.figure();
+	# plt.plot(d,'.b');
+	# plt.plot(modeled_data,'.--g');
+	# plt.savefig('d_vs_m.eps')
+	# plt.close();
 
 	# Adding up all the displacement. 
 	m_cumulative=[];
@@ -156,20 +164,23 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 	model_line = [model_slopes[1]+ x*model_slopes[0] for x in x_axis_days];
 
 	# Velocity conversion: units in mm / year
-	vel=model_slopes[0];
-	vel=vel*wavelength*365.24/2.0;
+	vel=model_slopes[0];  # in radians per day
+	vel=vel*wavelength*365.24/2.0/(2*np.pi);
 
 	# plt.figure();
 	# plt.plot(x_axis_days[0:-1],m,'b.');
 	# plt.plot(x_axis_days,m_cumulative,'g.');
 	# plt.plot(x_axis_days, model_line,'--g');
+	# plt.xlabel("days");
+	# plt.ylabel("cumulative phase");
+	# plt.text(0,0,str(vel)+"mm/yr slope");
 	# plt.savefig('m_model.eps');
 	# plt.close();
 
-	if vel>1000:
-		vel=1000;
-	if vel<-1000:
-		vel=-1000;
+	# if vel>1000:
+	# 	vel=1000;
+	# if vel<-1000:
+	# 	vel=-1000;
 
 	return vel;
 

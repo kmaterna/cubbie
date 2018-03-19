@@ -12,6 +12,3 @@ wavelength=56;  # in mm
 vel = nsbas.do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength);
 
 
-
-print(vel);
-
