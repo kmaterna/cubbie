@@ -6,6 +6,7 @@ import sys
 import glob
 import datetime
 import matplotlib.pyplot as plt 
+import matplotlib.dates as mdates
 import numpy as np
 import datetime as dt
 
@@ -275,7 +276,9 @@ def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
         plt.plot_date(tstart, xstart,'.b');
         plt.plot_date(tend, xend,'.b');
         plt.plot_date([tstart,tend],[xstart,xend],'b');
-    plt.xlabel("Year-day");
+    yrs_formatter=mdates.DateFormatter('%m-%y');
+    plt.xlabel("Date");
+    plt.gca().xaxis.set_major_formatter(yrs_formatter);
     plt.ylabel("Baseline (m)");
     plt.title("Network Geometry");
     plt.savefig("Network_Geometry.eps");

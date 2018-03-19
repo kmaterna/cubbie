@@ -318,7 +318,7 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    call("./README_proc.txt",shell=True);
+    #call("./README_proc.txt",shell=True);
 
     print "Summarizing correlation for all interferograms."
     call("get_corr_all_intfs.sh",shell=True);
@@ -336,7 +336,7 @@ def unwrapping(config_params):
         return;   
 
     call("rm intf?.in",shell=True);
-    unwrap_sh_file="unwrap.sh";
+    unwrap_sh_file="README_unwrap.txt";
     sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
     print "Ready to call "+unwrap_sh_file
