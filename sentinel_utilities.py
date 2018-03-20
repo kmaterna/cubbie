@@ -198,7 +198,6 @@ def write_ordered_unwrapping(numproc, sh_file, config_file):
     for i,item in enumerate(stem1_ordered):
         outfile.write('echo "' + stem1_ordered[i]+":"+stem2_ordered[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n');        
     outfile.write("\n# Unwrap the interferograms.\n\n")
-    #outfile.write("unwrap_km.csh intf0.in batch.config\n");
     outfile.write("ls intf?.in | parallel --eta 'unwrap_km.csh {} "+config_file+"'\n\n\n");
     outfile.close();
 

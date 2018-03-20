@@ -4,6 +4,7 @@ import numpy as np
 from subprocess import call
 import glob
 import sentinel_utilities
+import analyze_unwrapping_progress
 
 Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass']);
 
@@ -289,7 +290,9 @@ def make_interferograms(config_params):
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     if config_params.ts_type=="SBAS":
-        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
+        intf_pairs_sbas = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
+        intf_pairs_manual = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline, ['20151118']);
+        intf_pairs=intf_pairs_sbas+intf_pairs_manual;
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     elif config_params.ts_type=="CHAIN":
         intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
@@ -317,10 +320,11 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    #call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
 
     print "Summarizing correlation for all interferograms."
-    #call("get_corr_all_intfs.sh",shell=True);
+    call("get_corr_all_intfs.sh",shell=True);
+    analyze_unwrapping_progress.analyze_unwrapping_function();
 
     return;
 
