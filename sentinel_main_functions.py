@@ -291,9 +291,10 @@ def make_interferograms(config_params):
     if config_params.ts_type=="SBAS":
         intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
-    
     elif config_params.ts_type=="CHAIN":
         intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
+    elif config_params.ts_type=="MANUAL":
+        intf_pairs = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline, ['20151118']);
     else:
         print "config_params.ts_type is not a valid ts_type";
         sys.exit(1);
@@ -316,7 +317,7 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    call("./README_proc.txt",shell=True);
+    #call("./README_proc.txt",shell=True);
 
     print "Summarizing correlation for all interferograms."
     #call("get_corr_all_intfs.sh",shell=True);

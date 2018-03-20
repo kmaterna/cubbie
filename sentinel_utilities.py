@@ -251,6 +251,8 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
                                 intf_pairs.append(stems[i]+":"+stems[j]);
                             else:                    # if the images are in reverse chronological order
                                 intf_pairs.append(stems[j]+":"+stems[i]);
+                        else:
+                            print "WARNING: %s:%s rejected due to large perpendicular baseline of %f m." % (stems[i], stems[j], abs(xbaseline[i]-xbaseline[j]));
     print "Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. "
     # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
     return intf_pairs;
@@ -266,6 +268,27 @@ def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
         if i>1 and sorted_stems[i][3:11] in bypass_items:
             intf_pairs.append(sorted_stems[i-1]+':'+sorted_stems[i+1])
     print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
+    return intf_pairs;
+
+
+def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
+    # The point of this is to manually force the SBAS algorithm to connect adjacent scenes, 
+    # even if they're technically over the time limit used in the SBAS algorithm. 
+    # Force_chain_images is an array of images (first images) that were rejected in SBAS due to large perpendicular baseline
+    # But we want to force the interferograms to be made anyway, regardless of perpendicular baseline. 
+    intf_pairs=[];
+    sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value 
+    sorted_tbaseline=sorted(tbaseline);
+    sorted_datetimes=[dt.datetime.strptime(str(int(k)),"%Y%j") for k in sorted_tbaseline];
+    for i in range(len(sorted_stems)-1):
+        deltadays=sorted_datetimes[i+1]-sorted_datetimes[i];
+        if deltadays.days >= tbaseline_max:
+            intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
+        for k in force_chain_images:  # if we have images that were rejected in SBAS due to large perpendicular baseline
+            if k in sorted_stems[i]:
+                intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
+    print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
+    print intf_pairs;
     return intf_pairs;
 
 
