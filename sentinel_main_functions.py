@@ -5,7 +5,7 @@ from subprocess import call
 import glob
 import sentinel_utilities
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame','numproc','ts_type','bypass']);
+Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass']);
 
 def read_config():
     ################################################
@@ -41,7 +41,8 @@ def read_config():
     mode=config.get('py-config','mode') 
     swath=config.get('py-config','swath') 
     polarization=config.get('py-config','polarization') 
-    frame=config.get('py-config','frame')
+    frame_nearrange1=config.get('py-config','frame_nearrange1')
+    frame_nearrange2=config.get('py-config','frame_nearrange2')
     ts_type=config.get('timeseries-config','ts_type')
     bypass=config.get('timeseries-config','bypass')
     
@@ -95,7 +96,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame=frame, numproc=numproc, ts_type=ts_type, bypass=bypass);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, ts_type=ts_type, bypass=bypass);
 
     return config_params; 
 
@@ -144,10 +145,11 @@ def manifest2raw_orig_eof(config_params):
 def get_frames_for_raw_orig(config_params):
     # This will read the batch.config file, make frames, and put the results into the file_list 
     # (for later porting into raw_orig)
-    if config_params.frame != '':
+    if config_params.frame1 != '':
         # Here we want a frame to be made. 
         call(['mkdir','-p','FRAMES'],shell=False);
-        frame_def = config_params.frame.split('/');
+        frame1_def = config_params.frame1.split('/');
+        frame2_def = config_params.frame2.split('/');
 
         # # write the data list to data.list
         outfile=open("make_frame_commands.sh",'w');
@@ -155,8 +157,8 @@ def get_frames_for_raw_orig(config_params):
         outfile.write("cd FRAMES\n");
         outfile.write("if [ -z \"$(ls -A $1 )\" ]; then\n"); # if the directory is empty, then we make more frames. 
         outfile.write("  readlink -f ../DATA/*.SAFE > data.list\n");
-        outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame_def[0], frame_def[3]) );  # write the corners of the frame to frame.ll
-        outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame_def[1], frame_def[2]) );
+        outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame1_def[0], frame1_def[1]) );  # write the near-range edges of the frame to frame.ll
+        outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame2_def[0], frame2_def[1]) );
         outfile.write("  make_s1a_frame.csh data.list frames.ll\n");
         outfile.write("  echo \"Assembling new frames!\"\n")
         outfile.write("else\n")
@@ -290,8 +292,11 @@ def make_interferograms(config_params):
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     if config_params.ts_type=="SBAS":
-        startdate="2016291";
-        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, startdate);
+        startdate="2016243";
+        enddate="2016293";
+        #startdate="2016291"
+        #enddate="";
+        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, startdate, enddate);
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     
     elif config_params.ts_type=="CHAIN":
@@ -318,10 +323,10 @@ def make_interferograms(config_params):
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);
-    #call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
 
     print "Summarizing correlation for all interferograms."
-    call("get_corr_all_intfs.sh",shell=True);
+    #call("get_corr_all_intfs.sh",shell=True);
 
     return;
 
