@@ -156,7 +156,7 @@ def get_frames_for_raw_orig(config_params):
         outfile.write("#!/bin/bash\n")
         outfile.write("cd FRAMES\n");
         outfile.write("if [ -z \"$(ls -A $1 )\" ]; then\n"); # if the directory is empty, then we make more frames. 
-        outfile.write("  readlink -f ../DATA/*.SAFE > data.list\n");
+        outfile.write("  readlink -f ../DATA/*20151001*.SAFE > data.list\n");
         outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame1_def[0], frame1_def[1]) );  # write the near-range edges of the frame to frame.ll
         outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame2_def[0], frame2_def[1]) );
         outfile.write("  make_s1a_frame.csh data.list frames.ll\n");
@@ -173,12 +173,9 @@ def get_frames_for_raw_orig(config_params):
         # Copy the scenes where only one scene is exactly covering the pre-defined frame (otherwise will be skipped because there's no combining to do)
         # It turns out that sometimes, the second scene that covers the frame doesn't exist, so there's only one scene for that given date.  
         # Other times, one scene covers the whole frame. 
-        # I haven't figured out a way to automate this quite yet. 
         # Thankfully, make_s1a_frame.csh already copies the orbit files into the FRAMES directory, even if the .SAFE isn't copied. 
 
-        # Might as well make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
-        # We already have the GMT script that plots this... 
-
+        # Make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
         call('compare_frames_acquisitions.sh',shell=True);
         print "Please check the frames and acquisitions and see if all your data has been included. "
 
@@ -292,11 +289,7 @@ def make_interferograms(config_params):
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
     if config_params.ts_type=="SBAS":
-        startdate="2016243";
-        enddate="2016293";
-        #startdate="2016291"
-        #enddate="";
-        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, startdate, enddate);
+        intf_pairs = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
         print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
     
     elif config_params.ts_type=="CHAIN":

@@ -17,7 +17,7 @@ rm temp_timing.txt;
 
 frame_timing="frame_timing.txt"
 num_results=`ls FRAMES/FRAME_1 | wc -l`  # counting the results 
-ls DATA > $frame_timing
+ls FRAMES/FRAME_1 > $frame_timing
 cut -c18-25 $frame_timing > temp_timing.txt  # finding the timing of the acquisitions. 
 rm $frame_timing
 while IFS='' read -r line || [[ -n "$line" ]]; do
