@@ -2,7 +2,7 @@
 
 import numpy as np 
 import matplotlib.pyplot as plt 
-from scipy.io import netcdf
+import scipy.io.netcdf as netcdf
 import collections
 import glob, sys, math
 import datetime as dt 
@@ -63,8 +63,8 @@ def read_grd_xy(filename):
 # ------------ COMPUTE ------------ #
 def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
 	[zdim, xdim, ydim] = np.shape(zdata_all)
-	number_of_datas = analyze_coherent_number(zdata_all);
-	#vel=0;
+	vel = np.zeros([xdim, ydim]);
+	#number_of_datas = analyze_coherent_number(zdata_all);
 	#vel = analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
 	return vel;
 
@@ -218,20 +218,10 @@ def analyze_coherent_number(zdata):
 # ------------ COMPUTE ------------ #
 def outputs(xdata, ydata, vel):
 	
-	plt.figure();
-	plt.imshow(vel);
-	plt.gca().invert_yaxis()
-	plt.gca().invert_xaxis()
-	plt.gca().set_axis('equal');
-	plt.title("NSBAS LOS Velocity");
-	plt.gca().set_xlabel("Range",fontsize=16);
-	plt.gca().set_ylabel("Azimuth",fontsize=16);
-	plt.colorbar();
-	plt.savefig("vels.eps");
-	plt.close();
 
 	# # Write the netcdf velocity grid file.  This works, but doesn't get read from gmt grdinfo. Not sure why. 
-	f=netcdf.netcdf_file('vel.nc','w')
+	f=netcdf.netcdf_file('test.nc','w');
+	f.history = 'Created for a test';
 	f.createDimension('x',len(xdata));
 	f.createDimension('y',len(ydata));
 	print(np.shape(vel));
@@ -245,7 +235,25 @@ def outputs(xdata, ydata, vel):
 	z=f.createVariable('z',float,('y','x',));
 	z[:,:]=vel;
 	z.units = 'mm/yr';
+	f.flush();
 	f.close();
+
+	# Read in the dataset you just wrote. 
+	zread=read_grd('test.nc');
+	[xread,yread]=read_grd_xy('test.nc');
+
+	plt.figure();
+	plt.imshow(zread);
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	plt.title("NSBAS LOS Velocity");
+	plt.gca().set_xlabel("Range",fontsize=16);
+	plt.gca().set_ylabel("Azimuth",fontsize=16);
+	plt.colorbar();
+	plt.savefig("test.eps");
+	plt.close();
+
+
 
 	return;
 
