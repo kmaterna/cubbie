@@ -13,7 +13,7 @@ def configure():
 	file_dir="unwrap_ra";
 	
 	# Regular parameters
-	nsbas_num_toss=10;  # out of 62, how many interferograms can be incoherent? 
+	nsbas_num_toss=10;  # out of 80, how many interferograms can be incoherent? 
 	smoothing = 3;  # 
 	wavelength = 56;  # mm 
 
@@ -63,8 +63,9 @@ def read_grd_xy(filename):
 # ------------ COMPUTE ------------ #
 def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
 	[zdim, xdim, ydim] = np.shape(zdata_all)
-	# number_of_datas = analyze_coherent_number(zdata_all);
-	vel = analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	number_of_datas = analyze_coherent_number(zdata_all);
+	#vel=0;
+	#vel = analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
 	return vel;
 
 
@@ -198,6 +199,7 @@ def analyze_coherent_number(zdata):
 	plt.imshow(number_of_datas);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
+	plt.gca().set_aspect(1);
 	plt.title("Number of Coherent Intfs (Total = "+str(zdim)+")");
 	plt.gca().set_xlabel("Range",fontsize=16);
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
@@ -220,6 +222,7 @@ def outputs(xdata, ydata, vel):
 	plt.imshow(vel);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
+	plt.gca().set_axis('equal');
 	plt.title("NSBAS LOS Velocity");
 	plt.gca().set_xlabel("Range",fontsize=16);
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
