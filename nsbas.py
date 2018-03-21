@@ -63,13 +63,13 @@ def read_grd_xy(filename):
 # ------------ COMPUTE ------------ #
 def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
 	[zdim, xdim, ydim] = np.shape(zdata_all)
-	vel = np.zeros([xdim, ydim]);
-	#number_of_datas = analyze_coherent_number(zdata_all);
-	#vel = analyze_velocity_nsbas(zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
-	return vel;
+	vel=np.zeros([xdim,ydim]);
+	[number_of_datas,zdim] = analyze_coherent_number(zdata_all);
+	#vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	return [vel,number_of_datas,zdim];
 
 
-def analyze_velocity_nsbas(zdata, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
+def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an SBAS matrix describing each image that's a real number (not nan). 
 	[zdim, xdim, ydim] = np.shape(zdata)
@@ -78,12 +78,12 @@ def analyze_velocity_nsbas(zdata, nsbas_num_toss, dates, date_pairs, smoothing, 
 	for i in range(xdim):  # A loop through each pixel. 
 		for j in range(ydim):
 			pixel_value = [zdata[k][i][j] for k in range(zdim)];  # slicing the values of phase for a pixel across the various interferograms
-			num_reals=0;
-			for k in range(zdim):
-				if not math.isnan(pixel_value[k]):
-					num_reals=num_reals+1;
+			# num_reals=0;
+			# for k in range(zdim):
+			# 	if not math.isnan(pixel_value[k]):
+			# 		num_reals=num_reals+1;
 			
-			if num_reals > zdim - nsbas_num_toss:  # If we have a pixel that will be analyzed: Do SBAS
+			if number_of_datas[i][j] > zdim - nsbas_num_toss:  # If we have a pixel that will be analyzed: Do SBAS
 
 				vel[i][j] = do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength); 
 				# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
@@ -195,37 +195,30 @@ def analyze_coherent_number(zdata):
 			for j in range(ydim):
 				if not math.isnan(zdata[k][i][j]):
 					number_of_datas[i][j]=number_of_datas[i][j]+1;
-	plt.figure();
-	plt.imshow(number_of_datas);
-	plt.gca().invert_yaxis()
-	plt.gca().invert_xaxis()
-	plt.gca().set_aspect(1);
-	plt.title("Number of Coherent Intfs (Total = "+str(zdim)+")");
-	plt.gca().set_xlabel("Range",fontsize=16);
-	plt.gca().set_ylabel("Azimuth",fontsize=16);
-	plt.colorbar();
-	plt.savefig("number_of_coherent_intfs.eps");
-	plt.close();
-	return number_of_datas;
 
-
-
+	return [number_of_datas, zdim];
 
 
 
 
 
 # ------------ COMPUTE ------------ #
-def outputs(xdata, ydata, vel):
+def outputs(xdata, ydata, number_of_datas, zdim, vel):
 	
+	plot_title="Number of Coherent Intfs (Total = "+str(zdim)+")"
+	produce_outputs_plots(xdata, ydata, number_of_datas, 'coherent_intfs', 'number_of_datas.nc', plot_title, 'number_of_coherent_intfs.eps');
+	#produce_outputs_plots(xdata,ydata, vel, 'mm/yr', 'vel.nc', 'NSBAS LOS Velocity', 'vel.eps');
+	return;
+
+
+def produce_outputs_plots(xdata, ydata, zdata, zunits, netcdfname, plottitle, filename):
 
 	# # Write the netcdf velocity grid file.  This works, but doesn't get read from gmt grdinfo. Not sure why. 
-	f=netcdf.netcdf_file('test.nc','w');
+	f=netcdf.netcdf_file(netcdfname,'w');
 	f.history = 'Created for a test';
 	f.createDimension('x',len(xdata));
 	f.createDimension('y',len(ydata));
 	print(np.shape(vel));
-	f.createDimension('z',np.shape(vel));
 	x=f.createVariable('x',float,('x',))
 	x[:]=xdata;
 	x.units = 'range';
@@ -233,37 +226,38 @@ def outputs(xdata, ydata, vel):
 	y[:]=ydata;
 	y.units = 'azimuth';
 	z=f.createVariable('z',float,('y','x',));
-	z[:,:]=vel;
-	z.units = 'mm/yr';
-	f.flush();
+	z[:,:]=zdata;
+	z.units = zunits;
 	f.close();
 
 	# Read in the dataset you just wrote. 
-	zread=read_grd('test.nc');
-	[xread,yread]=read_grd_xy('test.nc');
+	fr = netcdf.netcdf_file(netcdfname,'r');
+	xread=fr.variables['x'];
+	yread=fr.variables['y'];
+	zread=fr.variables['z'];
+	zread_copy=zread[:][:].copy();
 
+	# Make a plot
 	plt.figure();
-	plt.imshow(zread);
+	plt.imshow(zread_copy);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
-	plt.title("NSBAS LOS Velocity");
+	plt.gca().get_xaxis().set_ticks([]);
+	plt.gca().get_yaxis().set_ticks([]);
+	plt.title(plottitle);
 	plt.gca().set_xlabel("Range",fontsize=16);
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
 	plt.colorbar();
-	plt.savefig("test.eps");
+	plt.savefig(filename);
 	plt.close();
 
-
-
 	return;
-
-
-
 
 
 
 if __name__=="__main__":
 	[file_names, nsbas_num_toss, smoothing, wavelength] = configure();
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	vel = compute(xdata, ydata, data_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
-	outputs(xdata, ydata, vel);
+	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	outputs(xdata, ydata, number_of_datas, zdim, vel);
+
