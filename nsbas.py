@@ -207,9 +207,9 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel):
 	
 	plot_title="Number of Coherent Intfs (Total = "+str(zdim)+")"
 	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', 'number_of_datas.nc');
-	produce_output_plot('number_of_datas.nc', plot_title, 'number_of_coherent_intfs.eps');
+	produce_output_plot('number_of_datas.nc', plot_title, 'number_of_coherent_intfs.eps', 'intfs');
 	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', 'vel.nc', 'NSBAS LOS Velocity', 'vel.eps');
-	produce_output_plot('vel.nc','NSBAS LOS Velocity','vel.eps');
+	produce_output_plot('vel.nc','NSBAS LOS Velocity','vel.eps', 'mm/yr');
 	return;
 
 
@@ -244,7 +244,7 @@ def produce_output_plot(netcdfname, plottitle, filename, clabel):
 	zread_copy=zread[:][:].copy();
 
 	# Make a plot
-	plt.figure(figsize=(12,10));
+	fig = plt.figure(figsize=(12,10));
 	ax1 = fig.add_axes([-0.5, 0.1, 1.5, 0.8]);
 	plt.imshow(zread_copy,aspect=0.3);
 	plt.gca().invert_yaxis()
