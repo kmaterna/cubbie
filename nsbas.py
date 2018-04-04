@@ -1,4 +1,4 @@
-# This is in Python3
+# This is in Python
 
 import numpy as np 
 import matplotlib.pyplot as plt 
@@ -13,7 +13,7 @@ def configure():
 	file_dir="unwrap_ra";
 	
 	# Regular parameters
-	nsbas_num_toss=10;  # out of 80, how many interferograms can be incoherent? 
+	nsbas_num_toss=15;  # out of 80, how many interferograms can be incoherent? 
 	smoothing = 3;  # 
 	wavelength = 56;  # mm 
 
@@ -65,7 +65,7 @@ def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothin
 	[zdim, xdim, ydim] = np.shape(zdata_all)
 	vel=np.zeros([xdim,ydim]);
 	[number_of_datas,zdim] = analyze_coherent_number(zdata_all);
-	#vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
 	return [vel,number_of_datas,zdim];
 
 
@@ -206,13 +206,14 @@ def analyze_coherent_number(zdata):
 def outputs(xdata, ydata, number_of_datas, zdim, vel):
 	
 	plot_title="Number of Coherent Intfs (Total = "+str(zdim)+")"
-	produce_outputs_plots(xdata, ydata, number_of_datas, 'coherent_intfs', 'number_of_datas.nc', plot_title, 'number_of_coherent_intfs.eps');
-	#produce_outputs_plots(xdata,ydata, vel, 'mm/yr', 'vel.nc', 'NSBAS LOS Velocity', 'vel.eps');
+	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', 'number_of_datas.nc');
+	produce_output_plot('number_of_datas.nc', plot_title, 'number_of_coherent_intfs.eps');
+	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', 'vel.nc', 'NSBAS LOS Velocity', 'vel.eps');
+	produce_output_plot('vel.nc','NSBAS LOS Velocity','vel.eps');
 	return;
 
 
-def produce_outputs_plots(xdata, ydata, zdata, zunits, netcdfname, plottitle, filename):
-
+def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 	# # Write the netcdf velocity grid file.  This works, but doesn't get read from gmt grdinfo. Not sure why. 
 	f=netcdf.netcdf_file(netcdfname,'w');
 	f.history = 'Created for a test';
@@ -229,6 +230,11 @@ def produce_outputs_plots(xdata, ydata, zdata, zunits, netcdfname, plottitle, fi
 	z[:,:]=zdata;
 	z.units = zunits;
 	f.close();
+	return;
+
+
+
+def produce_output_plot(netcdfname, plottitle, filename):
 
 	# Read in the dataset you just wrote. 
 	fr = netcdf.netcdf_file(netcdfname,'r');
@@ -239,7 +245,7 @@ def produce_outputs_plots(xdata, ydata, zdata, zunits, netcdfname, plottitle, fi
 
 	# Make a plot
 	plt.figure();
-	plt.imshow(zread_copy);
+	plt.imshow(zread_copy,aspect=0.3);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
@@ -250,8 +256,8 @@ def produce_outputs_plots(xdata, ydata, zdata, zunits, netcdfname, plottitle, fi
 	plt.colorbar();
 	plt.savefig(filename);
 	plt.close();
-
 	return;
+
 
 
 
