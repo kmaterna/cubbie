@@ -234,7 +234,7 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 
 
 
-def produce_output_plot(netcdfname, plottitle, filename, clabel):
+def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 
 	# Read in the dataset you just wrote. 
 	fr = netcdf.netcdf_file(netcdfname,'r');
