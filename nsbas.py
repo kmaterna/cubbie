@@ -234,7 +234,7 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 
 
 
-def produce_output_plot(netcdfname, plottitle, filename):
+def produce_output_plot(netcdfname, plottitle, filename, clabel):
 
 	# Read in the dataset you just wrote. 
 	fr = netcdf.netcdf_file(netcdfname,'r');
@@ -244,7 +244,8 @@ def produce_output_plot(netcdfname, plottitle, filename):
 	zread_copy=zread[:][:].copy();
 
 	# Make a plot
-	plt.figure();
+	plt.figure(figsize=(12,10));
+	ax1 = fig.add_axes([-0.5, 0.1, 1.5, 0.8]);
 	plt.imshow(zread_copy,aspect=0.3);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
@@ -253,7 +254,8 @@ def produce_output_plot(netcdfname, plottitle, filename):
 	plt.title(plottitle);
 	plt.gca().set_xlabel("Range",fontsize=16);
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
-	plt.colorbar();
+	cb = plt.colorbar();
+	cb.set_label(cblabel, size=16);
 	plt.savefig(filename);
 	plt.close();
 	return;
