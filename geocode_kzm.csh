@@ -8,9 +8,23 @@ else
         set V = "-V"
 endif
 
+if ($#argv != 2) then
+echo ""
+echo "Usage: geocode_kzm.csh vel.grd vel_ll.grd directory"
+echo "  geocode a grid file. Call this from the processing directory, and make sure topo/ has topo/trans.dat"
+echo "  vel.grd and vel_ll.grd LIVE IN directory."
+echo "  outputs:"
+echo "    to vel_ll.grd"
+exit 1
+endif
 
-set ifile = vel.grd
-set ofile = vel_ll.grd
+
+set ifile = $1
+set ofile = $2
+set directory = $3
+ln -s topo/trans.dat $directory
+cd $directory
+
 
 # Datestamp information
 set maker = $0:t
@@ -66,4 +80,4 @@ gmt grdedit -D//"mm/yr"/1///"$PWD:t velocity"/"$remarked" $ofile
 
 grd2kml.csh vel_ll defcolors.cpt
 
-rm gmt.history gmt.conf
+rm gmt.history gmt.conf defcolors.cpt trans.dat

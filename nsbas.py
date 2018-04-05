@@ -206,12 +206,13 @@ def analyze_coherent_number(zdata):
 # ------------ COMPUTE ------------ #
 def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	
-	out_dir=out_dir+'/'
-	plot_title="Number of Coherent Intfs (Total = "+str(zdim)+")"
-	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'number_of_datas.grd');
-	produce_output_plot(out_dir+'number_of_datas.grd', plot_title, out_dir+'number_of_coherent_intfs.eps', 'intfs');
+	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'/number_of_datas.grd');
+	produce_output_plot(out_dir+'/number_of_datas.grd', "Number of Coherent Intfs (Total = "+str(zdim)+")", out_dir+'/number_of_coherent_intfs.eps', 'intfs');
 	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'vel.grd');
-	produce_output_plot(out_dir+'vel.grd','NSBAS LOS Velocity',out_dir+'vel.eps', 'mm/yr');
+	produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
+	
+	flip_if_necessary(out_dir+'/vel.grd');
+	geocode(out_dir+'/vel.grd',out_dir+'/vel_ll.grd','nsbas');
 	return;
 
 
@@ -233,8 +234,6 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 	z.units = zunits;
 	f.close();
 	return;
-
-
 
 def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 
@@ -263,7 +262,25 @@ def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 	return;
 
 
+def flip_if_necessary(filename):
+	# IF WE NEED TO FLIP DATA::::
+	[xdata,ydata] = read_grd_xy(filename);
+	data = read_grd(filename);
 
+	# This is the key! Flip the x-axis when necessary.  
+	xdata=np.flip(xdata,0);  # This is sometimes necessary and sometimes not!  Not sure why. 
+
+	produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
+	return;
+
+
+def geocode(ifile, ofile, directory):
+	call(['geocode_kzm.csh',ifile.split('/')[-1],ofile.split('/')[-1],directory],shell=False);
+	return;
+
+
+
+# ------------ THE MAIN PROGRAM------------ # 
 
 def do_nsbas(config_params):
 	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params);
