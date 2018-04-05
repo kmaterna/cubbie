@@ -19,7 +19,7 @@ def configure(config_params):
 
 	# Setting up the input and output directories. 
 	file_of_interest='unwrap.grd'
-	#call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  # call from the processing directory. 
+	call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  # call from the processing directory. 
 	file_dir="intf_all/"+file_of_interest;
 	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
 	if len(file_names)==0:

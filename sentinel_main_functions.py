@@ -291,7 +291,7 @@ def make_interferograms(config_params):
         return;
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('raw/baseline_table.dat')
-    if config_params.ts_type=="SBAS":
+    if config_params.ts_type=="SBAS" or config_params.ts_type=="NSBAS":
         intf_pairs_sbas = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
         intf_pairs_manual = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline, ['20151118']);
         intf_pairs=intf_pairs_sbas+intf_pairs_manual;
