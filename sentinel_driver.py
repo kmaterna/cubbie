@@ -60,6 +60,6 @@ if __name__=="__main__":
 	sentinel_main_functions.unwrapping(config_params);
 
 	# # Step 6
-	sentinel_main_functions.do_sbas(config_params);
+	sentinel_main_functions.do_timeseries(config_params);
 
 

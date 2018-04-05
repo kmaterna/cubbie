@@ -6,21 +6,26 @@ import scipy.io.netcdf as netcdf
 import collections
 import glob, sys, math
 import datetime as dt 
+from subprocess import call
 
 
 # ------------- CONFIGURE ------------ # 
-def configure():
-	file_dir="unwrap_ra";
-	
-	# Regular parameters
-	nsbas_num_toss=15;  # out of 80, how many interferograms can be incoherent? 
-	smoothing = 3;  # 
-	wavelength = 56;  # mm 
+def configure(config_params):
 
-	file_names=glob.glob(file_dir+"/*.grd");
+	# Time Series parameters
+	smoothing = 3;  
+	out_dir='nsbas';
+
+
+	# Setting up the input and output directories. 
+	file_of_interest='unwrap.grd'
+	call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  # call from the processing directory. 
+	file_dir="intf_all/"+file_of_interest;
+	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
 	if len(file_names)==0:
-		print("Error! No files matching search pattern."); sys.exit(1);
-	return [file_names, nsbas_num_toss, smoothing, wavelength];
+		print("Error! No files matching search pattern with "+file_of_interest); sys.exit(1);
+	call(['mkdir','-p',out_dir],shell=False);
+	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, out_dir];
 
 
 
@@ -61,15 +66,15 @@ def read_grd_xy(filename):
 
 
 # ------------ COMPUTE ------------ #
-def compute(xdata, ydata, zdata_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
+def compute(xdata, ydata, zdata_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
 	[zdim, xdim, ydim] = np.shape(zdata_all)
 	vel=np.zeros([xdim,ydim]);
 	[number_of_datas,zdim] = analyze_coherent_number(zdata_all);
-	vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
+	#vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
 	return [vel,number_of_datas,zdim];
 
 
-def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_num_toss, dates, date_pairs, smoothing, wavelength):
+def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an SBAS matrix describing each image that's a real number (not nan). 
 	[zdim, xdim, ydim] = np.shape(zdata)
@@ -78,12 +83,8 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_num_toss, dates, date_p
 	for i in range(xdim):  # A loop through each pixel. 
 		for j in range(ydim):
 			pixel_value = [zdata[k][i][j] for k in range(zdim)];  # slicing the values of phase for a pixel across the various interferograms
-			# num_reals=0;
-			# for k in range(zdim):
-			# 	if not math.isnan(pixel_value[k]):
-			# 		num_reals=num_reals+1;
 			
-			if number_of_datas[i][j] > zdim - nsbas_num_toss:  # If we have a pixel that will be analyzed: Do SBAS
+			if number_of_datas[i][j] > nsbas_good_num:  # If we have a pixel that will be analyzed: Do SBAS
 
 				vel[i][j] = do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength); 
 				# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
@@ -94,7 +95,6 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_num_toss, dates, date_p
 
 			else:
 				vel[i][j]=np.nan;
-				continue;
 
 	return vel;
 
@@ -188,6 +188,7 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 
 def analyze_coherent_number(zdata):
 	# Analyze the number of coherent acquisitions for each pixel
+	print("Analyzing the number of coherent interferograms per pixel.")
 	[zdim, xdim, ydim] = np.shape(zdata)
 	number_of_datas=np.zeros([xdim,ydim]);
 	for k in range(zdim):
@@ -203,23 +204,24 @@ def analyze_coherent_number(zdata):
 
 
 # ------------ COMPUTE ------------ #
-def outputs(xdata, ydata, number_of_datas, zdim, vel):
+def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	
+	out_dir=out_dir+'/'
 	plot_title="Number of Coherent Intfs (Total = "+str(zdim)+")"
-	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', 'number_of_datas.nc');
-	produce_output_plot('number_of_datas.nc', plot_title, 'number_of_coherent_intfs.eps', 'intfs');
-	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', 'vel.nc', 'NSBAS LOS Velocity', 'vel.eps');
-	produce_output_plot('vel.nc','NSBAS LOS Velocity','vel.eps', 'mm/yr');
+	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'number_of_datas.grd');
+	produce_output_plot(out_dir+'number_of_datas.grd', plot_title, out_dir+'number_of_coherent_intfs.eps', 'intfs');
+	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'vel.grd');
+	produce_output_plot(out_dir+'vel.grd','NSBAS LOS Velocity',out_dir+'vel.eps', 'mm/yr');
 	return;
 
 
 def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
-	# # Write the netcdf velocity grid file.  This works, but doesn't get read from gmt grdinfo. Not sure why. 
+	# # Write the netcdf velocity grid file.  
 	f=netcdf.netcdf_file(netcdfname,'w');
 	f.history = 'Created for a test';
 	f.createDimension('x',len(xdata));
 	f.createDimension('y',len(ydata));
-	print(np.shape(vel));
+	print(np.shape(zdata));
 	x=f.createVariable('x',float,('x',))
 	x[:]=xdata;
 	x.units = 'range';
@@ -263,9 +265,9 @@ def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 
 
 
-if __name__=="__main__":
-	[file_names, nsbas_num_toss, smoothing, wavelength] = configure();
+def do_nsbas(config_params):
+	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_num_toss, dates, date_pairs, smoothing, wavelength);
-	outputs(xdata, ydata, number_of_datas, zdim, vel);
+	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
+	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);
 

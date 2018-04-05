@@ -65,3 +65,5 @@ echo "Finished with proj_ra2ll.csh"
 gmt grdedit -D//"mm/yr"/1///"$PWD:t velocity"/"$remarked" $ofile
 
 grd2kml.csh vel_ll defcolors.cpt
+
+rm gmt.history gmt.conf

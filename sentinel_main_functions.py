@@ -1,12 +1,12 @@
 import collections
-import os,sys,argparse,time,configparser
+import os,sys,argparse,time,configparser, glob
 import numpy as np
 from subprocess import call
-import glob
 import sentinel_utilities
 import analyze_unwrapping_progress
+import nsbas
 
-Params=collections.namedtuple('Params',['config_file','SAT','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass']);
+Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass','nsbas_min_intfs']);
 
 def read_config():
     ################################################
@@ -30,6 +30,7 @@ def read_config():
     # get options from config file
     config_file_orig=args.config;
     SAT=config.get('py-config','satellite')
+    wavelength=config.get('py-config','wavelength')
     startstage=config.getint('py-config','startstage')
     endstage=config.getint('py-config','endstage')    
     master=config.get('csh-config','master_image')
@@ -46,6 +47,7 @@ def read_config():
     frame_nearrange2=config.get('py-config','frame_nearrange2')
     ts_type=config.get('timeseries-config','ts_type')
     bypass=config.get('timeseries-config','bypass')
+    nsbas_min_intfs=config.get('timeseries-config','nsbas_min_intfs');
     
     # print config options
     if args.debug:
@@ -97,7 +99,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, ts_type=ts_type, bypass=bypass);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs);
 
     return config_params; 
 
@@ -352,12 +354,21 @@ def unwrapping(config_params):
 
 
 # --------------- STEP 6: Make SBAS ------------ # 
-def do_sbas(config_params):
-
+def do_timeseries(config_params):
     if config_params.startstage>6:  # if we're starting after, we don't do this. 
         return;
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
+    if config_params.ts_type=="SBAS":
+        do_sbas(config_params);
+    if config_params.ts_type=="NSBAS":
+        nsbas.do_nsbas(config_params);
+    return;
+
+
+
+
+def do_sbas(config_params):
 
     [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table('raw/baseline_table.dat');
     t_int=[];
@@ -372,7 +383,7 @@ def do_sbas(config_params):
     n_intf=len(intf_computed);
     outfile=open("README_sbas.txt",'w');
     outfile.write("# First, prepare the input files needed for sbas\n#\n");
-    outfile.write("rm -f SBAS\nmkdir SBAS\ncd SBAS\nrm intf.tab scene.tab\n\n\n");
+    outfile.write("rm -f SBAS\nmkdir SBAS\ncd SBAS\n\n\n");
     outfile.write("# based on baseline_table.dat create the intf.tab and scene.tab for sbas\n");
 
     # writing intf.tab
