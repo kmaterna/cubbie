@@ -8,22 +8,26 @@ else
         set V = "-V"
 endif
 
-if ($#argv != 2) then
+if ($#argv != 4) then
 echo ""
-echo "Usage: geocode_kzm.csh vel.grd vel_ll.grd directory"
+echo "Usage: geocode_kzm.csh vel.grd vel_ll.grd vel_ll directory"
 echo "  geocode a grid file. Call this from the processing directory, and make sure topo/ has topo/trans.dat"
 echo "  vel.grd and vel_ll.grd LIVE IN directory."
+echo "  vel_ll is just the name for the kml file."
+echo "  Most processing takes place in directory."
 echo "  outputs:"
-echo "    to vel_ll.grd"
+echo "    vel_ll.grd"
 exit 1
 endif
 
 
 set ifile = $1
 set ofile = $2
-set directory = $3
-ln -s topo/trans.dat $directory
+set kmlfile = $3
+set directory = $4
+
 cd $directory
+ln -s ../topo/trans.dat .
 
 
 # Datestamp information
@@ -39,8 +43,8 @@ set Zmax = `gmt grdinfo $ifile -M -C | awk '{print $7}'`
 set Zinterval = `gmt grdinfo $ifile -M -C | awk '{print ($7-$6)/100}'`
 set Zlabel = `gmt grdinfo $ifile -M -C | awk '{print int(($7-$6)/6) }'`   # provide labels on the psscale
 gmt makecpt -T$Zmin/$Zmax/$Zinterval -Cjet -Z > defcolors.cpt
-gmt grdimage $ifile -JX6.5i -Cdefcolors.cpt -B"$boundR":Range:/"$boundA":Azimuth:WSen -X1.3i -Y3i -P -K > vel.ps
-gmt psscale -D3.3/-1.5/7/0.3h -Cdefcolors.cpt -B"$Zlabel":"mm/yr": -O >> vel.ps
+gmt grdimage $ifile -JX6.5i -Cdefcolors.cpt -B"$boundR":Range:/"$boundA":Azimuth:WSen -X1.3i -Y3i -P -K > $kmlfile.ps
+gmt psscale -D3.3/-1.5/7/0.3h -Cdefcolors.cpt -B"$Zlabel":"mm/yr": -O >> $kmlfile.ps
 
 
 echo "starting proj_ra2ll.csh"  
@@ -67,10 +71,9 @@ gmt gmtconvert raplnlt -bi5f -bo3f -o3,4,2 > llp
 #
 set incs="2.0s/1.5s" # choosing pretty high resolution
 set R =  `gmt gmtinfo llp -I$incs -bi3f `
-gmt xyz2grd llpb $R -I$incs  -r -fg -G$ofile -bi3f
-#
+gmt xyz2grd llp $R -I$incs  -r -fg -G$ofile -bi3f
+
 # clean
-#
 rm rap* llp raln ralt
 
 
@@ -78,6 +81,8 @@ echo "Finished with proj_ra2ll.csh"
 
 gmt grdedit -D//"mm/yr"/1///"$PWD:t velocity"/"$remarked" $ofile
 
-grd2kml.csh vel_ll defcolors.cpt
+grd2kml.csh $kmlfile defcolors.cpt
 
-rm gmt.history gmt.conf defcolors.cpt trans.dat
+echo "Cleaning up"
+
+rm gmt.history gmt.conf defcolors.cpt

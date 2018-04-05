@@ -6,7 +6,7 @@ import scipy.io.netcdf as netcdf
 import collections
 import glob, sys, math
 import datetime as dt 
-from subprocess import call
+from subprocess import call, check_output
 
 
 # ------------- CONFIGURE ------------ # 
@@ -19,7 +19,7 @@ def configure(config_params):
 
 	# Setting up the input and output directories. 
 	file_of_interest='unwrap.grd'
-	call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  # call from the processing directory. 
+	#call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  # call from the processing directory. 
 	file_dir="intf_all/"+file_of_interest;
 	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
 	if len(file_names)==0:
@@ -67,7 +67,8 @@ def read_grd_xy(filename):
 
 # ------------ COMPUTE ------------ #
 def compute(xdata, ydata, zdata_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
-	[zdim, xdim, ydim] = np.shape(zdata_all)
+	[zdim, xdim, ydim] = np.shape(zdata_all);
+	number_of_datas=np.zeros([xdim, ydim]);
 	vel=np.zeros([xdim,ydim]);
 	[number_of_datas,zdim] = analyze_coherent_number(zdata_all);
 	#vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
@@ -91,7 +92,6 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_p
 				# dates: if we have 35 images, this is the date of each image
 				# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image
 				# This solves Gm = d for the movement of the pixel with smoothing. 
-
 
 			else:
 				vel[i][j]=np.nan;
@@ -208,11 +208,13 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	
 	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'/number_of_datas.grd');
 	produce_output_plot(out_dir+'/number_of_datas.grd', "Number of Coherent Intfs (Total = "+str(zdim)+")", out_dir+'/number_of_coherent_intfs.eps', 'intfs');
-	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'vel.grd');
+	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
 	produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
 	
+	flip_if_necessary(out_dir+'/number_of_datas.grd');
+	geocode(out_dir+'/number_of_datas.grd',out_dir);
 	flip_if_necessary(out_dir+'/vel.grd');
-	geocode(out_dir+'/vel.grd',out_dir+'/vel_ll.grd','nsbas');
+	geocode(out_dir+'/vel.grd',out_dir);
 	return;
 
 
@@ -263,19 +265,40 @@ def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 
 
 def flip_if_necessary(filename):
-	# IF WE NEED TO FLIP DATA::::
-	[xdata,ydata] = read_grd_xy(filename);
-	data = read_grd(filename);
+	# IF WE NEED TO FLIP DATA:
+	xinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
+	yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
+	xinc=float(xinc.split()[0]);
+	yinc=float(yinc.split()[0]);
 
-	# This is the key! Flip the x-axis when necessary.  
-	xdata=np.flip(xdata,0);  # This is sometimes necessary and sometimes not!  Not sure why. 
-
-	produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
+	if xinc < 0:  # FLIP THE X-AXIS
+		print("flipping the x-axis");
+		[xdata,ydata] = read_grd_xy(filename);
+		data = read_grd(filename);
+		# This is the key! Flip the x-axis when necessary.  
+		#xdata=np.flip(xdata,0);  # This is sometimes necessary and sometimes not!  Not sure why. 
+		produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
+		xinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
+		xinc = float(xinc.split()[0]);
+		print("New xinc is: %f " % (xinc) );
+	if yinc < 0:
+		print("flipping the y-axis");
+		[xdata,ydata] = read_grd_xy(filename);
+		data = read_grd(filename);
+		# Flip the y-axis when necessary.  
+		# ydata=np.flip(ydata,0);  
+		produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
+		yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
+		yinc = float(yinc.split()[0]);
+		print("New yinc is: %f" % (yinc) );
 	return;
 
 
-def geocode(ifile, ofile, directory):
-	call(['geocode_kzm.csh',ifile.split('/')[-1],ofile.split('/')[-1],directory],shell=False);
+def geocode(ifile, directory):
+	# geocode: needs vel.grd, vel_ll.grd, vel_ll, and directory 
+	stem = ifile.split('/')[-1]  # format: vel.grd
+	stem = stem.split('.')[0]   # format: vel
+	call(['geocode_kzm.csh',stem+'.grd',stem+'_ll.grd',stem+"_ll",directory],shell=False);
 	return;
 
 
