@@ -325,8 +325,7 @@ def make_interferograms(config_params):
     call("./README_proc.txt",shell=True);
 
     print "Summarizing correlation for all interferograms."
-    call("get_corr_all_intfs.sh",shell=True);
-    analyze_unwrapping_progress.analyze_unwrapping_function();
+    analyze_coherence.analyze_coherence_function();
 
     return;
 

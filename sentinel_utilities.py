@@ -210,7 +210,7 @@ def read_corr_results(corr_file):
     for line in ifile:
         temp=line.split();
         if len(temp)==4:
-            stem1.append(temp[1].split('.')[0]);
+            stem1.append(temp[1].split('.')[0]);  # format: S1A20171215
             stem2.append(temp[2].split('.')[0]);
             mean_corr.append(float(temp[3]));
     return [stem1, stem2, mean_corr];

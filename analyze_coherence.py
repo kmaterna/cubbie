@@ -4,14 +4,39 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 import datetime as dt
+import glob as glob
+from subprocess import call, check_output
 import sentinel_utilities
 
 
-def analyze_unwrapping_function():
-    [stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results('corr_results.txt');
-    [stems_blt,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table('raw/baseline_table.dat');
+def analyze_coherence_function():
+    corr_file='corr_results.txt';
+    baseline_table = 'raw/baseline_table.dat';
+    write_corr_results(corr_file);
+    [stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results(corr_file);
+    [stems_blt,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table(baseline_table);
     make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline);
     return;
+
+def write_corr_results(filename):
+	ifile=open(filename,'w');
+
+	dir_list=glob.glob('intf_all/2*'); # get a list of all the directories
+	for item in dir_list:
+		directname = item.split('/')[-1];  # format: 2015153_2015177
+		call("gmt grdmath "+item+"/corr.grd MEAN = "+item+"/out.grd",shell=True);
+		corr = check_output("gmt grdinfo "+item+"/out.grd | grep z | awk \'{print $3}\'", shell=True);
+		corr = corr.split()[0];
+		SLCs=check_output("ls "+item+"/*.SLC",shell=True);
+		slc1=SLCs.split()[0];
+		slc1=slc1.split('/')[-1];
+		slc2=SLCs.split()[1];
+		slc2=slc2.split('/')[-1];
+		call("rm "+item+"/out.grd",shell=True);
+		ifile.write('%s %s %s %s\n' % (directname, slc1, slc2, corr) )
+		# Format: 2018005_2018017 S1A20180106_ALL_F1.SLC S1A20180118_ALL_F1.SLC 0.152738928795
+	ifile.close();
+	return;
 
 
 def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
@@ -76,5 +101,5 @@ def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
 
 
 if __name__=="__main__":
-	analyze_unwrapping_function();
+	analyze_coherence_function();
 

@@ -179,7 +179,9 @@ if ($stage <= 2) then
     rm realfilt.grd
     rm amp1.grd
     rm amp2.grd
-    rm corr_cut.grd
+    rm display_amp.grd
+    rm display_amp.cpt
+    rm filtcorr.grd
 #
 # geocoding
 #
