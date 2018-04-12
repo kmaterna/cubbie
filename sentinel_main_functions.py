@@ -3,10 +3,11 @@ import os,sys,argparse,time,configparser, glob
 import numpy as np
 from subprocess import call
 import sentinel_utilities
-import analyze_unwrapping_progress
+import analyze_coherence
+import dec_corrbased
 import nsbas
 
-Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass','nsbas_min_intfs']);
+Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs']);
 
 def read_config():
     ################################################
@@ -45,9 +46,12 @@ def read_config():
     polarization=config.get('py-config','polarization') 
     frame_nearrange1=config.get('py-config','frame_nearrange1')
     frame_nearrange2=config.get('py-config','frame_nearrange2')
+    xdec = config.get('csh-config','custom_xdec');
+    ydec = config.get('csh-config','custom_ydec');
     ts_type=config.get('timeseries-config','ts_type')
     bypass=config.get('timeseries-config','bypass')
     nsbas_min_intfs=config.get('timeseries-config','nsbas_min_intfs');
+
     
     # print config options
     if args.debug:
@@ -99,7 +103,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs);
 
     return config_params; 
 
@@ -339,13 +343,17 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
-    call("rm intf?.in",shell=True);
-    unwrap_sh_file="README_unwrap.txt";
-    sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
-    print "Ready to call "+unwrap_sh_file
-    call(['chmod','+x',unwrap_sh_file],shell=False);
-    call("./"+unwrap_sh_file,shell=True);
+    # Decimate by choosing max-coherence pixel. 
+    dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec);
+
+    # call("rm intf?.in",shell=True);
+    # unwrap_sh_file="README_unwrap.txt";
+    # sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+
+    # print "Ready to call "+unwrap_sh_file
+    # call(['chmod','+x',unwrap_sh_file],shell=False);
+    # call("./"+unwrap_sh_file,shell=True);
 
     return;
 
