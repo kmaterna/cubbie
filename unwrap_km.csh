@@ -75,7 +75,8 @@
     cd $ref_id"_"$rep_id
 
     if ($region_cut == "") then
-      set region_cut = `gmt grdinfo phase.grd -I- | cut -c3-20`
+      set region_cut = `gmt grdinfo phasefilt_full.grd -I- | cut -c3-20`
+      echo $region_cut
     endif
     
     if ($threshold_snaphu != 0 ) then

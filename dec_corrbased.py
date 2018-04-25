@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import scipy.io.netcdf as netcdf
 import glob
+import os.path
 from subprocess import call, check_output
 import nsbas
 
@@ -24,12 +25,12 @@ def decimate_main_function(xdec, ydec):
 # This is the main function for a single file (preserving the functionality of working with a single file, for later use)
 def perform_decimation_one_file(xdec, ydec, corrfile):
 	print("Decimating phasefilt.grd based on "+corrfile);
-	[phase_infile, outfile, computeflag]=configure_singlefile(corrfile);
+	[phase_infile, outfile, corroutfile, computeflag]=configure_singlefile(corrfile);
 	if computeflag==0:
 		return;
 	[xc, yc, zc, xp, yp, zp] = inputs(corrfile, phase_infile);
-	[xstar, ystar, phasestar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
-	produce_output_netcdf(xstar, ystar, phasestar,'radians',outfile);
+	[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
+	produce_output_netcdf(xstar, ystar, phasestar,'radians', outfile, corrstar, corroutfile);
 	return;
 
 # This is assuming we call from the processing directory
@@ -48,22 +49,34 @@ def configure_singlefile(corrfile):
 	phasenofilt=folder + 'phase.grd';  # something like 'phase'
 	phasefilt_full=folder+'phasefilt_full.grd';
 	phasenofilt_full=folder+'phase_full.grd';
+	corr_full=folder+'corr_full.grd';
+	control_file=folder+'amp.grd';  # This is a full-size file that NEVER CHANGES. 
+
+
 
 	# Check if we should copy the phase over into phase_full.grd based on file size. 
 	phasesize = check_output("ls -lh "+phasenofilt+" | awk \'{print $5}\'", shell=True);
 	corrsize  = check_output("ls -lh "+corrfile+" | awk \'{print $5}\'", shell=True);
-	if phasesize==corrsize:  # the phase.grd is not decimated. We should proceed to decimate. 
+	ampsize  = check_output("ls -lh "+control_file+" | awk \'{print $5}\'", shell=True);
+	if phasesize==ampsize or (not os.path.isfile(phasefilt) and not os.path.isfile(phasenofilt)):  
+	# the phase.grd is not decimated or the decimated file has been deleted. We should proceed to decimate. 
 		# Move phasefilt.grd --> phasefilt_full.grd; phase.grd --> phase_full.grd. 
 		print("Moving phase.grd into phase_full.grd before decimating");
 		call("mv "+phasefilt+" "+phasefilt_full, shell=True);  # move phasefilt.grd into phasefilt_full.grd
 		call("mv "+phasenofilt+" "+phasenofilt_full, shell=True);  # move phase.grd into phase_full.grd
+		if corrsize == ampsize:
+			call("cp "+corrfile+" "+corr_full, shell=True);  # move phase.grd into phase_full.grd
 		computeflag=1;  # do the user-defined decimation based on correlation. 
 	else:
-		print("phase.grd and corr.grd are not the same size. No need to decimate. Skipping. ")
+		print("phase.grd and amp.grd are not the same size. No need to decimate. Skipping. ")
 		computeflag=0;  # do not do anything; the decimating has already been done. 
 
-	dec_phasefile= folder+'phase.grd';  # the output will be phase.grd (so that SNAPHU will unwrap it)
-	return [phasenofilt_full, dec_phasefile, computeflag];
+	dec_phasefile= folder+'phasefilt.grd';  # the output will be phase.grd (so that SNAPHU will unwrap it)
+	corroutfile=folder+'corr.grd';
+	return [phasenofilt_full, dec_phasefile, corroutfile, computeflag];
+
+
+
 
 def inputs(corrfile, phasefile):
 	[xc,yc,zc] = read_grd(corrfile);
@@ -87,6 +100,7 @@ def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec):
 	newx    =np.zeros([number_of_xboxes]);
 	newy    =np.zeros([number_of_yboxes]);
 	newphase=np.zeros([number_of_xboxes, number_of_yboxes]);  # the new array
+	newcorr=np.zeros([number_of_xboxes, number_of_yboxes]);  # the new array
 	#print(np.shape(newphase));
 
 	for i in range(number_of_xboxes):
@@ -109,17 +123,20 @@ def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec):
 				mymax=np.nanargmax(myzc);
 			except ValueError:
 				newphase[i][j]=np.nan;
+				newcorr[i][j]=0.0;
 			else:
 				indices=np.unravel_index(mymax,myzc.shape)
-				newphase[i][j]=myzp[indices[0]][indices[1]];  # the indices of the maximum correlation. 
+				newphase[i][j]=myzp[indices[0]][indices[1]];  # the indices of the maximum correlation.
+				newcorr[i][j] =myzc[indices[0]][indices[1]];
 				# newphase[i][j]=myzp[0][0]; In case we want to see random decimation
 
 	newphase=newphase.T;
+	newcorr=newcorr.T;
 
-	return [newx, newy, newphase];
+	return [newx, newy, newphase, newcorr];
 
 
-def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
+def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname, corrstar, corrname):
 	# # Write the netcdf velocity grid file.  
 	f=netcdf.netcdf_file(netcdfname,'w');
 	f.history = 'Decimated by correlation method';
@@ -137,7 +154,27 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 	z.units = zunits;
 	f.close();
 
+	# Save the small correlation file. 
+	f=netcdf.netcdf_file(corrname,'w');
+	f.history = 'Decimated by correlation method';
+	f.createDimension('x',len(xdata));
+	f.createDimension('y',len(ydata));
+	print(np.shape(corrstar));
+	x=f.createVariable('x',float,('x',))
+	x[:]=xdata;
+	x.units = 'range';
+	y=f.createVariable('y',float,('y',))
+	y[:]=ydata;
+	y.units = 'azimuth';
+	z=f.createVariable('z',float,('y','x',));
+	z[:,:]=corrstar;
+	z.units = 'correlation';
+	f.close();
+
+
+
 	nsbas.flip_if_necessary(netcdfname);
+	nsbas.flip_if_necessary(corrname);
 	return;
 
 
