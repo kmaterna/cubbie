@@ -347,13 +347,13 @@ def unwrapping(config_params):
     # Decimate by choosing max-coherence pixel. 
     dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec);
 
-    call("rm intf?.in",shell=True);
-    unwrap_sh_file="README_unwrap.txt";
-    sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+    # call("rm intf?.in",shell=True);
+    # unwrap_sh_file="README_unwrap.txt";
+    # sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
-    print "Ready to call "+unwrap_sh_file
-    call(['chmod','+x',unwrap_sh_file],shell=False);
-    call("./"+unwrap_sh_file,shell=True);
+    # print "Ready to call "+unwrap_sh_file
+    # call(['chmod','+x',unwrap_sh_file],shell=False);
+    # call("./"+unwrap_sh_file,shell=True);
 
     return;
 

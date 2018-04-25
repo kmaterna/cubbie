@@ -8,23 +8,25 @@ import nsbas
 # The purpose of this function is to decimate a full-resolution image. 
 # We decimate to reduce file size, speed up unwrapping, and maximize coherence. 
 # In this script, we take the one pixel with highest coherence in each box. 
-# This script does some crazy renaming: 
+# This script does some renaming: 
 # phase.grd --> phase_full.grd
 # pphasefilt.grd --> phasefilt_full.grd
 # decimated output --> phase.grd
 
 def decimate_main_function(xdec, ydec):
 	print("Decimating phasefilt.grd files based on maximum correlation pixels. ")
-	[corrfiles, phasefiles, phasenofilts] = configure_manyfiles();
+	[corrfiles] = configure_manyfiles();
 	for i in range(len(corrfiles)):
-		perform_decimation_one_file(xdec, ydec, corrfiles[i], phasefiles[i], phasenofilts[i]);
+		perform_decimation_one_file(xdec, ydec, corrfiles[i]);
 	return;
 
 
 # This is the main function for a single file (preserving the functionality of working with a single file, for later use)
-def perform_decimation_one_file(xdec, ydec, corrfile, phasefile, phasenofilt):
-	print("Decimating for "+phasefile);
-	[phase_infile, outfile]=configure_singlefile(phasefile, phasenofilt);
+def perform_decimation_one_file(xdec, ydec, corrfile):
+	print("Decimating phasefilt.grd based on "+corrfile);
+	[phase_infile, outfile, computeflag]=configure_singlefile(corrfile);
+	if computeflag==0:
+		return;
 	[xc, yc, zc, xp, yp, zp] = inputs(corrfile, phase_infile);
 	[xstar, ystar, phasestar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
 	produce_output_netcdf(xstar, ystar, phasestar,'radians',outfile);
@@ -32,33 +34,36 @@ def perform_decimation_one_file(xdec, ydec, corrfile, phasefile, phasenofilt):
 
 # This is assuming we call from the processing directory
 def configure_manyfiles():
-	phasefilts=glob.glob("intf_all/20*/phasefilt.grd");
-	phasenofilts=glob.glob("intf_all/20*/phase.grd");
-	corrs=glob.glob("intf_all/20*/corr.grd");
-	return [corrs, phasefilts, phasenofilts];
+	corrs=glob.glob("intf_all/20*/corr.grd");  # corr.grd files with their associated directories
+	return [corrs];
 
-def configure_singlefile(phasefile, phasenofilt):
-	phasefilt_components=phasefile.split('/');  # a list of strings
-	local_phasefilt_nogrd=phasefilt_components[-1].split('.')[0];  # something like 'phasefilt'
-	local_phasenofilt_nogrd=phasenofilt.split('/')[-1].split('.')[0];  # something like 'phase'
+
+def configure_singlefile(corrfile):
+	folder_components=corrfile.split('/');  # a list of strings
 	folder=''
-	for i in range(len(phasefilt_components)-1):
-		folder=folder+phasefilt_components[i];
+	for i in range(len(folder_components)-1):
+		folder=folder+folder_components[i];
 		folder=folder+'/'  # something like "intf_all/2015177_2016010/"
+	phasefilt=folder + 'phasefilt.grd';  # something like 'phasefilt'
+	phasenofilt=folder + 'phase.grd';  # something like 'phase'
+	phasefilt_full=folder+'phasefilt_full.grd';
+	phasenofilt_full=folder+'phase_full.grd';
 
 	# Check if we should copy the phase over into phase_full.grd based on file size. 
-	phase_infile=folder+local_phasefilt_nogrd+"_full.grd";
-	phase_nofilt_full=folder+local_phasenofilt_nogrd+"_full.grd"
-	phasesize = check_output("ls -lh "+folder+"phase.grd | awk \'{print $5}\'", shell=True);
-	corrsize  = check_output("ls -lh "+folder+"corr.grd | awk \'{print $5}\'", shell=True);
+	phasesize = check_output("ls -lh "+phasenofilt+" | awk \'{print $5}\'", shell=True);
+	corrsize  = check_output("ls -lh "+corrfile+" | awk \'{print $5}\'", shell=True);
 	if phasesize==corrsize:  # the phase.grd is not decimated. We should proceed to decimate. 
 		# Move phasefilt.grd --> phasefilt_full.grd; phase.grd --> phase_full.grd. 
 		print("Moving phase.grd into phase_full.grd before decimating");
-		call("mv "+phasefile+" "+phase_infile, shell=True);  # move phasefilt.grd into phasefilt_full.grd
-		call("mv "+phasenofilt+" "+phase_nofilt_full, shell=True);  # move phase.grd into phase_full.grd
+		call("mv "+phasefilt+" "+phasefilt_full, shell=True);  # move phasefilt.grd into phasefilt_full.grd
+		call("mv "+phasenofilt+" "+phasenofilt_full, shell=True);  # move phase.grd into phase_full.grd
+		computeflag=1;  # do the user-defined decimation based on correlation. 
+	else:
+		print("phase.grd and corr.grd are not the same size. No need to decimate. Skipping. ")
+		computeflag=0;  # do not do anything; the decimating has already been done. 
 
-	dec_phasefile= folder+"phase.grd";  # the output will be phase.grd (so that SNAPHU will unwrap it)
-	return [phase_infile, dec_phasefile];
+	dec_phasefile= folder+'phase.grd';  # the output will be phase.grd (so that SNAPHU will unwrap it)
+	return [phasenofilt_full, dec_phasefile, computeflag];
 
 def inputs(corrfile, phasefile):
 	[xc,yc,zc] = read_grd(corrfile);
