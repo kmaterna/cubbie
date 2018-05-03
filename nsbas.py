@@ -298,7 +298,7 @@ def geocode(ifile, directory):
 	# geocode: needs vel.grd, vel_ll.grd, vel_ll, and directory 
 	stem = ifile.split('/')[-1]  # format: vel.grd
 	stem = stem.split('.')[0]   # format: vel
-	call(['geocode_kzm.csh',stem+'.grd',stem+'_ll.grd',stem+"_ll",directory],shell=False);
+	call(['geocode_mod.csh',stem+'.grd',stem+'_ll.grd',stem+"_ll",directory],shell=False);
 	return;
 
 

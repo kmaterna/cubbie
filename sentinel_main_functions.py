@@ -322,7 +322,7 @@ def make_interferograms(config_params):
     for i,item in enumerate(intf_pairs):
         outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');        
     outfile.write("\n# Process the interferograms.\n\n")
-    outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_km.csh {} "+config_params.config_file+"'\n\n\n");
+    outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");
     outfile.close();
     print "Ready to call README_proc.txt."
     call("chmod +x README_proc.txt",shell=True);

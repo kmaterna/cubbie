@@ -10,7 +10,7 @@ endif
 
 if ($#argv != 4) then
 echo ""
-echo "Usage: geocode_kzm.csh vel.grd vel_ll.grd vel_ll directory"
+echo "Usage: geocode_mod.csh vel.grd vel_ll.grd vel_ll directory"
 echo "  geocode a grid file. Call this from the processing directory, and make sure topo/ has topo/trans.dat"
 echo "  vel.grd and vel_ll.grd LIVE IN directory."
 echo "  vel_ll is just the name for the kml file."
