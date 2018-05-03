@@ -94,7 +94,7 @@
       echo ""
       echo "SNAPHU.CSH - START"
       echo "threshold_snaphu: $threshold_snaphu"
-      snaphu_interp.csh $threshold_snaphu $defomax $region_cut
+      snaphu_interp_mod.csh $threshold_snaphu $defomax $region_cut
       echo "SNAPHU.CSH - END"
 
     else
