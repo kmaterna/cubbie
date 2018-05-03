@@ -40,8 +40,9 @@ endif
 #
 if (-e landmask_ra.grd) then
   if ($#argv == 3 ) then 
-    gmt grdsample landmask_ra.grd -R$3 `gmt grdinfo -I phase_patch.grd` -Glandmask_ra_patch.grd -T
+    gmt grdsample landmask_ra.grd `gmt grdinfo -I- phase_patch.grd` `gmt grdinfo -I phase_patch.grd` -Glandmask_ra_patch.grd -T
     # -T may be necessary to change pixel registration to grid registration. 
+    # Replaced -R$3 with `gmt grdinfo -I- phase_patch.grd` because it works better that way. 
   else 
     gmt grdsample landmask_ra.grd `gmt grdinfo -I phase_patch.grd` -Glandmask_ra_patch.grd
   endif
