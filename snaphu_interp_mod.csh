@@ -40,7 +40,8 @@ endif
 #
 if (-e landmask_ra.grd) then
   if ($#argv == 3 ) then 
-    gmt grdsample landmask_ra.grd -R$3 `gmt grdinfo -I phase_patch.grd` -Glandmask_ra_patch.grd
+    gmt grdsample landmask_ra.grd -R$3 `gmt grdinfo -I phase_patch.grd` -Glandmask_ra_patch.grd -T
+    # -T may be necessary to change pixel registration to grid registration. 
   else 
     gmt grdsample landmask_ra.grd `gmt grdinfo -I phase_patch.grd` -Glandmask_ra_patch.grd
   endif
@@ -84,7 +85,7 @@ endif
 #
 # convert to grd
 #
-gmt xyz2grd unwrap.out -ZTLf -r `gmt grdinfo -I- phase_patch.grd` `gmt grdinfo -I phase_patch.grd` -Gtmp.grd
+gmt xyz2grd unwrap.out -ZTLf `gmt grdinfo -I- phase_patch.grd` `gmt grdinfo -I phase_patch.grd` -Gtmp.grd  # removed -r from initial snaphu code
 gmt grdmath tmp.grd mask2_patch.grd MUL = tmp.grd
 #gmt grdmath tmp.grd mask_patch.grd MUL = tmp.grd
 #
