@@ -81,6 +81,7 @@ echo "Finished with proj_ra2ll.csh"
 
 gmt grdedit -D//"mm/yr"/1///"$PWD:t velocity"/"$remarked" $ofile
 
+cp $kmlfile.ps 2$kmlfile.ps
 grd2kml.csh $kmlfile defcolors.cpt
 
 echo "Cleaning up"

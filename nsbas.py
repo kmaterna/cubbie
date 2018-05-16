@@ -71,13 +71,14 @@ def compute(xdata, ydata, zdata_all, nsbas_good_num, dates, date_pairs, smoothin
 	number_of_datas=np.zeros([xdim, ydim]);
 	vel=np.zeros([xdim,ydim]);
 	[number_of_datas,zdim] = analyze_coherent_number(zdata_all);
-	#vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
+	vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
 	return [vel,number_of_datas,zdim];
 
 
 def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an SBAS matrix describing each image that's a real number (not nan). 
+	print("Analyzing the nsbas timeseries per pixel.")
 	[zdim, xdim, ydim] = np.shape(zdata)
 	vel = np.zeros([xdim, ydim]);
 	
@@ -85,7 +86,8 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_p
 		for j in range(ydim):
 			pixel_value = [zdata[k][i][j] for k in range(zdim)];  # slicing the values of phase for a pixel across the various interferograms
 			
-			if number_of_datas[i][j] > nsbas_good_num:  # If we have a pixel that will be analyzed: Do SBAS
+			if number_of_datas[i][j] >= nsbas_good_num:  # If we have a pixel that will be analyzed: Do SBAS
+				print("%d %d " % (i, j) )
 
 				vel[i][j] = do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength); 
 				# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
@@ -247,9 +249,9 @@ def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 	zread_copy=zread[:][:].copy();
 
 	# Make a plot
-	fig = plt.figure(figsize=(12,10));
-	ax1 = fig.add_axes([-0.5, 0.1, 1.5, 0.8]);
-	plt.imshow(zread_copy,aspect=0.3);
+	fig = plt.figure(figsize=(7,10));
+	ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
+	plt.imshow(zread_copy,aspect=1.2);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
@@ -261,6 +263,7 @@ def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 	cb.set_label(cblabel, size=16);
 	plt.savefig(filename);
 	plt.close();
+
 	return;
 
 
@@ -307,7 +310,8 @@ def geocode(ifile, directory):
 
 def do_nsbas(config_params):
 	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params);
-	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
-	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);
+	#[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
+	#[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
+	#outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);
+	geocode(out_dir+'/vel.grd',out_dir);
 

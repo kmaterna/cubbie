@@ -31,7 +31,7 @@ def read_config():
     # get options from config file
     config_file_orig=args.config;
     SAT=config.get('py-config','satellite')
-    wavelength=config.get('py-config','wavelength')
+    wavelength=config.getfloat('py-config','wavelength')
     startstage=config.getint('py-config','startstage')
     endstage=config.getint('py-config','endstage')    
     master=config.get('csh-config','master_image')
@@ -50,7 +50,7 @@ def read_config():
     ydec = config.get('csh-config','custom_ydec');
     ts_type=config.get('timeseries-config','ts_type')
     bypass=config.get('timeseries-config','bypass')
-    nsbas_min_intfs=config.get('timeseries-config','nsbas_min_intfs');
+    nsbas_min_intfs=config.getint('timeseries-config','nsbas_min_intfs');
 
     
     # print config options
@@ -345,7 +345,7 @@ def unwrapping(config_params):
 
 
     # Decimate by choosing max-coherence pixel. 
-    #dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec);
+    dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec);
 
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
