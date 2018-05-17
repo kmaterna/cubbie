@@ -1,0 +1,157 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+import sys
+import dec_corrbased
+
+
+
+def how_many_nans(filename):
+	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+	nan_pixels = np.count_nonzero(np.isnan(zdata));
+	total_pixels=np.shape(zdata)[0]*np.shape(zdata)[1];
+	print("For file %s: %d pixels of %d are NaNs (%f percent)." % (filename, nan_pixels, total_pixels, 100*float(nan_pixels/float(total_pixels))) )
+	return [nan_pixels, total_pixels];
+
+def number_below_value(filename, value):
+	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+	count=0;
+	for i in range(len(ydata)):
+		for j in range(len(xdata)):
+			if zdata[i][j] < value:
+				count=count+1;
+	total_pixels=np.shape(zdata)[0]*np.shape(zdata)[1];
+	print("For file %s: %d pixels of %d are below %f (%f percent)." % (filename, count, total_pixels, value, 100*float(count/float(total_pixels))) )
+	return;
+
+def plot_grid_file(filename, figname):
+	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+	plt.figure();
+	plt.imshow(zdata);
+	plt.savefig(figname+'.eps');
+	return;
+
+def plot_grid_data(griddata, figname):
+	plt.figure();
+	plt.imshow(griddata);
+	plt.colorbar();
+	plt.savefig(figname+'.eps');
+	return;
+
+
+def process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, value):
+	# c means correlation, p means phase
+	xdec=int(xdec);
+	ydec=int(ydec);
+	number_of_xboxes=int(np.ceil(len(xc)/xdec));
+	number_of_yboxes=int(np.ceil(len(yc)/ydec));
+	newx    =np.zeros([number_of_xboxes]);
+	newy    =np.zeros([number_of_yboxes]);
+	numabove=np.zeros([number_of_xboxes, number_of_yboxes]);  # the new array
+	numbelow=np.zeros([number_of_xboxes, number_of_yboxes]);  # the new array
+
+	for i in range(number_of_xboxes):
+		for j in range(number_of_yboxes):
+
+			# Go through each box of (xdec, ydec) pixels and find the max correlated pixel. 
+			min_x=i*xdec;  # start counting at 0
+			max_x=min(i*xdec+xdec,len(xc));  # end counting at 0+xdec, or the end of the array
+			min_y=j*ydec;
+			max_y=min(j*ydec+ydec,len(yc));
+			newx[i]=np.median(xc[min_x:max_x]);
+			newy[j]=np.median(yc[min_y:max_y]);			
+
+			myzc = zc[min_y:max_y,min_x:max_x];  # correlation
+			#myzp = zp[min_y:max_y,min_x:max_x];  # phase.     
+			# Numpy note: zp[0:2][0:2] is not the same thing as zp[0:2,0:2];
+			
+
+			# The math itself: 
+			# Get the number of boxes above and below the cutoff value inside of the box. 
+
+			number_of_nans = np.count_nonzero(np.isnan(myzc));
+			if (xdec*ydec==number_of_nans):
+				number_above=np.nan;
+				number_below=np.nan;
+			else:
+				number_above=0;
+				number_below=0;
+				for n in range(xdec):
+					for m in range(ydec):
+						if myzc[m][n]>=value:
+							number_above=number_above+1;
+						else:
+							number_below=number_below+1;  # below value, or nan
+			numabove[i][j] = number_above;
+			numbelow[i][j] = number_below;
+
+
+			# try:
+			# 	mymax=np.nanargmax(myzc);
+			# except ValueError:
+			# 	newphase[i][j]=np.nan;
+			# 	newcorr[i][j]=0.0;
+			# else:
+			# 	indices=np.unravel_index(mymax,myzc.shape)
+			# 	newphase[i][j]=myzp[indices[0]][indices[1]];  # the indices of the maximum correlation.
+			# 	newcorr[i][j] =myzc[indices[0]][indices[1]];
+			# 	# newphase[i][j]=myzp[0][0]; In case we want to see random decimation
+
+	numabove=numabove.T;
+	numbelow=numbelow.T;
+
+	return [newx, newy, numabove, numbelow];
+
+
+
+
+
+
+
+xdec=6
+ydec=10
+
+# Step 1: Figure out how many nan's are in a netcdf file. 
+# And how many correlation values are below a certain value. 
+# folder='2017226_2017250'
+folder='2017094_2017106'
+
+
+# filename='intf_all/'+folder+'/phasefilt.grd'
+# [nanpixels, totalpixels] = how_many_nans(filename);
+# plot_grid_file(filename,'phasefilt');
+# filename='intf_all/'+folder+'/phasefilt_full.grd'
+# [nanpixels, totalpixels] = how_many_nans(filename);
+# plot_grid_file(filename,'phasefilt_full');
+# filename='intf_all/'+folder+'/unwrap.grd'
+# [nanpixels, totalpixels] = how_many_nans(filename);
+
+# filename='intf_all/'+folder+'/corr.grd';
+# number_below_value(filename, 0.1);
+#filename='intf_all/'+folder+'/corr_full.grd';
+# number_below_value(filename, 0.1);
+#[nanpixels, totalpixels] = how_many_nans(filename);
+
+
+# Step 2: Figure out how many pixels in each box are above 0.1
+# Figure out how many pixels in each box are below 0.1. 
+filename='intf_all/'+folder+'/corr_full.grd';
+[xc, yc, zc]=dec_corrbased.read_grd(filename);
+filename='intf_all/'+folder+'/phasefilt_full.grd';
+[xp, yp, zp]=dec_corrbased.read_grd(filename);
+
+
+
+
+[newx, newy, numabove, numbelow] = process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, 0.1);
+plot_grid_data(numabove, 'numabove');
+plot_grid_data(numbelow, 'numbelow');
+
+counter=0;
+tolerance=10;
+for i in range(len(newx)):
+	for j in range(len(newy)):
+		if numbelow[j][i]>=(xdec*ydec)-tolerance:
+			counter=counter+1;
+
+print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );
