@@ -36,11 +36,11 @@ def perform_decimation_one_file(xdec, ydec, corrfile):
 	else:
 		[xc, yc, zc, xp, yp, zp] = inputs(corr_full, phase_infile);
 		[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
-		[xm, ym, zm] = read_grd(maskfile_full);
+		#[xm, ym, zm] = read_grd(maskfile_full);
 		#[xstar, ystar, maskstar]=compute_maskfile(xm, ym, zm, xdec, ydec);
 		#produce_output_netcdf(xstar, ystar, maskstar, 'mask',maskoutfile);  # commented for specific experiment
 		produce_output_netcdf(xstar, ystar, phasestar,'radians', outfile);
-		produce_output_netcdf(xstar, ystar, corrstar, 'correlation', corroutfile);
+		#produce_output_netcdf(xstar, ystar, corrstar, 'correlation', corroutfile);
 	return;
 
 # This is assuming we call from the processing directory

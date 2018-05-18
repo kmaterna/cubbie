@@ -93,6 +93,38 @@ def process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, value):
 
 
 
+def develop_mean_phase(phase_array):
+	# This function takes an array of phase values, and determines the mean phase value (sensitive to cycle slips)
+	# It uses the "mean of circular quantities" technique. 
+	xarray= [np.cos(i) for i in phase_array];
+	yarray= [np.sin(i) for i in phase_array];
+	xmean=np.mean(xarray);
+	ymean=np.mean(yarray);
+	tolerance=0.00001;
+	if abs(xmean)<tolerance and abs(ymean)<tolerance:
+		print("Error! The mean phase is undefined!");
+		sys.exit(0);
+	else:
+		meanphase=np.arctan2(ymean,xmean);
+		# Mean phase already wrapped into the -pi to pi range. 
+	return meanphase;
+
+
+def develop_median_phase(phase_array):
+	# This function takes an array of phase values, and determines the median phase value (sensitive to cycle slips)
+	# It uses the "median of circular quantities" technique. 
+	xarray= [np.cos(i) for i in phase_array];
+	yarray= [np.sin(i) for i in phase_array];
+	xmedian=np.median(xarray);
+	ymedian=np.median(yarray);
+	tolerance=0.00001;
+	if abs(xmedian)<tolerance and abs(ymedian)<tolerance:
+		print("Error! The median phase is undefined!");
+		sys.exit(0);
+	else:
+		medianphase=np.arctan2(ymedian,xmedian);
+	return medianphase;
+
 
 
 
@@ -136,11 +168,11 @@ folder='2017226_2017250'
 # plot_grid_data(numabove, 'numabove');
 # plot_grid_data(numbelow, 'numbelow');
 
-
-plot_grid_file('intf_all/'+folder+'/mask_full.grd','mask_full');
-plot_grid_file('intf_all/'+folder+'/mask.grd','mask_decimated');
-[nanpixels, totalpixels] = how_many_nans('intf_all/'+folder+'/mask_full.grd');
-[nanpixels, totalpixels] = how_many_nans('intf_all/'+folder+'/mask.grd');
+# Just investigate a couple of grid files to look at what's inside. 
+# plot_grid_file('intf_all/'+folder+'/mask_full.grd','mask_full');
+# plot_grid_file('intf_all/'+folder+'/mask.grd','mask_decimated');
+# [nanpixels, totalpixels] = how_many_nans('intf_all/'+folder+'/mask_full.grd');
+# [nanpixels, totalpixels] = how_many_nans('intf_all/'+folder+'/mask.grd');
 
 #How many pixels are decorrelated? 
 # counter=0;
@@ -151,3 +183,13 @@ plot_grid_file('intf_all/'+folder+'/mask.grd','mask_decimated');
 # 			counter=counter+1;
 
 # print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );
+
+
+phasearray=[np.pi, np.pi/2, -np.pi/2];
+
+meanphase=develop_mean_phase(phasearray);
+print(meanphase);
+
+meanphase=develop_median_phase(phasearray);
+print(meanphase);
+
