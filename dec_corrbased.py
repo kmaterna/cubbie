@@ -12,7 +12,11 @@ import nsbas
 # This script does some renaming: 
 # phase.grd --> phase_full.grd
 # phasefilt.grd --> phasefilt_full.grd
-# decimated output --> phase.grd
+# corr.grd --> corr.grd
+# mask.grd --> mask_full.grd
+# decimated output --> phasefilt.grd
+# decimated corr --> corr.grd
+# decimated mask --> mask.grd
 
 def decimate_main_function(xdec, ydec):
 	print("Decimating phasefilt.grd files based on maximum correlation pixels. ")
@@ -33,8 +37,8 @@ def perform_decimation_one_file(xdec, ydec, corrfile):
 		[xc, yc, zc, xp, yp, zp] = inputs(corr_full, phase_infile);
 		[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
 		[xm, ym, zm] = read_grd(maskfile_full);
-		[xstar, ystar, maskstar]=compute_maskfile(xm, ym, zm, xdec, ydec);
-		produce_output_netcdf(xstar, ystar, maskstar, 'mask',maskoutfile);
+		#[xstar, ystar, maskstar]=compute_maskfile(xm, ym, zm, xdec, ydec);
+		#produce_output_netcdf(xstar, ystar, maskstar, 'mask',maskoutfile);  # commented for specific experiment
 		produce_output_netcdf(xstar, ystar, phasestar,'radians', outfile);
 		produce_output_netcdf(xstar, ystar, corrstar, 'correlation', corroutfile);
 	return;
@@ -69,6 +73,7 @@ def configure_singlefile(corrfile):
 	if phasesize==ampsize:  
 	# the phase.grd is not decimated or the decimated file has been deleted. We should proceed to decimate. 
 		# Move phasefilt.grd --> phasefilt_full.grd; phase.grd --> phase_full.grd. 
+		# This will not be satisfied for mid-stream starts, since phase.grd has already been moved to phase_full.grd
 		print("Moving phase.grd into phase_full.grd before decimating");
 		if phasesize==ampsize:
 			call("mv "+phasefilt+" "+phasefilt_full, shell=True);  # move phasefilt.grd into phasefilt_full.grd
@@ -80,12 +85,13 @@ def configure_singlefile(corrfile):
 		computeflag=1;  # do the user-defined decimation based on correlation. 
 	else:
 		print("phase.grd and amp.grd are not the same size. No need to decimate. Skipping. ")
-		computeflag=0;  # do not do anything; the decimating has already been done. 
+		computeflag=1;  # do not do anything; the decimating has already been done. 
+		# Set to 1 for specific experiment. 
 
-	dec_phasefile= folder+'phasefilt.grd';  # the output will be phase.grd (so that SNAPHU will unwrap it)
+	dec_phasefile= folder+'phasefilt.grd';  # the output will be phasefilt.grd (so that SNAPHU will unwrap it)
 	corroutfile=folder+'corr.grd';
 	maskoutfile=folder+'mask.grd';
-	phase_infile=folder+'phasefilt.grd';
+	phase_infile=folder+'phasefilt_full.grd';  # what file are we actually reading and decimating?  
 	return [phasenofilt_full, dec_phasefile, corr_full, corroutfile, maskfile_full, maskoutfile, computeflag];
 
 
@@ -151,7 +157,6 @@ def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec):
 	return [newx, newy, newphase, newcorr];
 
 
-
 def compute_maskfile(xm, ym, zm, xdec, ydec):
 	xdec=int(xdec);
 	ydec=int(ydec);
@@ -187,7 +192,7 @@ def compute_maskfile(xm, ym, zm, xdec, ydec):
 	return [newx, newy, newmask];
 
 
-
+# -------------- OUTPUTS ------------- # 
 def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 	# # Write the netcdf velocity grid file.  
 	f=netcdf.netcdf_file(netcdfname,'w');
