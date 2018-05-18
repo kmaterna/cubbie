@@ -28,6 +28,7 @@ def plot_grid_file(filename, figname):
 	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
 	plt.figure();
 	plt.imshow(zdata);
+	plt.colorbar();
 	plt.savefig(figname+'.eps');
 	return;
 
@@ -85,18 +86,6 @@ def process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, value):
 			numabove[i][j] = number_above;
 			numbelow[i][j] = number_below;
 
-
-			# try:
-			# 	mymax=np.nanargmax(myzc);
-			# except ValueError:
-			# 	newphase[i][j]=np.nan;
-			# 	newcorr[i][j]=0.0;
-			# else:
-			# 	indices=np.unravel_index(mymax,myzc.shape)
-			# 	newphase[i][j]=myzp[indices[0]][indices[1]];  # the indices of the maximum correlation.
-			# 	newcorr[i][j] =myzc[indices[0]][indices[1]];
-			# 	# newphase[i][j]=myzp[0][0]; In case we want to see random decimation
-
 	numabove=numabove.T;
 	numbelow=numbelow.T;
 
@@ -113,8 +102,8 @@ ydec=10
 
 # Step 1: Figure out how many nan's are in a netcdf file. 
 # And how many correlation values are below a certain value. 
-# folder='2017226_2017250'
-folder='2017094_2017106'
+folder='2017226_2017250'
+# folder='2017094_2017106'
 
 
 # filename='intf_all/'+folder+'/phasefilt.grd'
@@ -135,23 +124,30 @@ folder='2017094_2017106'
 
 # Step 2: Figure out how many pixels in each box are above 0.1
 # Figure out how many pixels in each box are below 0.1. 
-filename='intf_all/'+folder+'/corr_full.grd';
-[xc, yc, zc]=dec_corrbased.read_grd(filename);
-filename='intf_all/'+folder+'/phasefilt_full.grd';
-[xp, yp, zp]=dec_corrbased.read_grd(filename);
+# filename='intf_all/'+folder+'/corr_full.grd';
+# [xc, yc, zc]=dec_corrbased.read_grd(filename);
+# filename='intf_all/'+folder+'/phasefilt_full.grd';
+# [xp, yp, zp]=dec_corrbased.read_grd(filename);
 
 
 
 
-[newx, newy, numabove, numbelow] = process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, 0.1);
-plot_grid_data(numabove, 'numabove');
-plot_grid_data(numbelow, 'numbelow');
+# [newx, newy, numabove, numbelow] = process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, 0.1);
+# plot_grid_data(numabove, 'numabove');
+# plot_grid_data(numbelow, 'numbelow');
 
-counter=0;
-tolerance=10;
-for i in range(len(newx)):
-	for j in range(len(newy)):
-		if numbelow[j][i]>=(xdec*ydec)-tolerance:
-			counter=counter+1;
 
-print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );
+plot_grid_file('intf_all/'+folder+'/mask_full.grd','mask_full');
+plot_grid_file('intf_all/'+folder+'/mask.grd','mask_decimated');
+[nanpixels, totalpixels] = how_many_nans('intf_all/'+folder+'/mask_full.grd');
+[nanpixels, totalpixels] = how_many_nans('intf_all/'+folder+'/mask.grd');
+
+#How many pixels are decorrelated? 
+# counter=0;
+# tolerance=0;
+# for i in range(len(newx)):
+# 	for j in range(len(newy)):
+# 		if numbelow[j][i]>=(xdec*ydec)-tolerance:
+# 			counter=counter+1;
+
+# print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );

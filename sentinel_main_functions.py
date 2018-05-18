@@ -347,6 +347,7 @@ def unwrapping(config_params):
     # Decimate by choosing max-coherence pixel. 
     dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec);
 
+    sys.exit(0);
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
     sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);

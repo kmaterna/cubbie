@@ -1,7 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 import scipy.io.netcdf as netcdf
-import glob
+import glob, sys
 import os.path
 from subprocess import call, check_output
 import nsbas
@@ -11,13 +11,14 @@ import nsbas
 # In this script, we take the one pixel with highest coherence in each box. 
 # This script does some renaming: 
 # phase.grd --> phase_full.grd
-# pphasefilt.grd --> phasefilt_full.grd
+# phasefilt.grd --> phasefilt_full.grd
 # decimated output --> phase.grd
 
 def decimate_main_function(xdec, ydec):
 	print("Decimating phasefilt.grd files based on maximum correlation pixels. ")
 	[corrfiles] = configure_manyfiles();
 	for i in range(len(corrfiles)):
+		print(corrfiles[i]);
 		perform_decimation_one_file(xdec, ydec, corrfiles[i]);
 	return;
 
@@ -27,14 +28,15 @@ def perform_decimation_one_file(xdec, ydec, corrfile):
 	print("Decimating phasefilt.grd based on "+corrfile);
 	[phase_infile, outfile, corr_full, corroutfile, maskfile_full, maskoutfile, computeflag]=configure_singlefile(corrfile);
 	if computeflag==0:
-		[xdata, ydata, zdata] = read_grd(maskfile_full);
-		[xstar, ystar, maskstar]=compute_maskfile(xdata, ydata, zdata, xdec, ydec);
-		produce_output_netcdf(xstar, ystar, maskstar, 'mask',maskoutfile);
 		return;
-	[xc, yc, zc, xp, yp, zp] = inputs(corr_full, phase_infile);
-	[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
-	produce_output_netcdf(xstar, ystar, phasestar,'radians', outfile);
-	produce_output_netcdf(xstar, ystar, corrstar, 'correlation', corroutfile);
+	else:
+		[xc, yc, zc, xp, yp, zp] = inputs(corr_full, phase_infile);
+		[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
+		[xm, ym, zm] = read_grd(maskfile_full);
+		[xstar, ystar, maskstar]=compute_maskfile(xm, ym, zm, xdec, ydec);
+		produce_output_netcdf(xstar, ystar, maskstar, 'mask',maskoutfile);
+		produce_output_netcdf(xstar, ystar, phasestar,'radians', outfile);
+		produce_output_netcdf(xstar, ystar, corrstar, 'correlation', corroutfile);
 	return;
 
 # This is assuming we call from the processing directory
@@ -59,7 +61,6 @@ def configure_singlefile(corrfile):
 	control_file=folder+'amp.grd';  # This is a full-size file that NEVER CHANGES. 
 
 
-
 	# Check if we should copy the phase over into phase_full.grd based on file size. 
 	phasesize = check_output("ls -lh "+phasenofilt+" | awk \'{print $5}\'", shell=True);
 	corrsize  = check_output("ls -lh "+corrfile+" | awk \'{print $5}\'", shell=True);
@@ -74,22 +75,22 @@ def configure_singlefile(corrfile):
 			call("mv "+phasenofilt+" "+phasenofilt_full, shell=True);  # move phase.grd into phase_full.grd
 		if corrsize == ampsize:
 			call("mv "+corrfile+" "+corr_full, shell=True);  # move phase.grd into phase_full.grd
-
-		computeflag=1;  # do the user-defined decimation based on correlation. 
-	else:
 		if masksize == ampsize:
 			call("mv "+maskfile+" "+maskfile_full, shell=True);  # move phase.grd into phase_full.grd
+		computeflag=1;  # do the user-defined decimation based on correlation. 
+	else:
 		print("phase.grd and amp.grd are not the same size. No need to decimate. Skipping. ")
 		computeflag=0;  # do not do anything; the decimating has already been done. 
 
 	dec_phasefile= folder+'phasefilt.grd';  # the output will be phase.grd (so that SNAPHU will unwrap it)
 	corroutfile=folder+'corr.grd';
 	maskoutfile=folder+'mask.grd';
+	phase_infile=folder+'phasefilt.grd';
 	return [phasenofilt_full, dec_phasefile, corr_full, corroutfile, maskfile_full, maskoutfile, computeflag];
 
 
 
-
+# --------------- INPUTS --------------- # 
 def inputs(corrfile, phasefile):
 	[xc,yc,zc] = read_grd(corrfile);
 	[xp,yp,zp] = read_grd(phasefile);
@@ -104,6 +105,8 @@ def read_grd(filename):
 	zdata=zdata0.copy();
 	return [xdata, ydata, zdata]; 
 
+
+# --------------- COMPUTE --------------- # 
 def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec):
 	xdec=int(xdec);
 	ydec=int(ydec);
@@ -175,11 +178,10 @@ def compute_maskfile(xm, ym, zm, xdec, ydec):
 			try:
 				mymax=np.nanargmax(myzm);
 			except ValueError:
-				newmask[i][j]=0.0;
+				newmask[i][j]=np.nan;
 			else:
 				indices=np.unravel_index(mymax,myzm.shape)
 				newmask[i][j] =myzm[indices[0]][indices[1]];
-
 	newmask=newmask.T;
 
 	return [newx, newy, newmask];
