@@ -134,13 +134,13 @@ ydec=10
 
 # Step 1: Figure out how many nan's are in a netcdf file. 
 # And how many correlation values are below a certain value. 
-folder='2017226_2017250'
+folder='2018005_2018017'
 # folder='2017094_2017106'
 
 
-# filename='intf_all/'+folder+'/phasefilt.grd'
-# [nanpixels, totalpixels] = how_many_nans(filename);
-# plot_grid_file(filename,'phasefilt');
+filename='intf_all/'+folder+'/phasefilt.grd'
+[nanpixels, totalpixels] = how_many_nans(filename);
+plot_grid_file(filename,'phasefilt');
 # filename='intf_all/'+folder+'/phasefilt_full.grd'
 # [nanpixels, totalpixels] = how_many_nans(filename);
 # plot_grid_file(filename,'phasefilt_full');
@@ -149,8 +149,8 @@ folder='2017226_2017250'
 
 # filename='intf_all/'+folder+'/corr.grd';
 # number_below_value(filename, 0.1);
-#filename='intf_all/'+folder+'/corr_full.grd';
-# number_below_value(filename, 0.1);
+filename='intf_all/'+folder+'/corr_full.grd';
+number_below_value(filename, 0.1);
 #[nanpixels, totalpixels] = how_many_nans(filename);
 
 
@@ -183,13 +183,4 @@ folder='2017226_2017250'
 # 			counter=counter+1;
 
 # print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );
-
-
-phasearray=[np.pi, np.pi/2, -np.pi/2];
-
-meanphase=develop_mean_phase(phasearray);
-print(meanphase);
-
-meanphase=develop_median_phase(phasearray);
-print(meanphase);
 

@@ -7,7 +7,7 @@ import analyze_coherence
 import dec_corrbased
 import nsbas
 
-Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs']);
+Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs','threshold_snaphu']);
 
 def read_config():
     ################################################
@@ -51,6 +51,7 @@ def read_config():
     ts_type=config.get('timeseries-config','ts_type')
     bypass=config.get('timeseries-config','bypass')
     nsbas_min_intfs=config.getint('timeseries-config','nsbas_min_intfs');
+    threshold_snaphu=config.getfloat('csh-config','threshold_snaphu');
 
     
     # print config options
@@ -103,7 +104,7 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs, threshold_snaphu=threshold_snaphu);
 
     return config_params; 
 
@@ -345,9 +346,8 @@ def unwrapping(config_params):
 
 
     # Decimate by choosing max-coherence pixel. 
-    dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec);
+    dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec, config_params.threshold_snaphu);
 
-    sys.exit(0);
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
     sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);

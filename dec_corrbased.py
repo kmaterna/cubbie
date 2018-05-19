@@ -18,24 +18,24 @@ import nsbas
 # decimated corr --> corr.grd
 # decimated mask --> mask.grd
 
-def decimate_main_function(xdec, ydec):
+def decimate_main_function(xdec, ydec, threshold):
 	print("Decimating phasefilt.grd files based on maximum correlation pixels. ")
 	[corrfiles] = configure_manyfiles();
 	for i in range(len(corrfiles)):
 		print(corrfiles[i]);
-		perform_decimation_one_file(xdec, ydec, corrfiles[i]);
+		perform_decimation_one_file(xdec, ydec, corrfiles[i], threshold);
 	return;
 
 
 # This is the main function for a single file (preserving the functionality of working with a single file, for later use)
-def perform_decimation_one_file(xdec, ydec, corrfile):
+def perform_decimation_one_file(xdec, ydec, corrfile, threshold):
 	print("Decimating phasefilt.grd based on "+corrfile);
 	[phase_infile, outfile, corr_full, corroutfile, maskfile_full, maskoutfile, computeflag]=configure_singlefile(corrfile);
 	if computeflag==0:
 		return;
 	else:
 		[xc, yc, zc, xp, yp, zp] = inputs(corr_full, phase_infile);
-		[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec);
+		[xstar, ystar, phasestar, corrstar] = process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec, threshold);
 		#[xm, ym, zm] = read_grd(maskfile_full);
 		#[xstar, ystar, maskstar]=compute_maskfile(xm, ym, zm, xdec, ydec);
 		#produce_output_netcdf(xstar, ystar, maskstar, 'mask',maskoutfile);  # commented for specific experiment
@@ -113,7 +113,7 @@ def read_grd(filename):
 
 
 # --------------- COMPUTE --------------- # 
-def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec):
+def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec, threshold):
 	xdec=int(xdec);
 	ydec=int(ydec);
 	number_of_xboxes=int(np.ceil(len(xc)/xdec));
@@ -139,17 +139,29 @@ def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec):
 			myzp = zp[min_y:max_y,min_x:max_x];  # phase.     
 			# Numpy note: zp[0:2][0:2] is not the same thing as zp[0:2,0:2];
 			
-			# The math itself: find the maximum correlation and take the corresponding phase.
-			try:
-				mymax=np.nanargmax(myzc);
-			except ValueError:
+			number_of_acceptable_coherences=30;  # THIS IS A PARAMETER VALUE
+			count_above_coherence = 0;
+			for n in range(np.shape(myzc)[0]):
+				for m in range(np.shape(myzc)[1]):
+					if myzc[n][m]>=threshold:
+						count_above_coherence=count_above_coherence+1;
+
+			if count_above_coherence<number_of_acceptable_coherences:  # if we don't have enough coherent pixels in the box:
 				newphase[i][j]=np.nan;
 				newcorr[i][j]=0.0;
 			else:
-				indices=np.unravel_index(mymax,myzc.shape)
-				newphase[i][j]=myzp[indices[0]][indices[1]];  # the indices of the maximum correlation.
-				newcorr[i][j] =myzc[indices[0]][indices[1]];
-				# newphase[i][j]=myzp[0][0]; In case we want to see random decimation
+
+				# The math itself: find the maximum correlation and take the corresponding phase.
+				try:
+					mymax=np.nanargmax(myzc);
+				except ValueError:
+					newphase[i][j]=np.nan;
+					newcorr[i][j]=0.0;
+				else:
+					indices=np.unravel_index(mymax,myzc.shape)
+					newphase[i][j]=myzp[indices[0]][indices[1]];  # the indices of the maximum correlation.
+					newcorr[i][j] =myzc[indices[0]][indices[1]];
+					# newphase[i][j]=myzp[0][0]; In case we want to see random decimation
 
 	newphase=newphase.T;
 	newcorr=newcorr.T;

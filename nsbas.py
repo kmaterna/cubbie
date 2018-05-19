@@ -310,8 +310,8 @@ def geocode(ifile, directory):
 
 def do_nsbas(config_params):
 	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params);
-	#[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	#[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
-	#outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);
+	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
+	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
+	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);
 	geocode(out_dir+'/vel.grd',out_dir);
 
