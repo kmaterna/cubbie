@@ -136,21 +136,26 @@ ydec=10
 # And how many correlation values are below a certain value. 
 folder='2018005_2018017'
 # folder='2017094_2017106'
-
+folder='2016268_2016292'
 
 filename='intf_all/'+folder+'/phasefilt.grd'
 [nanpixels, totalpixels] = how_many_nans(filename);
 plot_grid_file(filename,'phasefilt');
+
+filename='intf_all/'+folder+'/unwrap.grd'
+[nanpixels, totalpixels] = how_many_nans(filename);
+plot_grid_file(filename,'unwrap');
 # filename='intf_all/'+folder+'/phasefilt_full.grd'
 # [nanpixels, totalpixels] = how_many_nans(filename);
 # plot_grid_file(filename,'phasefilt_full');
 # filename='intf_all/'+folder+'/unwrap.grd'
 # [nanpixels, totalpixels] = how_many_nans(filename);
 
+# Investigate coherence
 # filename='intf_all/'+folder+'/corr.grd';
 # number_below_value(filename, 0.1);
-filename='intf_all/'+folder+'/corr_full.grd';
-number_below_value(filename, 0.1);
+# filename='intf_all/'+folder+'/corr_full.grd';
+# number_below_value(filename, 0.1);
 #[nanpixels, totalpixels] = how_many_nans(filename);
 
 
