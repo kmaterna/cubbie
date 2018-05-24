@@ -110,6 +110,11 @@ if (-e mask_def.grd) then
   gmt grdmath unwrap.grd mask_def_patch.grd MUL = tmp.grd -V
   mv tmp.grd unwrap.grd
 endif
+
+# ##### Added by KZM to avoid pixels with NaNs in phasefilt.grd:
+# OR masks the NaNs in grid B with NaNs in the output. 
+gmt grdmath unwrap.grd phasefilt.grd OR = unwrap.grd
+
 #
 #  plot the unwrapped phase
 #

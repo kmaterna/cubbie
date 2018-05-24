@@ -134,13 +134,15 @@ ydec=10
 
 # Step 1: Figure out how many nan's are in a netcdf file. 
 # And how many correlation values are below a certain value. 
-folder='2018005_2018017'
+folder='2018017_2018029'
 # folder='2017094_2017106'
-folder='2016268_2016292'
+# folder='2016268_2016292'
 
 filename='intf_all/'+folder+'/phasefilt.grd'
 [nanpixels, totalpixels] = how_many_nans(filename);
 plot_grid_file(filename,'phasefilt');
+
+
 
 filename='intf_all/'+folder+'/unwrap.grd'
 [nanpixels, totalpixels] = how_many_nans(filename);

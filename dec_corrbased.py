@@ -139,7 +139,7 @@ def process_by_correlation(xc, yc, zc, xp, yp, zp, xdec, ydec, threshold):
 			myzp = zp[min_y:max_y,min_x:max_x];  # phase.     
 			# Numpy note: zp[0:2][0:2] is not the same thing as zp[0:2,0:2];
 			
-			number_of_acceptable_coherences=58;  # THIS IS A PARAMETER VALUE
+			number_of_acceptable_coherences=20;  # THIS IS A PARAMETER VALUE
 			count_above_coherence = 0;
 			for n in range(np.shape(myzc)[0]):
 				for m in range(np.shape(myzc)[1]):
