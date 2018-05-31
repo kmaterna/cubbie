@@ -86,7 +86,7 @@ endif
 #
 # convert to grd
 #
-gmt xyz2grd unwrap.out -ZTLf `gmt grdinfo -I- phase_patch.grd` `gmt grdinfo -I phase_patch.grd` -Gtmp.grd  # removed -r from initial snaphu code
+gmt xyz2grd unwrap.out -ZTLf `gmt grdinfo -I- phase_patch.grd` `gmt grdinfo -I phase_patch.grd` -Gtmp.grd  # KZM: I removed -r from initial snaphu code because python and gmtsar use different grid/cell registration schemes. 
 gmt grdmath tmp.grd mask2_patch.grd MUL = tmp.grd
 #gmt grdmath tmp.grd mask_patch.grd MUL = tmp.grd
 #

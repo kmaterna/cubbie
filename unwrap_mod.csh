@@ -75,7 +75,7 @@
     cd $ref_id"_"$rep_id
 
     if ($region_cut == "") then
-      set region_cut = `gmt grdinfo phasefilt_full.grd -I- | cut -c3-20`
+      set region_cut = `gmt grdinfo phasefilt.grd -I- | cut -c3-20`
       echo $region_cut
     endif
     
@@ -94,7 +94,7 @@
       echo ""
       echo "SNAPHU.CSH - START"
       echo "threshold_snaphu: $threshold_snaphu"
-      snaphu_interp_mod.csh $threshold_snaphu $defomax $region_cut
+      snaphu_interp.csh $threshold_snaphu $defomax $region_cut  # if you've done writing of grid files in python, use snaphu_interp_mod.csh
       echo "SNAPHU.CSH - END"
 
     else

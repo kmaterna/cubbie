@@ -346,7 +346,7 @@ def unwrapping(config_params):
 
 
     # Decimate by choosing max-coherence pixel. 
-    dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec, config_params.threshold_snaphu);
+    #dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec, config_params.threshold_snaphu);
 
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
