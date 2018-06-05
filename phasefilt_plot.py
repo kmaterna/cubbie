@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt 
 import numpy as np
-import scipy.io.netcdf as netcdf
 import glob as glob
-
+import netcdf_read_write
 
 
 # ------------- CONFIGURE ------------ # 
@@ -17,28 +16,16 @@ def configure():
 
 # ------------- INPUTS ------------ # 
 def inputs(file_names):
-	[xdata,ydata] = read_grd_xy(file_names[0]);
+	[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
 	data_all=[];
 	for ifile in file_names:  # this happens to be in date order on my mac
-		data = read_grd(ifile);
+		data = netcdf_read_write.read_grd(ifile);
 		data_all.append(data);
 	date_pairs=[];
 	for name in file_names:
 		pairname=name.split('/')[-1][0:15];
 		date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
 	return [xdata, ydata, data_all, date_pairs];
-
-def read_grd(filename):
-	data0 = netcdf.netcdf_file(filename,'r').variables['z'][::-1];
-	data=data0.copy();
-	return data;
-def read_grd_xy(filename):
-	xdata0 = netcdf.netcdf_file(filename,'r').variables['x'][::-1];
-	ydata0 = netcdf.netcdf_file(filename,'r').variables['y'][::-1];
-	xdata=xdata0.copy();
-	ydata=ydata0.copy();
-	return [xdata, ydata]; 
-
 
 def make_plots(xdata,ydata,data_all,date_pairs):
 	num_plots_x=4;

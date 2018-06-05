@@ -6,7 +6,8 @@ import scipy.io.netcdf as netcdf
 import collections
 import glob, sys, math
 import datetime as dt 
-from subprocess import call, check_output
+from subprocess import call
+import netcdf_read_write
 
 
 # ------------- CONFIGURE ------------ # 
@@ -32,10 +33,10 @@ def configure(config_params):
 
 # ------------- INPUTS ------------ # 
 def inputs(file_names):
-	[xdata,ydata] = read_grd_xy(file_names[0]);
+	[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
 	data_all=[];
 	for ifile in file_names:  # this happens to be in date order on my mac
-		data = read_grd(ifile);
+		data = netcdf_read_write.read_grd(ifile);
 		data_all.append(data);
 	date_pairs=[];
 	dates=[];
@@ -49,18 +50,6 @@ def inputs(file_names):
 	dates=sorted(dates);
 	print(dates);
 	return [xdata, ydata, data_all, dates, date_pairs];
-
-def read_grd(filename):
-	data0 = netcdf.netcdf_file(filename,'r').variables['z'][::-1];
-	data=data0.copy();
-	return data;
-def read_grd_xy(filename):
-	xdata0 = netcdf.netcdf_file(filename,'r').variables['x'][::-1];
-	ydata0 = netcdf.netcdf_file(filename,'r').variables['y'][::-1];
-	xdata=xdata0.copy();
-	ydata=ydata0.copy();
-	return [xdata, ydata]; 
-
 
 
 
@@ -208,36 +197,18 @@ def analyze_coherent_number(zdata):
 # ------------ COMPUTE ------------ #
 def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	
-	produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'/number_of_datas.grd');
-	produce_output_plot(out_dir+'/number_of_datas.grd', "Number of Coherent Intfs (Total = "+str(zdim)+")", out_dir+'/number_of_coherent_intfs.eps', 'intfs');
-	produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
-	produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
+	netcdf_read_write.produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'/number_of_datas.grd');
+	netcdf_read_write.produce_output_plot(out_dir+'/number_of_datas.grd', "Number of Coherent Intfs (Total = "+str(zdim)+")", out_dir+'/number_of_coherent_intfs.eps', 'intfs');
+	netcdf_read_write.produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
+	netcdf_read_write.produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
 	
-	flip_if_necessary(out_dir+'/number_of_datas.grd');
+	netcdf_read_write.flip_if_necessary(out_dir+'/number_of_datas.grd');
 	geocode(out_dir+'/number_of_datas.grd',out_dir);
-	flip_if_necessary(out_dir+'/vel.grd');
+	netcdf_read_write.flip_if_necessary(out_dir+'/vel.grd');
 	geocode(out_dir+'/vel.grd',out_dir);
 	return;
 
 
-def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
-	# # Write the netcdf velocity grid file.  
-	f=netcdf.netcdf_file(netcdfname,'w');
-	f.history = 'Created for a test';
-	f.createDimension('x',len(xdata));
-	f.createDimension('y',len(ydata));
-	print(np.shape(zdata));
-	x=f.createVariable('x',float,('x',))
-	x[:]=xdata;
-	x.units = 'range';
-	y=f.createVariable('y',float,('y',))
-	y[:]=ydata;
-	y.units = 'azimuth';
-	z=f.createVariable('z',float,('y','x',));
-	z[:,:]=zdata;
-	z.units = zunits;
-	f.close();
-	return;
 
 def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 
@@ -264,36 +235,6 @@ def produce_output_plot(netcdfname, plottitle, filename, cblabel):
 	plt.savefig(filename);
 	plt.close();
 
-	return;
-
-
-def flip_if_necessary(filename):
-	# IF WE NEED TO FLIP DATA:
-	xinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
-	yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
-	xinc=float(xinc.split()[0]);
-	yinc=float(yinc.split()[0]);
-
-	if xinc < 0:  # FLIP THE X-AXIS
-		print("flipping the x-axis");
-		[xdata,ydata] = read_grd_xy(filename);
-		data = read_grd(filename);
-		# This is the key! Flip the x-axis when necessary.  
-		#xdata=np.flip(xdata,0);  # This is sometimes necessary and sometimes not!  Not sure why. 
-		produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
-		xinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
-		xinc = float(xinc.split()[0]);
-		print("New xinc is: %f " % (xinc) );
-	if yinc < 0:
-		print("flipping the y-axis");
-		[xdata,ydata] = read_grd_xy(filename);
-		data = read_grd(filename);
-		# Flip the y-axis when necessary.  
-		# ydata=np.flip(ydata,0);  
-		produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
-		yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
-		yinc = float(yinc.split()[0]);
-		print("New yinc is: %f" % (yinc) );
 	return;
 
 

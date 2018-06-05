@@ -7,8 +7,8 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 import glob
-
-
+import subprocess
+import netcdf_read_write
 
 def form_all_loops():
 	loops=[]; 
@@ -34,7 +34,6 @@ def form_all_loops():
 		endnode.append(thisend);
 
 	graph=dict([ (startnode[i], endnode[i]) for i in range(len(startnode)) ]);
-	# print(graph);
 
 	# Now we find loops. 
 	# Start in chronological order. Step through the main loop.  
@@ -59,13 +58,24 @@ def form_all_loops():
 
 
 
-def show_images(all_loops, loops_dir):
+def show_images(all_loops, loops_dir, loops_guide):
+	subprocess.call(['mkdir','-p',loops_dir],shell=False);
+	ofile=open(loops_dir+loops_guide,'w');
+	for i in range(len(all_loops)):
+		ofile.write("Loop %d: %s %s %s\n" % (i,all_loops[i][0], all_loops[i][1], all_loops[i][2]) );
+	ofile.close();
+
+
+
+
 	return;
+
 
 
 
 
 if __name__=="__main__":
 	loops_dir="Phase_Circuits/"
+	loops_guide="loops.txt";
 	all_loops=form_all_loops();
-	show_images(all_loops,loops_dir);
+	show_images(all_loops,loops_dir,loops_guide);
