@@ -19,6 +19,14 @@ def read_grd_xy(filename):
 	ydata=ydata0.copy();
 	return [xdata, ydata]; 
 
+def read_grd_xyz(filename):
+	xdata0 = netcdf.netcdf_file(filename,'r').variables['x'][::-1];
+	ydata0 = netcdf.netcdf_file(filename,'r').variables['y'][::-1];
+	zdata0 = netcdf.netcdf_file(filename,'r').variables['z'][::-1];
+	xdata=xdata0.copy();
+	ydata=ydata0.copy();
+	zdata=zdata0.copy();
+	return [xdata, ydata, zdata]; 
 
 
 # --------------- WRITING ------------------- # 
