@@ -65,7 +65,7 @@ def show_images(all_loops, loops_dir, loops_guide):
 		ofile.write("Loop %d: %s %s %s\n" % (i,all_loops[i][0], all_loops[i][1], all_loops[i][2]) );
 	ofile.close();
 
-	type_of_file='phasefilt.grd'
+	type_of_file='unwrap.grd'
 
 	for i in range(len(all_loops)):
 		edge1=all_loops[i][0]+'_'+all_loops[i][1];
@@ -75,12 +75,20 @@ def show_images(all_loops, loops_dir, loops_guide):
 		z2 = netcdf_read_write.read_grd('intf_all/'+edge2+'/'+type_of_file);
 		z3 = netcdf_read_write.read_grd('intf_all/'+edge3+'/'+type_of_file);
 
+		histdata=[];
 		znew = np.zeros(np.shape(z1));
+		errorflag=np.zeros(np.shape(z1));
 		for j in range(np.shape(z1)[0]):
 			for k in range(np.shape(z1)[1]):
 				znew[j][k]=z1[j][k]+z2[j][k]-z3[j][k];
+				if ~np.isnan(znew[j][k]):
+					histdata.append(znew[j][k]/np.pi);
+				if znew[j][k]!=0:
+					errorflag[j][k]=1;
 
 		make_plot(xdata, ydata, znew, loops_dir+'phase_closure_'+str(i)+'.eps');
+		make_histogram(histdata, loops_dir+'histogram_'+str(i)+'.eps');
+		#make_plot(xdata, ydata, errorflag, loops_dir+'error_phase_closure_'+str(i)+'.eps');
 
 	return;
 
@@ -102,6 +110,15 @@ def make_plot(x, y, z, plotname):
 	plt.close();
 	return;
 
+def make_histogram(histdata, plotname):
+	plt.figure();
+	plt.hist(histdata,bins=700);
+	plt.yscale('log');
+	plt.xlabel('Phase Difference (#*pi radians)');
+	plt.ylabel('number of pixels');
+	plt.savefig(plotname);
+	plt.close();
+	return;
 
 
 if __name__=="__main__":
