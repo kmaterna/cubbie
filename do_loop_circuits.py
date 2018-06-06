@@ -65,22 +65,37 @@ def show_images(all_loops, loops_dir, loops_guide):
 		ofile.write("Loop %d: %s %s %s\n" % (i,all_loops[i][0], all_loops[i][1], all_loops[i][2]) );
 	ofile.close();
 
-	type_of_file='unwrap.grd'
+	unwrapped='unwrap.grd'
+	wrapped='phasefilt.grd'
 
 	for i in range(len(all_loops)):
 		edge1=all_loops[i][0]+'_'+all_loops[i][1];
 		edge2=all_loops[i][1]+'_'+all_loops[i][2];
 		edge3=all_loops[i][0]+'_'+all_loops[i][2];
-		[xdata, ydata, z1 ] = netcdf_read_write.read_grd_xyz('intf_all/'+edge1+'/'+type_of_file);
-		z2 = netcdf_read_write.read_grd('intf_all/'+edge2+'/'+type_of_file);
-		z3 = netcdf_read_write.read_grd('intf_all/'+edge3+'/'+type_of_file);
+		[xdata, ydata, z1 ] = netcdf_read_write.read_grd_xyz('intf_all/'+edge1+'/'+unwrapped);
+		z2 = netcdf_read_write.read_grd('intf_all/'+edge2+'/'+unwrapped);
+		z3 = netcdf_read_write.read_grd('intf_all/'+edge3+'/'+unwrapped);
+
+		[xdata, ydata, wr_z1 ] = netcdf_read_write.read_grd_xyz('intf_all/'+edge1+'/'+wrapped);
+		wr_z2 = netcdf_read_write.read_grd('intf_all/'+edge2+'/'+wrapped);
+		wr_z3 = netcdf_read_write.read_grd('intf_all/'+edge3+'/'+wrapped);
 
 		histdata=[];
 		znew = np.zeros(np.shape(z1));
 		errorflag=np.zeros(np.shape(z1));
 		for j in range(np.shape(z1)[0]):
 			for k in range(np.shape(z1)[1]):
-				znew[j][k]=z1[j][k]+z2[j][k]-z3[j][k];
+				
+				# Using equation from Heresh Fattahi's PhD thesis to isolate unwrapping errors. 
+				wrapped_closure=wr_z1[j][k]+wr_z2[j][k]-wr_z3[j][k];
+				offset_before_unwrapping=np.mod(wrapped_closure,2*np.pi);
+				if offset_before_unwrapping>np.pi:
+					offset_before_unwrapping=offset_before_unwrapping-2*np.pi;  # send it to the -pi to pi realm. 
+
+				unwrapped_closure=z1[j][k]+z2[j][k]-z3[j][k];
+
+				znew[j][k]=unwrapped_closure - offset_before_unwrapping;
+
 				if ~np.isnan(znew[j][k]):
 					histdata.append(znew[j][k]/np.pi);
 				if znew[j][k]!=0:
