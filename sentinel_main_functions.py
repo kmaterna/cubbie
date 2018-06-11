@@ -353,8 +353,12 @@ def unwrapping(config_params):
     sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
     print "Ready to call "+unwrap_sh_file
-    call(['chmod','+x',unwrap_sh_file],shell=False);
-    call("./"+unwrap_sh_file,shell=True);
+    #call(['chmod','+x',unwrap_sh_file],shell=False);
+    #call("./"+unwrap_sh_file,shell=True);
+
+    # call from the processing directory to place all unwrap.grd into single directory. 
+    file_of_interest='unwrap.grd';
+    call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
 
     return;
 

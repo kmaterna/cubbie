@@ -30,6 +30,7 @@ def plot_grid_file(filename, figname):
 	plt.imshow(zdata);
 	plt.colorbar();
 	plt.savefig(figname+'.eps');
+	plt.close();
 	return;
 
 def plot_grid_data(griddata, figname):
@@ -37,6 +38,7 @@ def plot_grid_data(griddata, figname):
 	plt.imshow(griddata);
 	plt.colorbar();
 	plt.savefig(figname+'.eps');
+	plt.close();
 	return;
 
 
@@ -189,3 +191,16 @@ plot_grid_file(filename,'unwrap');
 
 # print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );
 
+
+
+filename='nsbas_0.1/number_of_datas.grd'
+
+[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+zdata=np.reshape(zdata, [len(xdata)*len(ydata), 1])
+print(np.shape(zdata));
+plt.figure();
+plt.hist(zdata,bins=80);
+plt.ylabel('Number of Pixels');
+plt.xlabel('Number of Coherent Interferograms')
+plt.savefig('Number_of_pixels.eps');
+plt.close();
