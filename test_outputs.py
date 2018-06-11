@@ -129,8 +129,6 @@ def develop_median_phase(phase_array):
 
 
 
-xdec=6
-ydec=10
 
 # Step 1: Figure out how many nan's are in a netcdf file. 
 # And how many correlation values are below a certain value. 

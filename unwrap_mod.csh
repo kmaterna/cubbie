@@ -88,7 +88,7 @@
         endif
         cd ../intf_all
         cd $ref_id"_"$rep_id
-        #ln -s ../../topo/landmask_ra.grd .
+        ln -s ../../topo/landmask_ra.grd .
       endif
 
       echo ""

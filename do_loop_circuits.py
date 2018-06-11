@@ -82,7 +82,7 @@ def show_images(all_loops, loops_dir, loops_guide):
 
 		histdata=[];
 		znew = np.zeros(np.shape(z1));
-		errorflag=np.zeros(np.shape(z1));
+		errorcount=0;
 		for j in range(np.shape(z1)[0]):
 			for k in range(np.shape(z1)[1]):
 				
@@ -98,10 +98,12 @@ def show_images(all_loops, loops_dir, loops_guide):
 
 				if ~np.isnan(znew[j][k]):
 					histdata.append(znew[j][k]/np.pi);
-				if znew[j][k]!=0:
-					errorflag[j][k]=1;
+				if abs(znew[j][k])>0.5:
+					errorcount=errorcount+1;
 
-		make_plot(xdata, ydata, znew, loops_dir+'phase_closure_'+str(i)+'.eps');
+		errorpixels = round(100*float(errorcount)/len(histdata),2);
+
+		make_plot(xdata, ydata, znew, loops_dir+'phase_closure_'+str(i)+'.eps', errorpixels);
 		make_histogram(histdata, loops_dir+'histogram_'+str(i)+'.eps');
 		#make_plot(xdata, ydata, errorflag, loops_dir+'error_phase_closure_'+str(i)+'.eps');
 
@@ -109,14 +111,14 @@ def show_images(all_loops, loops_dir, loops_guide):
 
 
 
-def make_plot(x, y, z, plotname):
+def make_plot(x, y, z, plotname, errorpixels):
 	fig = plt.figure();
 	plt.imshow(z, cmap='jet',aspect=0.7);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
 	plt.gca().get_yaxis().set_ticks([]);
-	plt.title('Phase Closure');
+	plt.title('Phase Closure: %.2f %% error pixels' % (errorpixels) );
 	plt.gca().set_xlabel("Range",fontsize=16);
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
 	cb = plt.colorbar();
