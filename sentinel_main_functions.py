@@ -117,14 +117,14 @@ def manifest2raw_orig_eof(config_params):
         return;
 
     file_list = get_frames_for_raw_orig(config_params);  # will assemble frames if necessary. Otherwise will just return the DATA/*.SAFE files
-    print file_list;
+    print(file_list);
 
     # Unpack the .SAFE directories into raw_orig
     call(["mkdir","-p","raw_orig"],shell=False);
-    print file_list;    
-    print "Copying xml files into raw_orig..."
-    print "Copying manifest.safe files into raw_orig..."
-    print "Copying tiff files into raw_orig..."
+    print(file_list);    
+    print("Copying xml files into raw_orig...")
+    print("Copying manifest.safe files into raw_orig...")
+    print("Copying tiff files into raw_orig...")
     # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space. 
     for onefile in file_list:
         xml_files = sentinel_utilities.get_all_xml_names(onefile+'/annotation',config_params.polarization, config_params.swath);
@@ -143,9 +143,9 @@ def manifest2raw_orig_eof(config_params):
         mydate = sentinel_utilities.get_date_from_xml(xml_name);
         sat    = sentinel_utilities.get_sat_from_xml(xml_name);
         eof_name = sentinel_utilities.get_eof_from_date_sat(mydate, sat, config_params.orbit_dir);
-        print "Copying %s to raw_orig..." % eof_name;
+        print("Copying %s to raw_orig..." % eof_name);
         call(['cp',eof_name,'raw_orig'],shell=False);
-    print "copying s1a-aux-cal.xml to raw_orig..."
+    print("copying s1a-aux-cal.xml to raw_orig...");
     call(['cp',config_params.orbit_dir+'/s1a-aux-cal.xml','raw_orig'],shell=False);
     return;
 
@@ -185,7 +185,7 @@ def get_frames_for_raw_orig(config_params):
 
         # Make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
         call('compare_frames_acquisitions.sh',shell=True);
-        print "Please check the frames and acquisitions and see if all your data has been included. "
+        print("Please check the frames and acquisitions and see if all your data has been included. ");
 
 
         file_list = glob.glob("FRAMES/FRAME_1/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
@@ -208,8 +208,8 @@ def preprocess(config_params):
 
     # Automatically decide on super-master and pop it to the front of data.in. 
     masterid = sentinel_utilities.choose_master_image();
-    print "master image is..."
-    print masterid;
+    print("master image is...")
+    print(masterid);
 
     # MODE 2: Now you have picked a super-master. 
     sentinel_utilities.write_super_master_batch_config(masterid);
@@ -223,7 +223,7 @@ def preprocess(config_params):
 
 def write_xml_prep(polarization, swath):
     list_of_xml=sentinel_utilities.get_all_xml_names('raw_orig',polarization,swath);
-    print "Writing xmls in README_prep.txt";	
+    print("Writing xmls in README_prep.txt");
     outfile=open("README_prep.txt",'w');
     outfile.write("# First, prepare the files.\n");
     outfile.write("mkdir -p raw\n");
@@ -251,7 +251,7 @@ def write_preproc_mode1():
     #outfile.write("cp raw/baseline_table.dat .\n"); # I find these two lines sort of annoying. 
     #outfile.write("cp raw/baseline.ps .\n\n")
     outfile.close();
-    print "Ready to call README_prep.txt in Mode 1."
+    print("Ready to call README_prep.txt in Mode 1.")
     call("chmod +x README_prep.txt",shell=True);
     return;
 
@@ -262,7 +262,7 @@ def write_preproc_mode2():
     outfile.write("preproc_batch_tops.csh data.in dem.grd 2\n\n");
     outfile.write("cd ../\n");
     outfile.close();
-    print "Ready to call README_prep.txt in Mode 2."
+    print("Ready to call README_prep.txt in Mode 2.")
     call("chmod +x README_prep.txt",shell=True);
     return;
 
@@ -300,13 +300,13 @@ def make_interferograms(config_params):
         intf_pairs_sbas = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
         intf_pairs_manual = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline, ['20151118']);
         intf_pairs=intf_pairs_sbas+intf_pairs_manual;
-        print "README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. "
+        print("README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. ")
     elif config_params.ts_type=="CHAIN":
         intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
     elif config_params.ts_type=="MANUAL":
         intf_pairs = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline, ['20151118']);
     else:
-        print "config_params.ts_type is not a valid ts_type";
+        print("config_params.ts_type is not a valid ts_type");
         sys.exit(1);
 
     # Make the stick plot of baselines 
@@ -325,11 +325,11 @@ def make_interferograms(config_params):
     outfile.write("\n# Process the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");
     outfile.close();
-    print "Ready to call README_proc.txt."
+    print("Ready to call README_proc.txt.")
     call("chmod +x README_proc.txt",shell=True);
     call("./README_proc.txt",shell=True);
 
-    print "Summarizing correlation for all interferograms."
+    print("Summarizing correlation for all interferograms.")
     analyze_coherence.analyze_coherence_function();
 
     return;
@@ -344,19 +344,16 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
-
-    # Decimate by choosing max-coherence pixel. 
-    #dec_corrbased.decimate_main_function(config_params.xdec, config_params.ydec, config_params.threshold_snaphu);
-
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
     sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
-    print "Ready to call "+unwrap_sh_file
+    print("Ready to call "+unwrap_sh_file)
     #call(['chmod','+x',unwrap_sh_file],shell=False);
     #call("./"+unwrap_sh_file,shell=True);
 
     # call from the processing directory to place all unwrap.grd into single directory. 
+    print("Putting all unwrap.grd into a separate directory...")
     file_of_interest='unwrap.grd';
     call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
 
@@ -456,7 +453,7 @@ def do_sbas(config_params):
     outfile.write('echo "SBAS operation performed!"\n\n')
 
     outfile.close();
-    print "README_sbas.txt written. Ready to call README_sbas.txt."
+    print("README_sbas.txt written. Ready to call README_sbas.txt.")
     call("chmod u+x README_sbas.txt",shell=True);
     call("./README_sbas.txt",shell=True); # Make sbas!
     return;
