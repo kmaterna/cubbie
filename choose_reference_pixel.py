@@ -113,6 +113,8 @@ def outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_da
 	plt.savefig('number_of_datas.eps');
 	plt.close();
 
+	print("Reference pixel is: (%d, %d)" % (xref, yref) );
+ 
 	return;
 
 
