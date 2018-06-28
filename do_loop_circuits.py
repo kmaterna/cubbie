@@ -1,4 +1,4 @@
-
+# This script forms loops of 3 interferograms, and then analyzes their phase unwrapping errors. 
 
 # Step 1: Glob the intf_all
 # Step 2: Form as many loops as possible
@@ -10,7 +10,12 @@ import glob
 import subprocess
 import netcdf_read_write
 
+
+
+
 def identify_all_loops():
+	# This function takes the glob intf_all directories and then makes all possible triangles. 
+	# It populates a list of loops, each containing three images. 
 	loops=[]; 
 	edges=[];
 	nodes=[];
@@ -57,17 +62,6 @@ def identify_all_loops():
 
 
 
-def towards_zero_2n_pi(phase_value):
-	phase_value = phase_value + np.pi;
-	residual = phase_value / (2*np.pi);
-	if residual>0:
-		phase_jump = np.floor(residual);
-	else:
-		phase_jump = np.floor(residual);
-	return phase_jump;
-	# Right now loop 24 is giving trouble... returning NAN for some reason. 
-
-
 def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 	subprocess.call(['mkdir','-p',loops_dir],shell=False);
 	ofile=open(loops_dir+loops_guide,'w');
@@ -78,7 +72,7 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 	unwrapped='unwrap.grd'
 	wrapped='phasefilt.grd'
 
-	for i in range(25, len(all_loops)):
+	for i in range(0, len(all_loops)):
 		edge1=all_loops[i][0]+'_'+all_loops[i][1];
 		edge2=all_loops[i][1]+'_'+all_loops[i][2];
 		edge3=all_loops[i][0]+'_'+all_loops[i][2];
@@ -97,6 +91,7 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 		znew_raw = np.zeros(np.shape(z1));
 		znew_fix = np.zeros(np.shape(z1));
 		errorcount=0;
+
 		for j in range(np.shape(z1)[0]):
 			for k in range(np.shape(z1)[1]):
 				
@@ -114,6 +109,7 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 					z1_adj=z1[j][k];
 					z2_adj=z2[j][k];
 					z3_adj=z3[j][k];
+
 
 				# Using equation from Heresh Fattahi's PhD thesis to isolate unwrapping errors. 
 				wrapped_closure_raw=wr_z1[j][k]+wr_z2[j][k]-wr_z3[j][k];
@@ -179,9 +175,8 @@ def make_histogram(histdata, plotname):
 if __name__=="__main__":
 	loops_dir="Phase_Circuits/"
 	loops_guide="loops.txt";
-	reference_pixel = [177, 253]; # doing correction for phase ambiguity
+	reference_pixel = [168, 265]; # doing correction for phase ambiguity
 	# reference_pixel = [];  # not doing any correction for phase ambiguity
-
 
 	all_loops=identify_all_loops();
 	compute_loops(all_loops,loops_dir,loops_guide, reference_pixel);

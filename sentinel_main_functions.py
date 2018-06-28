@@ -369,8 +369,10 @@ def do_timeseries(config_params):
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
 
-    [xref, yref] = choose_reference_pixel.main_function();
-    make_referenced_unwrapped(xref, yref);
+    # [rowref, colref] = choose_reference_pixel.main_function();
+    # rowref=241;
+    # colref=175;
+    # sentinel_utilities.make_referenced_unwrapped(rowref, colref);
 
     if config_params.ts_type=="SBAS":
         do_sbas(config_params);

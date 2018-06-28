@@ -17,13 +17,15 @@ def main_function():
 	[filenames, range_bounds, azimuth_bounds]=configure();
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(filenames);
 	[number_of_datas, zdim] = analyze_coherent_number(data_all);
-	[xref, yref] = pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, zdim);
-	outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_datas);
-	return [xref, yref];
+	[rowref, colref] = pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, zdim);
+	outputs(rowref, colref, range_bounds, azimuth_bounds, xdata, ydata, number_of_datas);
+	return [rowref, colref];
 
 
 def configure():
 	# Setting up the input and output directories. 
+	# Range: columns
+	# Azimuth: rows
 	file_of_interest='unwrap.grd'
 	file_dir="intf_all/"+file_of_interest;
 	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
@@ -60,54 +62,55 @@ def inputs(file_names):
 def analyze_coherent_number(zdata):
 	# Analyze the number of coherent acquisitions for each pixel
 	print("Analyzing the number of coherent interferograms per pixel.")
-	[zdim, xdim, ydim] = np.shape(zdata)
-	number_of_datas=np.zeros([xdim,ydim]);
+	[zdim, rowdim, coldim] = np.shape(zdata)
+	# these 2D arrays are indexed by row-column convention. 
+	number_of_datas=np.zeros([rowdim,coldim]);
 	for k in range(zdim):
-		for i in range(xdim):
-			for j in range(ydim):
+		for i in range(rowdim):
+			for j in range(coldim):
 				if not math.isnan(zdata[k][i][j]):
 					number_of_datas[i][j]=number_of_datas[i][j]+1;
 
 	print("Maximum Possible Interferograms = %d. " % (zdim) );
 	best_pixels=0;
-	for i in range(xdim):
-		for j in range(ydim):
+	for i in range(rowdim):
+		for j in range(coldim):
 			if number_of_datas[i][j]==zdim:
 				best_pixels=best_pixels+1;
-	print("Number of pixels equal to max_possible: %d out of %d ( %f %%)" % ( best_pixels, xdim*ydim, 100.0*best_pixels/(xdim*ydim) ) );
+	print("Number of pixels equal to max_possible: %d out of %d ( %f %%)" % ( best_pixels, rowdim*coldim, 100.0*best_pixels/(rowdim*coldim) ) );
 
 	return [number_of_datas, zdim];
 
 
 def pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, maxnum):
-	xref=0;
-	yref=0;
+	rowref=0;
+	colref=0;
 	counting_maxnum=0;
-	for i in range(range_bounds[0], range_bounds[1]):
-		for j in range(azimuth_bounds[0], azimuth_bounds[1]):
+	for i in range(azimuth_bounds[0], azimuth_bounds[1]):
+		for j in range(range_bounds[0], range_bounds[1]):
 			counting_maxnum=max(counting_maxnum, number_of_datas[i][j]);
 			if number_of_datas[i][j]==maxnum:
-				xref=i;
-				yref=j;
-				return [xref, yref];
+				rowref=i;
+				colref=j;
+				return [rowref, colref];
 	if counting_maxnum<maxnum:
 		print("WARNING! There is no pixel within range with %d coherent images!" % maxnum);
 		print("The maximum number of coherent pixels is: %d " % counting_maxnum);
 		print("Proceeding to select reference pixel with coherence in %d images." % counting_maxnum);
 	# if there is no pixel that's perfectly coherent in the box: 
-	if xref==0 and yref==0:
-		for i in range(range_bounds[0], range_bounds[1]):
-			for j in range(azimuth_bounds[0], azimuth_bounds[1]):
+	if rowref==0 and colref==0:
+		for i in range(azimuth_bounds[0], azimuth_bounds[1]):
+			for j in range(range_bounds[0], range_bounds[1]):
 				if number_of_datas[i][j]==counting_maxnum:
-					xref=i;
-					yref=j;
-					return [xref, yref];
-	return [xref, yref];
+					rowref=i;
+					colref=j;
+					return [rowref, colref];
+	return [rowref, colref];
 
 
 
 # -------------- OUTPUTS -------------- # 
-def outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_datas):
+def outputs(rowref, colref, range_bounds, azimuth_bounds, xdata, ydata, number_of_datas):
 
 	[xdim, ydim]=np.shape(number_of_datas);
 
@@ -123,18 +126,18 @@ def outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_da
 	plt.figure();
 	plt.imshow(number_of_datas);
 	plt.plot([range_bounds[0], range_bounds[1],range_bounds[1], range_bounds[0], range_bounds[0] ],[azimuth_bounds[0], azimuth_bounds[0], azimuth_bounds[1], azimuth_bounds[1], azimuth_bounds[0]], color='k')
-	plt.plot(xref, yref, '.k');
+	plt.plot(colref, rowref, '.k');
 	plt.savefig('number_of_datas.eps');
 	plt.close();
 
-	print("Reference pixel is: (%d, %d)" % (xref, yref) );
-	print("Number of coherent images for reference pixel: %d" % (number_of_datas[xref][yref]) ); 
+	print("Reference pixel is: (%d, %d)" % (rowref, colref) );
+	print("Number of coherent images for reference pixel: %d" % (number_of_datas[rowref][colref]) ); 
 	return;
 
 
 
 if __name__=="__main__":
-	[xref, yref] = main_function();
+	[rowref, colref] = main_function();
 
 
 

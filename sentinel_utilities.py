@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import datetime as dt
+import netcdf_read_write
 
 
 def get_all_xml_names(directory, polarization, swath):
@@ -313,6 +314,29 @@ def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
     plt.title("Network Geometry");
     plt.savefig("Network_Geometry.eps");
     plt.close();
-    return();
+    return;
 
 
+def make_referenced_unwrapped(rowref, colref):
+    files = glob.glob("intf_all/unwrap.grd/*");
+    out_dir="intf_all/referenced_unwrap.grd/";
+    call(['mkdir','-p',out_dir],shell=False);
+
+    for filename in files:
+        individual_name=filename.split('/')[-1];
+        print(individual_name);
+        [xdata,ydata,zdata] = netcdf_read_write.read_grd_xyz(filename);
+        # xdata is range/columns, ydata is azimuth/rows
+
+        # Here we subtract the value of zdata[rowref][colref] to fix the refernece pixel. 
+        # referenced_zdata[rowref][colref]=0 by definition. 
+        referenced_zdata=np.zeros(np.shape(zdata));
+        for i in range(len(ydata)):
+            for j in range(len(xdata)):
+                referenced_zdata[i][j]=zdata[i][j]-zdata[rowref][colref];
+        print(referenced_zdata[rowref][colref]);
+
+        outname=out_dir+individual_name;
+        netcdf_read_write.produce_output_netcdf(xdata, ydata, referenced_zdata, 'phase', outname);
+        netcdf_read_write.flip_if_necessary(outname);
+    return;
