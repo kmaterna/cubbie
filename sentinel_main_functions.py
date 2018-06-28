@@ -4,7 +4,7 @@ import numpy as np
 from subprocess import call
 import sentinel_utilities
 import analyze_coherence
-import dec_corrbased
+import choose_reference_pixel
 import nsbas
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs','threshold_snaphu']);
@@ -368,6 +368,10 @@ def do_timeseries(config_params):
         return;
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
+
+    [xref, yref] = choose_reference_pixel.main_function();
+    make_referenced_unwrapped(xref, yref);
+
     if config_params.ts_type=="SBAS":
         do_sbas(config_params);
     if config_params.ts_type=="NSBAS":

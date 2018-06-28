@@ -1,6 +1,6 @@
 # The purpose of this script is to choose a reference pixel
 # Criteria:
-# 1. High coherence in pretty much all interferograms
+# 1. High coherence in pretty much all interferograms- will give warning if you don't have a pixel with perfect coherence. 
 # 2. Located in the un-deforming region of the field (if that exists)
 # 3. Likely to unwrap correctly
 
@@ -12,6 +12,15 @@ import glob, sys, math
 import netcdf_read_write
 
 
+def main_function():
+	print("Starting to choose a reference pixel")
+	[filenames, range_bounds, azimuth_bounds]=configure();
+	[xdata, ydata, data_all, dates, date_pairs] = inputs(filenames);
+	[number_of_datas, zdim] = analyze_coherent_number(data_all);
+	[xref, yref] = pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, zdim);
+	outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_datas);
+	return [xref, yref];
+
 
 def configure():
 	# Setting up the input and output directories. 
@@ -20,8 +29,8 @@ def configure():
 	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
 	if len(file_names)==0:
 		print("Error! No files matching search pattern with "+file_of_interest); sys.exit(1);
-	range_bounds = [160, 180]
-	azimuth_bounds = [245, 260]
+	range_bounds = [150, 190]
+	azimuth_bounds = [235, 270]
 	return [file_names, range_bounds, azimuth_bounds];
 
 
@@ -59,11 +68,11 @@ def analyze_coherent_number(zdata):
 				if not math.isnan(zdata[k][i][j]):
 					number_of_datas[i][j]=number_of_datas[i][j]+1;
 
-	print("Maximum Possible Interferograms = %d. " % (len(date_pairs)) );
+	print("Maximum Possible Interferograms = %d. " % (zdim) );
 	best_pixels=0;
 	for i in range(xdim):
 		for j in range(ydim):
-			if number_of_datas[i][j]==len(date_pairs):
+			if number_of_datas[i][j]==zdim:
 				best_pixels=best_pixels+1;
 	print("Number of pixels equal to max_possible: %d out of %d ( %f %%)" % ( best_pixels, xdim*ydim, 100.0*best_pixels/(xdim*ydim) ) );
 
@@ -81,6 +90,11 @@ def pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, maxnum):
 				xref=i;
 				yref=j;
 				return [xref, yref];
+	if counting_maxnum<maxnum:
+		print("WARNING! There is no pixel within range with %d coherent images!" % maxnum);
+		print("The maximum number of coherent pixels is: %d " % counting_maxnum);
+		print("Proceeding to select reference pixel with coherence in %d images." % counting_maxnum);
+	# if there is no pixel that's perfectly coherent in the box: 
 	if xref==0 and yref==0:
 		for i in range(range_bounds[0], range_bounds[1]):
 			for j in range(azimuth_bounds[0], azimuth_bounds[1]):
@@ -108,26 +122,19 @@ def outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_da
 
 	plt.figure();
 	plt.imshow(number_of_datas);
-	plt.plot([range_bounds[0], range_bounds[1] ],[azimuth_bounds[0], azimuth_bounds[1]], color='k')
+	plt.plot([range_bounds[0], range_bounds[1],range_bounds[1], range_bounds[0], range_bounds[0] ],[azimuth_bounds[0], azimuth_bounds[0], azimuth_bounds[1], azimuth_bounds[1], azimuth_bounds[0]], color='k')
 	plt.plot(xref, yref, '.k');
 	plt.savefig('number_of_datas.eps');
 	plt.close();
 
 	print("Reference pixel is: (%d, %d)" % (xref, yref) );
- 
+	print("Number of coherent images for reference pixel: %d" % (number_of_datas[xref][yref]) ); 
 	return;
 
 
 
-
 if __name__=="__main__":
-	print("Starting to choose a reference pixel")
-	
-	[filenames, range_bounds, azimuth_bounds]=configure();
-	[xdata, ydata, data_all, dates, date_pairs] = inputs(filenames);
-	[number_of_datas, zdim] = analyze_coherent_number(data_all);
-	[xref, yref] = pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, zdim);
-	outputs(xref, yref, range_bounds, azimuth_bounds, xdata, ydata, number_of_datas);
+	[xref, yref] = main_function();
 
 
 
