@@ -2,19 +2,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-import dec_corrbased
+import netcdf_read_write
 
 
 
 def how_many_nans(filename):
-	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+	[xdata, ydata, zdata]=netcdf_read_write.read_grd_xyz(filename);
 	nan_pixels = np.count_nonzero(np.isnan(zdata));
 	total_pixels=np.shape(zdata)[0]*np.shape(zdata)[1];
 	print("For file %s: %d pixels of %d are NaNs (%f percent)." % (filename, nan_pixels, total_pixels, 100*float(nan_pixels/float(total_pixels))) )
 	return [nan_pixels, total_pixels];
 
 def number_below_value(filename, value):
-	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+	[xdata, ydata, zdata]=netcdf_read_write.read_grd_xyz(filename);
 	count=0;
 	for i in range(len(ydata)):
 		for j in range(len(xdata)):
@@ -25,7 +25,7 @@ def number_below_value(filename, value):
 	return;
 
 def plot_grid_file(filename, figname):
-	[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
+	[xdata, ydata, zdata]=netcdf_read_write.read_grd_xyz(filename);
 	plt.figure();
 	plt.imshow(zdata);
 	plt.colorbar();
@@ -95,6 +95,15 @@ def process_by_boxes(xc, yc, zc, xp, yp, zp, xdec, ydec, value):
 
 
 
+def remove_nans_array(myarray):
+	numarray=[];
+	for i in range(len(myarray)):
+		if ~np.isnan(myarray[i]):
+			numarray.append(myarray[i][0]);
+	return numarray;
+
+
+
 def develop_mean_phase(phase_array):
 	# This function takes an array of phase values, and determines the mean phase value (sensitive to cycle slips)
 	# It uses the "mean of circular quantities" technique. 
@@ -140,13 +149,13 @@ folder='2018017_2018029'
 
 filename='intf_all/'+folder+'/phasefilt.grd'
 [nanpixels, totalpixels] = how_many_nans(filename);
-plot_grid_file(filename,'phasefilt');
+# plot_grid_file(filename,'phasefilt');
 
 
 
-filename='intf_all/'+folder+'/unwrap.grd'
-[nanpixels, totalpixels] = how_many_nans(filename);
-plot_grid_file(filename,'unwrap');
+# filename='intf_all/'+folder+'/unwrap.grd'
+# [nanpixels, totalpixels] = how_many_nans(filename);
+# plot_grid_file(filename,'unwrap');
 # filename='intf_all/'+folder+'/phasefilt_full.grd'
 # [nanpixels, totalpixels] = how_many_nans(filename);
 # plot_grid_file(filename,'phasefilt_full');
@@ -193,14 +202,30 @@ plot_grid_file(filename,'unwrap');
 
 
 
-filename='nsbas_0.1/number_of_datas.grd'
+filename1='nsbas_0.1/vel.grd'
 
-[xdata, ydata, zdata]=dec_corrbased.read_grd(filename);
-zdata=np.reshape(zdata, [len(xdata)*len(ydata), 1])
-print(np.shape(zdata));
+filename2='nsbas_with_reference_pixel/vel.grd'
+
+
+
+[nanpixels, totalpixels] = how_many_nans(filename1);
+[xdata, ydata, zdata]=netcdf_read_write.read_grd_xyz(filename1);
+zdata1=np.reshape(zdata, [len(xdata)*len(ydata), 1])
+zdata1=remove_nans_array(zdata1);
+
+[nanpixels, totalpixels] = how_many_nans(filename2);
+[xdata, ydata, zdata]=netcdf_read_write.read_grd_xyz(filename2);
+zdata2=np.reshape(zdata, [len(xdata)*len(ydata), 1])
+zdata2=remove_nans_array(zdata2);
+
+
 plt.figure();
-plt.hist(zdata,bins=80);
+plt.hist(zdata1,bins=80);
+plt.gca().set_yscale('log');
+plt.title('Before and After reference pixel adjustment')
+plt.hist(zdata2,bins=80,color='red',alpha=0.25);
 plt.ylabel('Number of Pixels');
-plt.xlabel('Number of Coherent Interferograms')
-plt.savefig('Number_of_pixels.eps');
+plt.xlabel('LOS velocity (mm/yr)')
+plt.grid('on');
+plt.savefig('velocity_hist.png');
 plt.close();

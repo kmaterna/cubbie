@@ -3,6 +3,7 @@
 
 import numpy as np 
 import scipy.io.netcdf as netcdf
+import matplotlib.pyplot as plt 
 from subprocess import check_output
 
 
@@ -77,4 +78,32 @@ def flip_if_necessary(filename):
 		yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
 		yinc = float(yinc.split()[0]);
 		print("New yinc is: %f" % (yinc) );
+	return;
+
+
+def produce_output_plot(netcdfname, plottitle, filename, cblabel):
+
+	# Read in the dataset
+	fr = netcdf.netcdf_file(netcdfname,'r');
+	xread=fr.variables['x'];
+	yread=fr.variables['y'];
+	zread=fr.variables['z'];
+	zread_copy=zread[:][:].copy();
+
+	# Make a plot
+	fig = plt.figure(figsize=(7,10));
+	ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
+	plt.imshow(zread_copy,aspect=1.2);
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	plt.gca().get_xaxis().set_ticks([]);
+	plt.gca().get_yaxis().set_ticks([]);
+	plt.title(plottitle);
+	plt.gca().set_xlabel("Range",fontsize=16);
+	plt.gca().set_ylabel("Azimuth",fontsize=16);
+	cb = plt.colorbar();
+	cb.set_label(cblabel, size=16);
+	plt.savefig(filename);
+	plt.close();
+
 	return;

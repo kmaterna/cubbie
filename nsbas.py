@@ -2,7 +2,6 @@
 
 import numpy as np 
 import matplotlib.pyplot as plt 
-import scipy.io.netcdf as netcdf
 import collections
 import glob, sys, math
 import datetime as dt 
@@ -19,11 +18,11 @@ def configure(config_params):
 
 
 	# Setting up the input and output directories. 
-	file_of_interest='unwrap.grd'
-	file_dir="intf_all/"+file_of_interest;
-	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
+	dir_of_interest='referenced_unwrap.grd'
+	file_dir="intf_all/"+dir_of_interest;
+	file_names=glob.glob(file_dir+"/*_*_unwrap.grd");
 	if len(file_names)==0:
-		print("Error! No files matching search pattern with "+file_of_interest); sys.exit(1);
+		print("Error! No files matching search pattern within "+dir_of_interest); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
 	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, out_dir];
 
@@ -197,44 +196,17 @@ def analyze_coherent_number(zdata):
 def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	
 	netcdf_read_write.produce_output_netcdf(xdata, ydata, number_of_datas, 'coherent_intfs', out_dir+'/number_of_datas.grd');
-	netcdf_read_write.produce_output_plot(out_dir+'/number_of_datas.grd', "Number of Coherent Intfs (Total = "+str(zdim)+")", out_dir+'/number_of_coherent_intfs.eps', 'intfs');
-	netcdf_read_write.produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
-	netcdf_read_write.produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
-	
 	netcdf_read_write.flip_if_necessary(out_dir+'/number_of_datas.grd');
+	netcdf_read_write.produce_output_plot(out_dir+'/number_of_datas.grd', "Number of Coherent Intfs (Total = "+str(zdim)+")", out_dir+'/number_of_coherent_intfs.eps', 'intfs');
 	geocode(out_dir+'/number_of_datas.grd',out_dir);
+
+	netcdf_read_write.produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
 	netcdf_read_write.flip_if_necessary(out_dir+'/vel.grd');
+	netcdf_read_write.produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
 	geocode(out_dir+'/vel.grd',out_dir);
 	return;
 
 
-
-def produce_output_plot(netcdfname, plottitle, filename, cblabel):
-
-	# Read in the dataset you just wrote. 
-	fr = netcdf.netcdf_file(netcdfname,'r');
-	xread=fr.variables['x'];
-	yread=fr.variables['y'];
-	zread=fr.variables['z'];
-	zread_copy=zread[:][:].copy();
-
-	# Make a plot
-	fig = plt.figure(figsize=(7,10));
-	ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
-	plt.imshow(zread_copy,aspect=1.2);
-	plt.gca().invert_yaxis()
-	plt.gca().invert_xaxis()
-	plt.gca().get_xaxis().set_ticks([]);
-	plt.gca().get_yaxis().set_ticks([]);
-	plt.title(plottitle);
-	plt.gca().set_xlabel("Range",fontsize=16);
-	plt.gca().set_ylabel("Azimuth",fontsize=16);
-	cb = plt.colorbar();
-	cb.set_label(cblabel, size=16);
-	plt.savefig(filename);
-	plt.close();
-
-	return;
 
 
 def geocode(ifile, directory):
@@ -253,5 +225,3 @@ def do_nsbas(config_params):
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
 	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
 	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);
-	geocode(out_dir+'/vel.grd',out_dir);
-
