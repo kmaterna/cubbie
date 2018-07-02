@@ -17,13 +17,11 @@ def configure(config_params, staging_directory):
 	out_dir='nsbas';
 
 	# Setting up the input and output directories. 
-	file_dir=staging_directory;
-	file_names=glob.glob(file_dir+"/*_*_unwrap.grd");
-	print("Performing NSBAS on files in %s " % file_dir);
+	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
+	print("Performing NSBAS on files in %s " % staging_directory);
 	if len(file_names)==0:
-		print("Error! No files matching search pattern within "+file_dir); sys.exit(1);
+		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
-	sys.exit(0);
 	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, out_dir];
 
 
