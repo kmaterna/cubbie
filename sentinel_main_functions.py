@@ -5,6 +5,8 @@ from subprocess import call
 import sentinel_utilities
 import analyze_coherence
 import choose_reference_pixel
+import unwrapping_errors
+import detrend_atm_topo
 import sbas
 import nsbas
 
@@ -386,19 +388,17 @@ def do_timeseries(config_params):
     if config_params.choose_refpixel:
         prior_staging_directory=prior_staging_directory;
         post_staging_directory='intf_all/referenced_unwrap.grd';
-        rowref=241; colref=175;
+        rowref=241; colref=175;  # bypass these function calls for time reasons.
         # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
         # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
     if config_params.solve_unwrap_errors:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/unwrap_corrected.grd';
-        print("Please write code to solve unwrapping errors.");
-        # unwrapping_errors.solve_unwrap_errors(prior_staging_directory);
+        unwrapping_errors.main_function(prior_staging_directory, post_staging_directory);
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';
-        print("Please write code to detrend atm topo.")
-        #detrend_atm_topo.main_function(prior_staging_directory);
+        detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory);
 
 
     if config_params.ts_type=="SBAS":
