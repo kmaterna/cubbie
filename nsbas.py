@@ -19,10 +19,10 @@ def configure(config_params, staging_directory):
 	# Setting up the input and output directories. 
 	file_dir=staging_directory;
 	file_names=glob.glob(file_dir+"/*_*_unwrap.grd");
+	print("Performing NSBAS on files in %s " % file_dir);
 	if len(file_names)==0:
 		print("Error! No files matching search pattern within "+file_dir); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
-	print("Performing NSBAS on files in %s " % file_dir);
 	sys.exit(0);
 	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, out_dir];
 

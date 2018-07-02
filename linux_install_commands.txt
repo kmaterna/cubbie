@@ -18,6 +18,7 @@ sudo apt-get install screen
 
 # GMT and GMTSAR
 sudo apt-get install gmt gmt-dcw gmt-gshhg
+sudo apt install netcdf-bin
 # Not sure if gmt requires more dependencies
 # Not sure how to install GMTSAR with just scripting. 
 

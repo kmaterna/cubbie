@@ -388,7 +388,7 @@ def do_timeseries(config_params):
     if config_params.choose_refpixel:
         prior_staging_directory=prior_staging_directory;
         post_staging_directory='intf_all/referenced_unwrap.grd';
-        rowref=241; colref=175;  # bypass these function calls for time reasons.
+        # rowref=241; colref=175;  # bypass these function calls for time reasons.
         # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
         # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
     if config_params.solve_unwrap_errors:
