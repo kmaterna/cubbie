@@ -317,9 +317,9 @@ def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
     return;
 
 
-def make_referenced_unwrapped(rowref, colref):
-    files = glob.glob("intf_all/unwrap.grd/*");
-    out_dir="intf_all/referenced_unwrap.grd/";
+def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory):
+    files = glob.glob(prior_staging_directory+"/*");
+    out_dir=post_staging_directory+"/";
     call(['mkdir','-p',out_dir],shell=False);
 
     for filename in files:

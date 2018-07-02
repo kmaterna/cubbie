@@ -5,9 +5,12 @@ from subprocess import call
 import sentinel_utilities
 import analyze_coherence
 import choose_reference_pixel
+import sbas
 import nsbas
 
-Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','align_file','intf_file','orbit_dir','tbaseline','xbaseline','restart','mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs','threshold_snaphu']);
+Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
+    'mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs','choose_refpixel','solve_unwrap_errors','detrend_atm_topo',
+    'start_time','end_time','threshold_snaphu']);
 
 def read_config():
     ################################################
@@ -35,7 +38,6 @@ def read_config():
     startstage=config.getint('py-config','startstage')
     endstage=config.getint('py-config','endstage')    
     master=config.get('csh-config','master_image')
-    align_file=config.get('py-config','align_file')
     intf_file=config.get('py-config','intf_file')
     orbit_dir=config.get('py-config','orbit_dir')
     tbaseline=config.getint('py-config','max_timespan')
@@ -49,8 +51,13 @@ def read_config():
     xdec = config.get('csh-config','custom_xdec');
     ydec = config.get('csh-config','custom_ydec');
     ts_type=config.get('timeseries-config','ts_type')
+    choose_refpixel = config.getint('timeseries-config','choose_refpixel');
+    solve_unwrap_errors = config.getint('timeseries-config','solve_unwrap_errors');
+    detrend_atm_topo = config.getint('timeseries-config','detrend_atm_topo');
     bypass=config.get('timeseries-config','bypass')
     nsbas_min_intfs=config.getint('timeseries-config','nsbas_min_intfs');
+    start_time = config.getint('timeseries-config','start_time');
+    end_time = config.getint('timeseries-config','end_time');
     threshold_snaphu=config.getfloat('csh-config','threshold_snaphu');
 
     
@@ -63,12 +70,10 @@ def read_config():
             print('  Not using MPI')
         print('  config file:',args.config,'contains the following options')    
         print(config.write(sys.stdout))
+
+    print("Running sentinel batch processing, starting with stage %d" % startstage);
     
     # check config options
-    #default names for files
-    if align_file == '':
-        align_file = 'align_batch.in'
-        
     if intf_file == '':
         intf_file = 'intf_batch.in'
     
@@ -104,7 +109,11 @@ def read_config():
     with open(config_file, 'w') as configfilehandle:
         config.write(configfilehandle)
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,align_file=align_file,intf_file=intf_file,orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs, threshold_snaphu=threshold_snaphu);
+
+    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,intf_file=intf_file,
+        orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
+        numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
+        solve_unwrap_errors=solve_unwrap_errors, detrend_atm_topo=detrend_atm_topo, start_time=start_time, end_time=end_time, threshold_snaphu=threshold_snaphu);
 
     return config_params; 
 
@@ -281,8 +290,6 @@ def topo2ra(config_params):
 
 
 
-
-
 # --------------- STEP 4: Make Interferograms ------------ # 
 def make_interferograms(config_params):
     """
@@ -347,10 +354,11 @@ def unwrapping(config_params):
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
     sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+    # Here or somewhere higher, I should add a function to only take the interferograms within the time range of interest. 
 
     print("Ready to call "+unwrap_sh_file)
-    #call(['chmod','+x',unwrap_sh_file],shell=False);
-    #call("./"+unwrap_sh_file,shell=True);
+    call(['chmod','+x',unwrap_sh_file],shell=False);
+    call("./"+unwrap_sh_file,shell=True);
 
     # call from the processing directory to place all unwrap.grd into single directory. 
     print("Putting all unwrap.grd into a separate directory...")
@@ -369,99 +377,34 @@ def do_timeseries(config_params):
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
 
-    # [rowref, colref] = choose_reference_pixel.main_function();
-    # rowref=241;
-    # colref=175;
-    # sentinel_utilities.make_referenced_unwrapped(rowref, colref);
+    # Making a few OPTIONAL image corrections before doing time series. 
+    # Step 1: Set reference pixel
+    # Step 2: Solve or exclude unwrapping errors
+    # Step 3: Detrend topo-correlated atmosphere
+    prior_staging_directory='intf_all/unwrap.grd'  # the direcotry where interferograms live. 
+    post_staging_directory='intf_all/unwrap.grd'
+    if config_params.choose_refpixel:
+        prior_staging_directory=prior_staging_directory;
+        post_staging_directory='intf_all/referenced_unwrap.grd';
+        rowref=241; colref=175;
+        # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
+        # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
+    if config_params.solve_unwrap_errors:
+        prior_staging_directory=post_staging_directory;
+        post_staging_directory='intf_all/unwrap_corrected.grd';
+        print("Please write code to solve unwrapping errors.");
+        # unwrapping_errors.solve_unwrap_errors(prior_staging_directory);
+    if config_params.detrend_atm_topo:
+        prior_staging_directory=post_staging_directory;
+        post_staging_directory='intf_all/atm_topo_corrected.grd';
+        print("Please write code to detrend atm topo.")
+        #detrend_atm_topo.main_function(prior_staging_directory);
+
 
     if config_params.ts_type=="SBAS":
-        do_sbas(config_params);
+        sbas.do_sbas(config_params, post_staging_directory);
     if config_params.ts_type=="NSBAS":
-        nsbas.do_nsbas(config_params);
-    return;
-
-
-
-
-def do_sbas(config_params):
-
-    [stems,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table('raw/baseline_table.dat');
-    t_int=[];
-    for t in tbaseline:
-        t_int.append(round(float(t)));  # a list of integers like 2016214 for 2016-day-214.
-
-    mission_days_sorted=[x for (y, x) in sorted(zip(t_int,mission_days))];
-    t_int.sort();
-    tbaseline.sort();
-
-    intf_computed=sentinel_utilities.glob_intf_computed();  # looks like a list of labels like 2016217_2016205
-    n_intf=len(intf_computed);
-    outfile=open("README_sbas.txt",'w');
-    outfile.write("# First, prepare the input files needed for sbas\n#\n");
-    outfile.write("rm -f SBAS\nmkdir SBAS\ncd SBAS\n\n\n");
-    outfile.write("# based on baseline_table.dat create the intf.tab and scene.tab for sbas\n");
-
-    # writing intf.tab
-    outfile.write("# phase  corherence  ref_id  rep_id  baseline\n")
-    for img_pair in intf_computed:
-        first_image=img_pair[0:7]
-        second_image=img_pair[8:]
-        for a, b in zip(xbaseline, t_int):
-            if abs(int(np.floor(b)) - int(first_image))<=1:
-                # print "first image found";
-                # print int(np.floor(b))
-                # print int(first_image)
-                master_xbaseline=a;
-            if abs(int(np.floor(b)) - int(second_image))<=1:
-                slave_xbaseline=a;
-                # print "second image found";
-                # print int(np.floor(b))
-                # print int(second_image)                
-        total_baseline=slave_xbaseline - master_xbaseline;
-        outfile.write('echo "../intf_all/'+img_pair+'/unwrap.grd ')
-        outfile.write('../intf_all/'+img_pair+'/corr.grd ')
-        outfile.write(first_image+' '+second_image+' ')
-        outfile.write(str(total_baseline))
-        outfile.write('" >> intf.tab\n');
-    outfile.write("#\n\n");
-
-    # writing scene.tab (only the scenes that are actually used in SBAS processing)
-    # Right now this isn't producing anything. 
-    outfile.write("# scene_id  day\n");
-    scenes_used='';
-    n_scenes=0;
-    scenes_used=[];
-    for intf in intf_computed:
-        scenes_used.append(intf[0:7]);  # catch which scenes are actually used in SBAS processing. 
-        scenes_used.append(intf[8:15]);
-    for x in range(len(tbaseline)):
-        temp = tbaseline[x];
-        tempint = int(np.round(temp))
-        if str(tempint) in scenes_used or str(tempint+1) in scenes_used or str(tempint-1) in scenes_used:
-            outfile.write('echo "'+str(tempint)+' '+mission_days_sorted[x]+'" >> scene.tab\n');
-            n_scenes+=1;
-    outfile.write("\n\n");
-
-    intf_ex=intf_computed[0];  # an example interferogram where we get the geographic coordinates for grdinfo
-    outfile.write("xdim=`gmt grdinfo -C ../intf_all/"+intf_ex+"/unwrap.grd | awk '{print $10}'`\n");
-    outfile.write("ydim=`gmt grdinfo -C ../intf_all/"+intf_ex+"/unwrap.grd | awk '{print $11}'`\n\n\n");
-
-    outfile.write("# run sbas\n");
-    outfile.write("sbas intf.tab scene.tab "+str(n_intf)+" "+str(n_scenes)+" $xdim $ydim -smooth 1.0 -wavelength 0.0554658 -incidence 30 -range 800184.946186 -rms -dem\n\n\n")
-
-    outfile.write("# project the velocity to Geocooridnates\n");
-    outfile.write('echo "writing to georeferenced coordinates..."\n');
-    outfile.write("ln -s ../topo/trans.dat .\n");
-    outfile.write("proj_ra2ll.csh trans.dat vel.grd vel_ll.grd\n");
-    outfile.write("gmt grd2cpt vel_ll.grd -T= -Z -Cjet > vel_ll.cpt\n");
-    outfile.write("grd2kml.csh vel_ll vel_ll.cpt\n");
-    outfile.write("cd ..\n\n");
-    outfile.write('echo "SBAS operation performed!"\n\n')
-
-    outfile.close();
-    print("README_sbas.txt written. Ready to call README_sbas.txt.")
-    call("chmod u+x README_sbas.txt",shell=True);
-    call("./README_sbas.txt",shell=True); # Make sbas!
+        nsbas.do_nsbas(config_params, post_staging_directory);
     return;
 
 

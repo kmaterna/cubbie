@@ -10,20 +10,20 @@ import netcdf_read_write
 
 
 # ------------- CONFIGURE ------------ # 
-def configure(config_params):
+def configure(config_params, staging_directory):
 
 	# Time Series parameters
 	smoothing = 3;  
 	out_dir='nsbas';
 
-
 	# Setting up the input and output directories. 
-	dir_of_interest='referenced_unwrap.grd'
-	file_dir="intf_all/"+dir_of_interest;
+	file_dir=staging_directory;
 	file_names=glob.glob(file_dir+"/*_*_unwrap.grd");
 	if len(file_names)==0:
-		print("Error! No files matching search pattern within "+dir_of_interest); sys.exit(1);
+		print("Error! No files matching search pattern within "+file_dir); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
+	print("Performing NSBAS on files in %s " % file_dir);
+	sys.exit(0);
 	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, out_dir];
 
 
@@ -220,8 +220,8 @@ def geocode(ifile, directory):
 
 # ------------ THE MAIN PROGRAM------------ # 
 
-def do_nsbas(config_params):
-	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params);
+def do_nsbas(config_params, staging_directory):
+	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params, staging_directory);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
 	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
 	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);

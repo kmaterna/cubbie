@@ -1,10 +1,10 @@
 # The purpose of this script is to choose a reference pixel
 # Criteria:
 # 1. High coherence in pretty much all interferograms- will give warning if you don't have a pixel with perfect coherence. 
-# 2. Located in the un-deforming region of the field (if that exists)
+# 2. Located in the un-deforming region of the field (if that exists). Target region defined manually. 
 # 3. Likely to unwrap correctly
 
-# The code will find all unwrap.grd files located in intf_all/unwrap.grd
+# The code will find all unwrap.grd files located in file_dir
 
 import numpy as np 
 import matplotlib.pyplot as plt 
@@ -12,9 +12,9 @@ import glob, sys, math
 import netcdf_read_write
 
 
-def main_function():
+def main_function(file_dir):
 	print("Starting to choose a reference pixel")
-	[filenames, range_bounds, azimuth_bounds]=configure();
+	[filenames, range_bounds, azimuth_bounds]=configure(file_dir);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(filenames);
 	[number_of_datas, zdim] = analyze_coherent_number(data_all);
 	[rowref, colref] = pick_reference_pixel(range_bounds, azimuth_bounds, number_of_datas, zdim);
@@ -22,12 +22,12 @@ def main_function():
 	return [rowref, colref];
 
 
-def configure():
+def configure(file_dir):
 	# Setting up the input and output directories. 
 	# Range: columns
 	# Azimuth: rows
+	# file_dir is usually something like 'intf_all/unwrap.grd'
 	file_of_interest='unwrap.grd'
-	file_dir="intf_all/"+file_of_interest;
 	file_names=glob.glob(file_dir+"/*_*_"+file_of_interest);
 	if len(file_names)==0:
 		print("Error! No files matching search pattern with "+file_of_interest); sys.exit(1);
@@ -122,7 +122,6 @@ def outputs(rowref, colref, range_bounds, azimuth_bounds, xdata, ydata, number_o
 	plt.savefig('Number_of_pixels.eps');
 	plt.close();
 
-
 	plt.figure();
 	plt.imshow(number_of_datas);
 	plt.plot([range_bounds[0], range_bounds[1],range_bounds[1], range_bounds[0], range_bounds[0] ],[azimuth_bounds[0], azimuth_bounds[0], azimuth_bounds[1], azimuth_bounds[1], azimuth_bounds[0]], color='k')
@@ -130,14 +129,14 @@ def outputs(rowref, colref, range_bounds, azimuth_bounds, xdata, ydata, number_o
 	plt.savefig('number_of_datas.eps');
 	plt.close();
 
-	print("Reference pixel is: (%d, %d)" % (rowref, colref) );
+	print("Reference pixel is: (%d, %d) (rowref, colref)" % (rowref, colref) );
 	print("Number of coherent images for reference pixel: %d" % (number_of_datas[rowref][colref]) ); 
 	return;
 
 
 
 if __name__=="__main__":
-	[rowref, colref] = main_function();
+	[rowref, colref] = main_function('intf_all/unwrap.grd');
 
 
 
