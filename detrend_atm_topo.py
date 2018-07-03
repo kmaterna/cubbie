@@ -18,7 +18,7 @@ def main_function(staging_directory, outdir, rowref, colref):
 	for item in filenames:
 		[xdata, ydata, zdata]=netcdf_read_write.read_grd_xyz(item);
 		[corrected_zdata, zarray, corrarray, demarray]= global_compute_item(zdata,demdata, rowref, colref);
-		output_item(xdata, ydata, corrected_zdata, zarray, corrarray, demarray, item, outdir);
+		output_item(xdata, ydata, zdata, corrected_zdata, zarray, corrarray, demarray, item, outdir);
 	return;
 
 
@@ -100,7 +100,7 @@ def global_compute_item(zdata, demdata, rowref, colref):
 
 
 # --------------- OUTPUTS ---------------- # 
-def output_item(xdata, ydata, corrected_zdata, zarray, corrarray, demarray, item, outdir):
+def output_item(xdata, ydata, zdata, corrected_zdata, zarray, corrarray, demarray, item, outdir):
 	item_name=item.split('/')[-1];
 	item_name_short=item_name.split('unwrap.grd')[0];
 	netcdfname=outdir+'/'+item_name;
@@ -116,6 +116,24 @@ def output_item(xdata, ydata, corrected_zdata, zarray, corrarray, demarray, item
 	plt.title('Initial and Corrected Phase vs. Topography')
 	plt.savefig('intf_all/atm_topo_corrected.grd'+'/phase_topo_'+item_name_short+'.png');
 	plt.close();
+
+
+	plt.figure();
+	plt.subplot(1,2,1);
+	plt.imshow(zdata, cmap='hsv',vmin=np.min(zarray),vmax=np.max(zarray) );
+	plt.title('Before Correction');
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	plt.subplot(1,2,2);
+	plt.imshow(corrected_zdata,cmap='hsv',vmin=np.min(zarray),vmax=np.max(zarray) );
+	plt.title('After Correction');
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	cb = plt.colorbar();
+	cb.set_label("Unwrapped Phase (radians)", size=12);
+	plt.savefig(outdir+'/imshow_'+item_name_short+'.png');
+	plt.close();
+
 
 	return;
 
