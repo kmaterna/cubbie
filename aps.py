@@ -12,7 +12,7 @@ import netcdf_read_write
 def main_function(staging_directory, out_dir):
 	[file_names, width_of_stencil] = configure(staging_directory, out_dir);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil);
+	compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, out_dir);
 	return;
 
 # ------------- CONFIGURE ------------ # 
@@ -88,13 +88,8 @@ def form_APS_pairs(date_pairs, mydate, containing, width_of_stencil):
 	return pairlist; 
 
 
-def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil):
-	
-	# Goal: construct an atmoshperic phase mask for each image. 
-	# Try one example first. Day 2017298, or dates[44]. 
+def compute_one_image(dates, date_pairs, data_all, width_of_stencil, mydate, out_dir):
 
-	# Starting to make more automated selection of dates and interferograms for APS construction
-	mydate=dates[15];
 	containing = [item for item in date_pairs if mydate in item];  # which interferograms contain the image of interest? 
 	zdim, rowdim, coldim = np.shape(data_all);
 
@@ -103,51 +98,91 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil):
 	if len(pairlist)==0:
 		print("ERROR! No valid APS stencils were detected in the stack for image %s" % mydate)
 		my_aps=np.zeros((rowdim,coldim));
+		loopcheck=np.zeros((rowdim,coldim));
+		return [0,0,0,0,0,0,0];
+
 
 	my_aps=np.zeros((rowdim,coldim));
 	intf1_corrected=np.zeros((rowdim,coldim));
 	intf2_corrected=np.zeros((rowdim,coldim));
 	loopcheck=np.zeros((rowdim,coldim));
+	myaps_1darray=[];
 
 	for i in range(rowdim):
-		for j in range(coldim):
+		for j in range(coldim):  # for each pixel...
 
 			aps_temp_sum=0;
 			pair_counter=0;
 
 			for k in range(len(pairlist)):
-				intf1=pairlist[k][0];
-				intf2=pairlist[k][1];
-				if ~np.isnan(data_all[intf1][i][j]) and ~np.isnan(data_all[intf2][i][j]):  
+				intf1_index=pairlist[k][0];
+				intf2_index=pairlist[k][1];
+				if ~np.isnan(data_all[intf1_index][i][j]) and ~np.isnan(data_all[intf2_index][i][j]):  
 				# if both interferograms are numbers, then add to APS estimate. 
 					pair_counter=pair_counter+1;
-					aps_temp_sum = aps_temp_sum + (data_all[intf1][i][j] - data_all[intf2][i][j]);
+					aps_temp_sum = aps_temp_sum + (data_all[intf1_index][i][j] - data_all[intf2_index][i][j]);
+			
 			if pair_counter>0:
 				my_aps[i][j]=(1.0/(2*pair_counter))*aps_temp_sum;
+				myaps_1darray.append(my_aps[i][j]);
 			else:
 				my_aps[i][j]=np.nan;
 			loopcheck[i][j]=pair_counter;
 
-			intf1_corrected[i][j]=data_all[intf1][i][j] - my_aps[i][j];
-			intf2_corrected[i][j]=data_all[intf2][i][j] + my_aps[i][j];
+			intf1_corrected[i][j]=data_all[intf1_index][i][j] - my_aps[i][j];
+			intf2_corrected[i][j]=data_all[intf2_index][i][j] + my_aps[i][j];
 
 
+	print(mydate);
+	ANC=compute_ANC(myaps_1darray);
+	print("ANC: %.2f" % ANC);
+
+	view_one_image(data_all, date_pairs, mydate, my_aps, loopcheck, intf1_index, intf1_corrected, intf2_index, intf2_corrected, ANC, out_dir);
+
+	return [my_aps, intf1_index, intf1_corrected, intf2_index, intf2_corrected, loopcheck, ANC];
+
+
+def compute_ANC(myaps):
+	# myaps = 1d array of numeric values
+	# A scaled RMS of the atmospheric phase screen.
+	normalizer=10;
+	M=len(myaps);
+	abar = np.mean(myaps);
+	res_sq_array = [(a-abar)*(a-abar) for a in myaps];
+	ANC = np.sqrt((1.0/M) * np.sum(res_sq_array) );
+	return ANC;
+
+
+def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, out_dir):
+
+	# Automated selection of dates and interferograms for APS construction
+	#mydate=dates[15];
+
+	for mydate in dates:
+
+		[my_aps, intf1_index, intf1_corrected, intf2_index, intf2_corrected, loopcheck, ANC] = compute_one_image(dates, date_pairs, data_all, width_of_stencil, mydate, out_dir);
+
+	return;
+
+
+# ----------- OUTPUTS ------------- # 
+def view_one_image(data_all, date_pairs, mydate, my_aps, loopcheck, intf1_index, intf1_corrected, intf2_index, intf2_corrected, ANC, out_dir):
 
 	vmin=-20;
 	vmax=20;
 
 	plt.figure();
 	plt.subplot(2,3,1);
-	plt.imshow(data_all[intf1],cmap='hsv',vmin=vmin, vmax=vmax);
-	plt.title(date_pairs[intf1]);
+	plt.imshow(data_all[intf1_index],cmap='hsv',vmin=vmin, vmax=vmax);
+	plt.title(date_pairs[intf1_index]);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
 	plt.gca().get_yaxis().set_ticks([])
 
 	plt.subplot(2,3,2)
-	plt.imshow(data_all[intf2],cmap='hsv', vmin=vmin, vmax=vmax);
-	plt.title(date_pairs[intf2]);
+	plt.imshow(data_all[intf2_index],cmap='hsv', vmin=vmin, vmax=vmax);
+	plt.title(date_pairs[intf2_index]);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
@@ -155,7 +190,7 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil):
 
 	plt.subplot(2,3,3);
 	plt.imshow(my_aps, cmap='hsv',vmin=vmin, vmax=vmax);
-	plt.title('APS for ' +mydate)
+	plt.title('ANC: %.2f' % ANC)
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
@@ -179,16 +214,11 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil):
 
 	plt.subplot(2,3,6)
 	plt.imshow(loopcheck,cmap='jet',vmin=-0.1, vmax=2.1);
-	plt.title('loopcheck');
+	plt.title('loops for '+mydate);
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
 	plt.gca().get_yaxis().set_ticks([])
-	plt.savefig('test_image2.png');
+	plt.savefig(out_dir+'/initialmask_'+mydate+'.png');
 	plt.close();
-	return;
-
-
-# ----------- OUTPUTS ------------- # 
-def outputs():
 	return;
