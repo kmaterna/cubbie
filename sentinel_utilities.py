@@ -217,6 +217,14 @@ def read_corr_results(corr_file):
     return [stem1, stem2, mean_corr];
 
 
+def remove_nans_array(myarray):
+    numarray=[];
+    for i in range(len(myarray)):
+        if ~np.isnan(myarray[i]):
+            numarray.append(myarray[i][0]);
+    return numarray;
+
+
 def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max, startdate='', enddate=''):
     """ Grab all the pairs that are below the critical baselines in space and time. 
     Return format is a list of strings like 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'. 

@@ -23,7 +23,7 @@ DOWN_DIR="S1_orbits" # directory for store precise orbits files
 CAL_DIR="S1_orbits" # directory for store AUX_CAL files
 # number of pages to check
 PAGE_START=1; # website pages for precise orbits
-PAGE_END=96 # Pages for precise orbits
+PAGE_END=12 # Pages for precise orbits
 CAL_PAGES=4 # Calibration pages
 
 ###############################
@@ -106,17 +106,18 @@ else
     cp $remote_files $dw_list
 fi
 
-#Generando los enlaces
-if [ ! -z "$am_i_linux" ]; then # WE ARE ON A LINUX MACHINE 
-    sed -i 's/^/https:\/\/qc.sentinel1.eo.esa.int\/aux_poeorb\//' $dw_list
-else
-    sed -i '' 's/^/https:\/\/qc.sentinel1.eo.esa.int\/aux_poeorb\//' $dw_list
-fi
+# #Generando los enlaces
+# if [ ! -z "$am_i_linux" ]; then # WE ARE ON A LINUX MACHINE 
+#     sed -i 's/^/https:\/\/qc.sentinel1.eo.esa.int\/aux_poeorb\//' $dw_list
+# else
+#     sed -i '' 's/^/https:\/\/qc.sentinel1.eo.esa.int\/aux_poeorb\//' $dw_list
+# fi
+# Commented july 2018 to resolve hosts with proper URL. 
 
 echo "dw_list:"
 cat $dw_list
 
-wget --quiet --no-check-certificate -P $DOWN_DIR -i $dw_list
+wget --no-check-certificate -P $DOWN_DIR -i $dw_list
 
 # Cleaning of the temporal files
 cat /dev/null > $index

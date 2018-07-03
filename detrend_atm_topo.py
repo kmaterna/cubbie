@@ -1,6 +1,6 @@
 # A script to take a stack of images plus a DEM
 # Solve for best-fitting linear trend
-# (Globally or locally)
+# Right now this is a global trend across the whole scene. 
 # Remove trend and save the adjusted stack in out_dir
 # In order to work correctly, this script needs a specified reference pixel. 
 

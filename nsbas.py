@@ -7,6 +7,7 @@ import glob, sys, math
 import datetime as dt 
 from subprocess import call
 import netcdf_read_write
+import sentinel_utilities
 
 
 # ------------- CONFIGURE ------------ # 
@@ -200,8 +201,62 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 
 	netcdf_read_write.produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
 	netcdf_read_write.flip_if_necessary(out_dir+'/vel.grd');
-	netcdf_read_write.produce_output_plot(out_dir+'/vel.grd','NSBAS LOS Velocity',out_dir+'/vel.eps', 'mm/yr');
 	geocode(out_dir+'/vel.grd',out_dir);
+	
+
+	# Visualizing the velocity field in a few different ways. 
+	zdata2=np.reshape(vel, [len(xdata)*len(ydata), 1])
+	zdata2=sentinel_utilities.remove_nans_array(zdata2);
+	plt.figure();
+	plt.hist(zdata2,bins=80);
+	plt.gca().set_yscale('log');
+	plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)) )
+	plt.ylabel('Number of Pixels');
+	plt.xlabel('LOS velocity (mm/yr)')
+	plt.grid('on');
+	plt.savefig(out_dir+'velocity_hist_log.png');
+	plt.close();
+
+	plt.figure();
+	plt.gca().set_yscale('linear');
+	plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)) )
+	plt.hist(zdata2,bins=80);
+	plt.ylabel('Number of Pixels');
+	plt.xlabel('LOS velocity (mm/yr)')
+	plt.grid('on');
+	plt.savefig(out_dir+'velocity_hist_lin.png');
+	plt.close();
+
+
+	plt.figure(figsize=(8,10));
+	plt.imshow(vel,aspect=0.5,cmap='jet',vmin=-30, vmax=30);
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	plt.gca().get_xaxis().set_ticks([]);
+	plt.gca().get_yaxis().set_ticks([]);
+	plt.title("Velocity");
+	plt.gca().set_xlabel("Range",fontsize=16);
+	plt.gca().set_ylabel("Azimuth",fontsize=16);
+	cb = plt.colorbar();
+	cb.set_label("mm/yr", size=16);
+	plt.savefig(out_dir+"vel_cutoff.png");
+	plt.close();
+
+	plt.figure(figsize=(8,10));
+	plt.imshow(vel,aspect=0.5,cmap='jet',vmin=-150, vmax=150);
+	plt.gca().invert_yaxis()
+	plt.gca().invert_xaxis()
+	plt.gca().get_xaxis().set_ticks([]);
+	plt.gca().get_yaxis().set_ticks([]);
+	plt.title("Velocity");
+	plt.gca().set_xlabel("Range",fontsize=16);
+	plt.gca().set_ylabel("Azimuth",fontsize=16);
+	cb = plt.colorbar();
+	cb.set_label("mm/yr", size=16);
+	plt.savefig(out_dir+"vel.png");
+	plt.close();
+
+
 	return;
 
 
