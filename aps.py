@@ -5,17 +5,20 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from subprocess import call 
 import glob, sys
+import datetime as dt 
 import netcdf_read_write
 
 
 def main_function(staging_directory, out_dir):
-	[file_names] = configure(staging_directory, out_dir);
+	[file_names, width_of_stencil] = configure(staging_directory, out_dir);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	compute(xdata, ydata, data_all, dates, date_pairs);
+	compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil);
 	return;
 
 # ------------- CONFIGURE ------------ # 
 def configure(staging_directory, out_dir):
+	width_of_stencil = 25;   # in days.  
+
 	# Setting up the input and output directories. 
 	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
 	file_names=sorted(file_names);
@@ -23,7 +26,7 @@ def configure(staging_directory, out_dir):
 	if len(file_names)==0:
 		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
-	return [file_names];
+	return [file_names, width_of_stencil];
 
 
 # ------------- INPUTS ------------ # 
@@ -47,57 +50,91 @@ def inputs(file_names):
 	return [xdata, ydata, data_all, dates, date_pairs];
 
 # ----------- COMPUTE ------------- #
-def compute(xdata, ydata, data_all, dates, date_pairs):
+
+def form_APS_pairs(date_pairs, mydate, containing, width_of_stencil):
+	# Date pairs: a global list of available interferograms (in order).
+	# containing: a small list of interferograms that contain the image of interest
+	# width_of_stencil: the number of days we tolerate in stencils
+
+	pairlist = [];
+
+	print("images that contain "+mydate+":")
+	print(containing);
+	for item in containing: # for each interferogram containing the main image...
+		image1=item.split('_')[0];
+		image2=item.split('_')[1];
+		if image1==mydate:
+			continue;
+		dt1 = dt.datetime.strptime(image1,"%Y%j");
+		dt2 = dt.datetime.strptime(image2,"%Y%j");
+		imwidth = (dt2 - dt1).days;
+		if abs(imwidth)<width_of_stencil:  # for each valid interferogram that lands on the master image
+			# See if there is a pair in the stack. Does it exist? 
+
+			item_potential_match = dt.datetime.strftime(dt2+dt.timedelta(days=abs(imwidth)),"%Y%j");
+			item_potential_pair = image2+'_'+item_potential_match;
+
+			if item_potential_pair in containing:
+				pair1=item;
+				pair2=item_potential_pair;
+				#print("%s found matching %s" % (item_potential_pair, item));
+				index1=date_pairs.index(pair1);
+				index2=date_pairs.index(pair2);
+				pairlist.append([index1, index2])
+
+	print(pairlist);
+	# Example of pairlist: [[63,65],[62,66]], where the numbers are the indeces of paired interferograms used for APS construction
+
+	return pairlist; 
+
+
+def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil):
 	
 	# Goal: construct an atmoshperic phase mask for each image. 
 	# Try one example first. Day 2017298, or dates[44]. 
 
-	print(dates[44]);
-	print(date_pairs[62]);
-	print(date_pairs[63]);
-	print(date_pairs[65]);
-	print(date_pairs[66]);
-
+	# Starting to make more automated selection of dates and interferograms for APS construction
+	mydate=dates[15];
+	containing = [item for item in date_pairs if mydate in item];  # which interferograms contain the image of interest? 
 	zdim, rowdim, coldim = np.shape(data_all);
 
-	intf0=62;
-	intf1=63;
-	intf2=65;
-	intf3=66;
-
-	vmin=-20;
-	vmax=20;
+	# A list of valid interferogram pairs by index in the stack, which we use for making APS
+	pairlist = form_APS_pairs(date_pairs, mydate, containing, width_of_stencil);
+	if len(pairlist)==0:
+		print("ERROR! No valid APS stencils were detected in the stack for image %s" % mydate)
+		my_aps=np.zeros((rowdim,coldim));
 
 	my_aps=np.zeros((rowdim,coldim));
 	intf1_corrected=np.zeros((rowdim,coldim));
 	intf2_corrected=np.zeros((rowdim,coldim));
 	loopcheck=np.zeros((rowdim,coldim));
+
 	for i in range(rowdim):
 		for j in range(coldim):
 
-			#my_aps[i][j]=(1.0/2) * (data_all[intf1][i][j] - data_all[intf2][i][j]);
-			inside_loop = 1;
-			outside_loop = 1;
-			if np.isnan(data_all[intf1][i][j]) or np.isnan(data_all[intf2][i][j]):
-				inside_loop = 0;
-			if np.isnan(data_all[intf0][i][j]) or np.isnan(data_all[intf3][i][j]):
-				outside_loop = 0;
-			loopcheck[i][j]=inside_loop+outside_loop;
+			aps_temp_sum=0;
+			pair_counter=0;
 
-			if inside_loop == 0 and outside_loop == 0:
-				my_aps[i][j]=np.nan
-			elif inside_loop == 1 and outside_loop == 0:
-				my_aps[i][j] = (1.0/2) * (data_all[intf1][i][j] - data_all[intf2][i][j]);
-			elif inside_loop == 0 and outside_loop == 1:
-				my_aps[i][j] = (1.0/2) * (data_all[intf0][i][j] - data_all[intf3][i][j]);
-			elif inside_loop == 1 and outside_loop ==1 :
-				my_aps[i][j] = (1.0/4) * (data_all[intf1][i][j] - data_all[intf2][i][j] + data_all[intf0][i][j] - data_all[intf3][i][j]);
+			for k in range(len(pairlist)):
+				intf1=pairlist[k][0];
+				intf2=pairlist[k][1];
+				if ~np.isnan(data_all[intf1][i][j]) and ~np.isnan(data_all[intf2][i][j]):  
+				# if both interferograms are numbers, then add to APS estimate. 
+					pair_counter=pair_counter+1;
+					aps_temp_sum = aps_temp_sum + (data_all[intf1][i][j] - data_all[intf2][i][j]);
+			if pair_counter>0:
+				my_aps[i][j]=(1.0/(2*pair_counter))*aps_temp_sum;
+			else:
+				my_aps[i][j]=np.nan;
+			loopcheck[i][j]=pair_counter;
 
 			intf1_corrected[i][j]=data_all[intf1][i][j] - my_aps[i][j];
 			intf2_corrected[i][j]=data_all[intf2][i][j] + my_aps[i][j];
 
 
 
+	vmin=-20;
+	vmax=20;
 
 	plt.figure();
 	plt.subplot(2,3,1);
@@ -118,7 +155,7 @@ def compute(xdata, ydata, data_all, dates, date_pairs):
 
 	plt.subplot(2,3,3);
 	plt.imshow(my_aps, cmap='hsv',vmin=vmin, vmax=vmax);
-	plt.title('APS for ' +dates[44])
+	plt.title('APS for ' +mydate)
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()
 	plt.gca().get_xaxis().set_ticks([]);
@@ -141,7 +178,7 @@ def compute(xdata, ydata, data_all, dates, date_pairs):
 	plt.gca().get_yaxis().set_ticks([])
 
 	plt.subplot(2,3,6)
-	plt.imshow(loopcheck,cmap='hsv',vmin=0, vmax=2);
+	plt.imshow(loopcheck,cmap='jet',vmin=-0.1, vmax=2.1);
 	plt.title('loopcheck');
 	plt.gca().invert_yaxis()
 	plt.gca().invert_xaxis()

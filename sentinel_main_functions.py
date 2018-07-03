@@ -132,7 +132,6 @@ def manifest2raw_orig_eof(config_params):
 
     file_list = get_frames_for_raw_orig(config_params);  # will assemble frames if necessary. Otherwise will just return the DATA/*.SAFE files
     print(file_list);
-    sys.exit(0);
 
     # Unpack the .SAFE directories into raw_orig
     call(["mkdir","-p","raw_orig"],shell=False);
