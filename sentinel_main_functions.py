@@ -122,6 +122,7 @@ def read_config():
     return config_params; 
 
 
+# --------------- STEP 0: Setting up frames (will skip if FRAMES contains data) ------------ # 
 def manifest2raw_orig_eof(config_params):
 	# This will set up the raw_orig directory from the DATA/.SAFE directories
 	# Will also go into orbit directory and make copies of the right orbit files into the raw_orig directory. 
@@ -131,6 +132,7 @@ def manifest2raw_orig_eof(config_params):
 
     file_list = get_frames_for_raw_orig(config_params);  # will assemble frames if necessary. Otherwise will just return the DATA/*.SAFE files
     print(file_list);
+    sys.exit(0);
 
     # Unpack the .SAFE directories into raw_orig
     call(["mkdir","-p","raw_orig"],shell=False);
@@ -177,7 +179,7 @@ def get_frames_for_raw_orig(config_params):
         outfile.write("#!/bin/bash\n")
         outfile.write("cd FRAMES\n");
         outfile.write("if [ -z \"$(ls -A $1 )\" ]; then\n"); # if the directory is empty, then we make more frames. 
-        outfile.write("  readlink -f ../DATA/*20151001*.SAFE > data.list\n");
+        outfile.write("  readlink -f ../DATA/*.SAFE > data.list\n");
         outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame1_def[0], frame1_def[1]) );  # write the near-range edges of the frame to frame.ll
         outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame2_def[0], frame2_def[1]) );
         outfile.write("  make_s1a_frame.csh data.list frames.ll\n");
@@ -199,7 +201,6 @@ def get_frames_for_raw_orig(config_params):
         # Make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
         call('compare_frames_acquisitions.sh',shell=True);
         print("Please check the frames and acquisitions and see if all your data has been included. ");
-
 
         file_list = glob.glob("FRAMES/FRAME_1/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
     else: 
