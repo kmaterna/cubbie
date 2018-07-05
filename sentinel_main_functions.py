@@ -395,6 +395,7 @@ def unwrapping(config_params):
     file_of_interest='unwrap.grd';
     call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
 
+    sentinel_utilities.check_intf_all_sanity();
     return;
 
 
@@ -418,7 +419,7 @@ def do_timeseries(config_params):
     if config_params.choose_refpixel:
         prior_staging_directory=prior_staging_directory;
         post_staging_directory='intf_all/referenced_unwrap.grd';
-        rowref=241; colref=175;  # bypass these function calls for time reasons.
+        rowref=237; colref=172;  # bypass these function calls for time reasons.
         # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
         # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
     if config_params.solve_unwrap_errors:
@@ -432,7 +433,7 @@ def do_timeseries(config_params):
     if config_params.aps:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/aps_corrected.grd';
-        #aps.main_function(prior_staging_directory, post_staging_directory);
+        aps.main_function(prior_staging_directory, post_staging_directory);
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';

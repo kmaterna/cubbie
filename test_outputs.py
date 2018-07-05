@@ -1,6 +1,9 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import subprocess
+import datetime as dt 
+import collections
 import sys
 import netcdf_read_write
 import aps
@@ -198,6 +201,10 @@ filename='intf_all/'+folder+'/phasefilt.grd'
 
 # print("%d out of %d blocks have %d coherent pixels" % (counter, len(newx)*len(newy), tolerance) );
 
+
+APS TESTING
 staging_directory='intf_all/referenced_unwrap.grd'
 out_dir='intf_all/aps_unwrap.grd'
 aps.main_function(staging_directory, out_dir);
+
+

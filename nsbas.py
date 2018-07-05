@@ -214,7 +214,7 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	plt.ylabel('Number of Pixels');
 	plt.xlabel('LOS velocity (mm/yr)')
 	plt.grid('on');
-	plt.savefig(out_dir+'velocity_hist_log.png');
+	plt.savefig(out_dir+'/velocity_hist_log.png');
 	plt.close();
 
 	plt.figure();
@@ -224,7 +224,7 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	plt.ylabel('Number of Pixels');
 	plt.xlabel('LOS velocity (mm/yr)')
 	plt.grid('on');
-	plt.savefig(out_dir+'velocity_hist_lin.png');
+	plt.savefig(out_dir+'/velocity_hist_lin.png');
 	plt.close();
 
 
@@ -239,7 +239,7 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
 	cb = plt.colorbar();
 	cb.set_label("mm/yr", size=16);
-	plt.savefig(out_dir+"vel_cutoff.png");
+	plt.savefig(out_dir+"/vel_cutoff.png");
 	plt.close();
 
 	plt.figure(figsize=(8,10));
@@ -253,7 +253,7 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	plt.gca().set_ylabel("Azimuth",fontsize=16);
 	cb = plt.colorbar();
 	cb.set_label("mm/yr", size=16);
-	plt.savefig(out_dir+"vel.png");
+	plt.savefig(out_dir+"/vel.png");
 	plt.close();
 
 

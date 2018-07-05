@@ -349,9 +349,77 @@ def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_stag
         netcdf_read_write.flip_if_necessary(outname);
     return;
 
+#
+# Reporting and defensive programming
+#
+
+def compare_intended_list_with_directory(intended_array, actual_array, errormsg):
+    # This takes two lists of dates formatted as strings, such as ['2015321_2015345']
+    # It prints out any members that exist in the intended_array but not the actual_array
+    for item in intended_array:
+        if item in actual_array:
+            continue;
+        else:
+            print("ERROR! %s expected, but not found in actual array." % item);
+            print(errormsg);
+    return;
 
 
+def check_intf_all_sanity():
+    # Figure out whether all intended interferograms were made and unwrapped. 
+
+    print("Checking the progress of intf and unwrap steps. ")
+
+    # The hardest part: Fix the differences between datetime formats in intf_record.in
+    intended_intfs = np.genfromtxt('intf_record.in',dtype='str');
+    intended_intfs = [i[3:11]+'_'+i[22:30] for i in intended_intfs ];  # these come in formatted S1A20161206_ALL_F1:S1A20161230_ALL_F1
+    date1 = [ dt.datetime.strptime(i[0:8],"%Y%m%d")-dt.timedelta(days=1) for i in intended_intfs ];
+    date2 = [ dt.datetime.strptime(i[9:17],"%Y%m%d")-dt.timedelta(days=1) for i in intended_intfs ];
+    date1 = [ dt.datetime.strftime(i,"%Y%j") for i in date1 ];
+    date2 = [ dt.datetime.strftime(i,"%Y%j") for i in date2 ];
+    intended_intfs=[];
+    for i in range(len(date1)):
+        intended_intfs.append(date1[i]+'_'+date2[i]);
+    num_intended=len(set(intended_intfs));
+    print("  intended interferograms: %d from intf_record.in" % len(intended_intfs));
+    print("  unique intended interferograms: %d " % num_intended);
+
+    # Check for duplicated items in intf_record.in (may exist);
+    duplicates = [ item for item,count in collections.Counter(intended_intfs).items() if count > 1 ];
+    print("  duplicated elements in intf_record.in: ");
+    print(duplicates);
+
+    # Collect the actual intf_all directories
+    actual_intfs = subprocess.check_output('ls -d intf_all/201*_201* ',shell=True);
+    actual_intfs = actual_intfs.split('\n');
+    actual_intfs = [value for value in actual_intfs if value != '']; 
+    actual_intfs = [i.split('/')[-1] for i in actual_intfs ];
+    print("  actual interferograms: %d from intf_all directory " % len(actual_intfs));
+
+    # Collect the unwrap.grd files
+    actual_unwraps = subprocess.check_output('ls intf_all/unwrap.grd/*_unwrap.grd',shell=True);
+    actual_unwraps = actual_unwraps.split('\n');
+    actual_unwraps = [value for value in actual_unwraps if value != '']; 
+    actual_unwraps = [i.split('/')[-1] for i in actual_unwraps ];
+    actual_unwraps = [i.split('_unwrap.grd')[0] for i in actual_unwraps ];
+    print('  unwrapped interferograms: %d from intf_all/unwrap.grd directory' % len(actual_unwraps))
+
+    if num_intended==len(actual_intfs):
+        print("Congratulations! All of your interferograms have been made. ");
+    else:
+        compare_intended_list_with_directory(intended_intfs, actual_intfs, 'is not made.');
+    if num_intended==len(actual_unwraps):
+        print("Congratulations! All of your interferograms have been unwrapped. ");
+    else:
+        compare_intended_list_with_directory(intended_intfs, actual_unwraps, 'is not unwrapped.');
+
+    return;
+
+
+
+#
 # Exceptions and Exception handling
+#
 
 # A special exception for when a directory is poorly situated, and is going to fail. 
 class Directory_error(Exception):
