@@ -348,3 +348,16 @@ def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_stag
         netcdf_read_write.produce_output_netcdf(xdata, ydata, referenced_zdata, 'phase', outname);
         netcdf_read_write.flip_if_necessary(outname);
     return;
+
+
+
+# Exceptions and Exception handling
+
+# A special exception for when a directory is poorly situated, and is going to fail. 
+class Directory_error(Exception):
+    def __init__(self, value):
+         self.value=value;
+    def __str__(self):
+         return(repr(self.value));
+
+

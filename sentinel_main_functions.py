@@ -1,7 +1,7 @@
 import collections
-import os,sys,argparse,time,configparser, glob
+import os,sys,shutil,argparse,time,configparser, glob
 import numpy as np
-from subprocess import call
+from subprocess import call, check_output
 import sentinel_utilities
 import analyze_coherence
 import choose_reference_pixel
@@ -133,6 +133,18 @@ def manifest2raw_orig_eof(config_params):
     file_list = get_frames_for_raw_orig(config_params);  # will assemble frames if necessary. Otherwise will just return the DATA/*.SAFE files
     print(file_list);
 
+    # When starting from preprocess, the system will often find a new super-master and re-align
+    # To make this possible, we start from empty raw and raw-orig directories to avoid conflict.
+    print("Removing raw/ and raw_orig to proceed fresh. ");
+    try:
+         shutil.rmtree("raw_orig");
+    except OSError, e:
+         print("Error: %s - %s." % (e.filename, e.strerror));
+    try:
+         shutil.rmtree("raw");
+    except OSError, e:
+          print("Error: %s - %s." % (e.filename, e.strerror));
+
     # Unpack the .SAFE directories into raw_orig
     call(["mkdir","-p","raw_orig"],shell=False);
     print(file_list);    
@@ -161,6 +173,20 @@ def manifest2raw_orig_eof(config_params):
         call(['cp',eof_name,'raw_orig'],shell=False);
     print("copying s1a-aux-cal.xml to raw_orig...");
     call(['cp',config_params.orbit_dir+'/s1a-aux-cal.xml','raw_orig'],shell=False);
+    check_raw_orig_sanity();
+    return;
+
+def check_raw_orig_sanity():
+    number_of_tiffs = int(check_output('ls raw_orig/*.tiff | wc -l',shell=True));
+    number_of_safes = int(check_output('ls raw_orig/*.safe | wc -l',shell=True));
+    number_of_EOFs  = int(check_output('ls raw_orig/*.EOF | wc -l',shell=True));
+    print('number of tiffs is %d ' % number_of_tiffs);
+    print('number of safes is %d ' % number_of_safes);
+    print('number of EOFs is %d ' % number_of_EOFs);
+    if number_of_tiffs != number_of_safes:
+        raise sentinel_utilities.Directory_error('Huge error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!'); 
+    if number_of_tiffs != number_of_EOFs:
+        raise sentinel_utilities.Directory_error('Huge error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
     return;
 
 
