@@ -5,20 +5,22 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from subprocess import call 
 import glob, sys, os
+from copy import deepcopy
 import datetime as dt 
 import netcdf_read_write
 
 
 def main_function(staging_directory, out_dir):
-	[file_names, width_of_stencil] = configure(staging_directory, out_dir);
+	[file_names, width_of_stencil, ANC_threshold] = configure(staging_directory, out_dir);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	[aps_array, corrected_intfs] = compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, out_dir);
+	[aps_array, corrected_intfs] = compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_threshold, out_dir);
 	outputs(data_all, corrected_intfs, aps_array, dates, out_dir);
 	return;
 
 # ------------- CONFIGURE ------------ # 
 def configure(staging_directory, out_dir):
 	width_of_stencil = 25;   # in days.  
+	ANC_threshold = 3;
 
 	# Setting up the input and output directories. 
 	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
@@ -27,7 +29,7 @@ def configure(staging_directory, out_dir):
 	if len(file_names)==0:
 		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
-	return [file_names, width_of_stencil];
+	return [file_names, width_of_stencil, ANC_threshold];
 
 
 # ------------- INPUTS ------------ # 
@@ -61,8 +63,10 @@ def form_APS_pairs(date_pairs, mydate, containing, width_of_stencil):
 
 	pairlist = [];
 
-	print("images that contain "+mydate+":")
-	print(containing);
+	# print("images that contain "+mydate+":")
+	# print(containing);
+	# Debugging print statements. 
+
 	for item in containing: # for each interferogram containing the main image...
 		image1=item.split('_')[0];
 		image2=item.split('_')[1];
@@ -85,13 +89,13 @@ def form_APS_pairs(date_pairs, mydate, containing, width_of_stencil):
 				index2=date_pairs.index(pair2);
 				pairlist.append([index1, index2])
 
-	print(pairlist);
+	# print(pairlist);
 	# Example of pairlist: [[63,65],[62,66]], where the numbers are the indeces of paired interferograms used for APS construction
 
 	return pairlist; 
 
 
-def compute_image(dates, date_pairs, data_all, aps_array, width_of_stencil, mydate, out_dir, mode):
+def compute_aps_image(dates, date_pairs, data_all, width_of_stencil, mydate):
 
 	containing = [item for item in date_pairs if mydate in item];  # which interferograms contain the image of interest? 
 	zdim, rowdim, coldim = np.shape(data_all);
@@ -105,11 +109,6 @@ def compute_image(dates, date_pairs, data_all, aps_array, width_of_stencil, myda
 		print("ERROR! No valid APS stencils were detected in the stack for image %s" % mydate)
 		return [my_aps,0];
 
-
-	# If mode == initial, just assume that the bounding phase screens are zero. 
-
-	# If mode == iterative, you may have other phase screens to consider. 
-
 	for i in range(rowdim):
 		for j in range(coldim):  # for each pixel...
 
@@ -122,24 +121,14 @@ def compute_image(dates, date_pairs, data_all, aps_array, width_of_stencil, myda
 				if ~np.isnan(data_all[intf1_index][i][j]) and ~np.isnan(data_all[intf2_index][i][j]):  
 				# if both interferograms are numbers, then add to APS estimate. 
 					pair_counter=pair_counter+1;
-
-					if mode=='initial_mode':  # initially, we just use the original interferograms. 
-						aps_temp_sum = aps_temp_sum + (data_all[intf1_index][i][j] - data_all[intf2_index][i][j]);
-
-					# THIS NEEDS WORK!
-					elif mode=='iterative_mode':  # next, we correct the interferograms by any previous APS screens. 
-						aps_temp_sum = aps_temp_sum + (data_all[intf1_index][i][j] - data_all[intf2_index][i][j]);
-					
-					else:
-						print("Error- invalid computation mode! Please provide a mode other than %s " % mode);
-						sys.exit(0);
+ 
+					aps_temp_sum = aps_temp_sum + (data_all[intf1_index][i][j] - data_all[intf2_index][i][j]);
 			
 			if pair_counter>0:
 				my_aps[i][j]=(1.0/(2*pair_counter))*aps_temp_sum;
 				myaps_1darray.append(my_aps[i][j]);
 			else:
 				my_aps[i][j]=np.nan;
-
 
 	print(mydate);
 	ANC=compute_ANC(myaps_1darray);
@@ -159,110 +148,106 @@ def compute_ANC(myaps):
 	return ANC;
 
 
-def compute_one_corrected_intf(data_all, aps_array, dates, date_pairs,selected_intf):
+def correct_intf_stack(data_all, my_aps, given_date, date_pairs):
+	# In this function, you start with a set of interferograms (3D array), and correct it for a given APS. 
+	# You return the updated interferograms. 
 
+	print("Correcting intf stack for APS on day %s" % given_date);
 	zdim, rowdim, coldim = np.shape(data_all);
 	corrected_intfs = data_all;
 
-	zindex=date_pairs.index(selected_intf);
-
-	print("This interferogram is made from date_pair %s" % date_pairs[zindex]);
-	date_later = date_pairs[zindex].split('_')[1];
-	date_earlier = date_pairs[zindex].split('_')[0];
-	index_later=dates.index(date_later);
-	index_earlier=dates.index(date_earlier);
-
-	for j in range(rowdim):
-		for k in range(coldim):
-			# each pixel takes a correction from the APS
-			corrected_intfs[zindex][j][k] = (data_all[zindex][j][k]) - (aps_array[index_later][j][k]) + (aps_array[index_earlier][j][k]);
-
-	return corrected_intfs;
-
-
-
-
-
-
-def compute_corrected_intfs(data_all, aps_array, dates, date_pairs):
-	# Does the math to take a stack of atmsopheric phase screens and compute corrected interferograms. 
-
-	zdim, rowdim, coldim = np.shape(data_all);
-	corrected_intfs = np.zeros(np.shape(data_all));
-
 	for i in range(zdim):
-
-		print("This interferogram is made from date_pair %s" % date_pairs[i]);
-		date_later = date_pairs[i].split('_')[1];
-		date_earlier = date_pairs[i].split('_')[0];
-		index_later=dates.index(date_later);
-		index_earlier=dates.index(date_earlier);
-
-		for j in range(rowdim):
-			for k in range(coldim):
-				# each pixel takes a correction from the APS
-				corrected_intfs[i][j][k] = (data_all[i][j][k]) - (aps_array[index_later][j][k]) + (aps_array[index_earlier][j][k]);
+		# For each interferogram, you might want to correct the image for the new APS. 
+		if given_date in date_pairs[i]:
+			image_split = date_pairs[i].split('_');
+			if given_date==image_split[1]:  # if the given date is the second part of the image. 
+				# These are the interferograms made where the APS is for the later date. The APS is subtracted. 
+				for j in range(rowdim):
+					for k in range(coldim): # each pixel takes a correction from the APS
+						corrected_intfs[i][j][k] = (data_all[i][j][k]) - (my_aps[j][k]); 
+			else:  # If the given date is the first part of the image
+				for j in range(rowdim):
+					for k in range(coldim): # each pixel takes a correction from the APS
+						corrected_intfs[i][j][k] = (data_all[i][j][k]) + (my_aps[j][k]); 
 
 	return corrected_intfs;
 
 
 
-
-
-def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, out_dir):
-
-	# Automated selection of dates and interferograms for APS construction
-	# Will do:
-	# Rank day based on ANC
-	# Make APS iteratively, in order of ANC
-	# Produce an array of ANCs
-	# Produce an array of corrected interferogram data
-
+def get_initial_ANC_ranking(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, out_dir):
+	# If you've done initial ranking before, you can read the results from a file (saves time)
+	# If you're starting fresh, then you want to compute the ANCs for each APS as they are first calculated. 
+	# There is no over-writing of data. 
+	ANC_array=[];
 	aps_array_initial = np.zeros((len(dates),len(ydata),len(xdata)));
-	aps_array_iterated = np.zeros((len(dates),len(ydata),len(xdata)));
-	ANC_array = [];
-
-
-	# ITERATION 1: EITHER COMPUTE ANCs INITIALLY OR READ THEM FROM A FILE. 
 	ANCfile = out_dir+'/initial_ANC.txt';
 	if os.path.isfile(ANCfile):  # read the ANCs if the file exists. 
 		dates=[];
-		ANC_array=[];
 		ifile=open(ANCfile,'r');
 		for line in ifile:
 			dates.append(line.split(': ')[0]);
 			ANC_array.append(float(line.split(': ')[1]));
 		ifile.close();
 	else:  # Otherwise we need to do a computation. 
-		ofile = open(outfile,'w');
+		ofile = open(ANCfile,'w');
 		for i in range(len(dates)):
-			[my_aps, ANC] = compute_image(dates, date_pairs, data_all, aps_array_initial, width_of_stencil, dates[i], out_dir, 'initial_mode');
-			aps_array_initial[i][:][:]=my_aps;
+			[my_aps, ANC] = compute_aps_image(dates, date_pairs, data_all, aps_array_initial, width_of_stencil, dates[i]);
 			ANC_array.append(ANC);
 			ANCfile.write('%s: %.2f \n' % (dates[i], ANC) );
 		ANCfile.close();
+	return ANC_array; 
 
-	print("Max ANC is: %.2f " % np.max(ANC_array));
+
+
+def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_threshold, out_dir):
+
+	# Automated selection of dates and interferograms for APS construction. This will: 
+	# Rank days based on ANC
+	# Make APS iteratively, in order of ANC
+	# Produce an array of corrected interferogram data
+
+	aps_array_iterated = np.zeros((len(dates),len(ydata),len(xdata)));
+
+	# ITERATION 1: EITHER COMPUTE ANCs INITIALLY OR READ THEM FROM A FILE. 
+	ANC_array = get_initial_ANC_ranking(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, out_dir);
+
+	print("Before iterations, max ANC is: %.2f " % np.max(ANC_array));
 	max_index=ANC_array.index(np.max(ANC_array));
 	print("Occurs on day: %s" % dates[max_index]);
 
 
 	# ITERATION 2: SOLVE FOR ATMOSPHERIC SCREEN IN ORDER OF ANC
-	# aps_array_iterated 
 	# re-order the dates and ANCs
-	ordered_ANCs = [x for x,_ in sorted(zip(ANC_array, dates), reverse=True)];
-	ordered_dates = [x for _,x in sorted(zip(ANC_array, dates), reverse=True)];
-	for given_date in ordered_dates:
-		if given_date != '2017298':
-			continue;
-		i=dates.index(given_date);
-		[my_aps,ANC]=compute_image(dates, date_pairs, data_all, aps_array_iterated, width_of_stencil, given_date, out_dir, 'iterative_mode');
-		aps_array_iterated[i][:][:]=my_aps;
-		# corrected_intfs = compute_one_corrected_intf(data_all, aps_array_iterated, dates, date_pairs, selected_date);
+	corrected_intfs = deepcopy(data_all);  # Start iteratively adjusting the interferograms. 
 
+	for i in range(len(dates)):  # this is how we control the number of iterations. 
 
-	# corrected_intfs = np.zeros(np.shape(data_all));
-	corrected_intfs = compute_corrected_intfs(data_all, aps_array_iterated, dates, date_pairs);
+		ordered_ANCs = [x for x,_ in sorted(zip(ANC_array, dates),reverse=True)]
+		ordered_dates = [x for _,x in sorted(zip(ANC_array, dates), reverse=True)];
+		# print(ordered_ANCs);
+		# print(ordered_dates);
+		if ordered_ANCs[0]<ANC_threshold:
+			print("Exiting loop. %d images iteratively corrected. ")
+			break;
+
+		given_date=ordered_dates[0];  # THIS IS THE KEY
+		# given_date='2017298';
+		[my_aps,ANC]=compute_aps_image(dates, date_pairs, corrected_intfs, width_of_stencil, given_date);
+
+		# Fix interferograms
+		corrected_intfs = correct_intf_stack(corrected_intfs, my_aps, given_date, date_pairs);
+
+		# At this stage, the ANC for your chosen image is zero by construction. 
+		# At the same time, the ANC for the neighboring images have been changed. 
+		# I will compute them, record them, and properly iterate later. 
+
+		# Compute my_aps,ANC again based on fixed interferograms 
+		[my_aps,new_ANC]=compute_aps_image(dates, date_pairs, corrected_intfs, width_of_stencil, given_date);
+
+		# Replace the ANC measure with the updated one. 
+		print("Iterating over %s: ANC %.2f -> ANC %.2f " % (given_date, ANC, new_ANC));
+		i = dates.index(given_date);
+		ANC_array[i]=new_ANC;
 
 	return [aps_array_iterated, corrected_intfs];
 
