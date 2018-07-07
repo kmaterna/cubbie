@@ -6,6 +6,7 @@ import sentinel_utilities
 import analyze_coherence
 import choose_reference_pixel
 import unwrapping_errors
+import aps 
 import detrend_atm_topo
 import sbas
 import nsbas
@@ -432,19 +433,20 @@ def do_timeseries(config_params):
         #gacos.main_function(prior_staging_directory, post_staging_directory);
     if config_params.aps:
         prior_staging_directory=post_staging_directory;
-        post_staging_directory='intf_all/aps_corrected.grd';
-        aps.main_function(prior_staging_directory, post_staging_directory);
+        post_staging_directory='intf_all/aps_unwrap.grd';
+        aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';
         detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
+        # Still need to implement the reference pixel after all these adjustments. 
 
 
     if config_params.ts_type=="SBAS":
         sbas.do_sbas(config_params, post_staging_directory);
     if config_params.ts_type=="NSBAS":
         print("No need to actually do NSBAS")
-        #nsbas.do_nsbas(config_params, post_staging_directory);
+        nsbas.do_nsbas(config_params, post_staging_directory);
     return;
 
 

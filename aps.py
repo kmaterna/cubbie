@@ -10,11 +10,11 @@ import datetime as dt
 import netcdf_read_write
 
 
-def main_function(staging_directory, out_dir):
+def main_function(staging_directory, out_dir, rowref, colref):
 	[file_names, width_of_stencil, ANC_threshold] = configure(staging_directory, out_dir);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
-	[aps_array, corrected_intfs] = compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_threshold, out_dir);
-	outputs(data_all, corrected_intfs, aps_array, dates, out_dir);
+	[aps_array, corrected_intfs] = compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_threshold, rowref, colref, out_dir);
+	outputs(xdata, ydata, data_all, corrected_intfs, aps_array, date_pairs, dates, out_dir);
 	return;
 
 # ------------- CONFIGURE ------------ # 
@@ -148,7 +148,7 @@ def compute_ANC(myaps):
 	return ANC;
 
 
-def correct_intf_stack(data_all, my_aps, given_date, date_pairs):
+def correct_intf_stack(data_all, my_aps, given_date, date_pairs, rowref, colref):
 	# In this function, you start with a set of interferograms (3D array), and correct it for a given APS. 
 	# You return the updated interferograms. 
 
@@ -161,14 +161,16 @@ def correct_intf_stack(data_all, my_aps, given_date, date_pairs):
 		if given_date in date_pairs[i]:
 			image_split = date_pairs[i].split('_');
 			if given_date==image_split[1]:  # if the given date is the second part of the image. 
-				# These are the interferograms made where the APS is for the later date. The APS is subtracted. 
+				refpix = data_all[i][rowref][colref] - my_aps[rowref][colref];
+                                # These are the interferograms made where the APS is for the later date. The APS is subtracted. 
 				for j in range(rowdim):
 					for k in range(coldim): # each pixel takes a correction from the APS
-						corrected_intfs[i][j][k] = (data_all[i][j][k]) - (my_aps[j][k]); 
+						corrected_intfs[i][j][k] = (data_all[i][j][k]) - (my_aps[j][k]) - refpix; 
 			else:  # If the given date is the first part of the image
-				for j in range(rowdim):
+				refpix = data_all[i][rowref][colref] + my_aps[rowref][colref];
+                                for j in range(rowdim):
 					for k in range(coldim): # each pixel takes a correction from the APS
-						corrected_intfs[i][j][k] = (data_all[i][j][k]) + (my_aps[j][k]); 
+						corrected_intfs[i][j][k] = (data_all[i][j][k]) + (my_aps[j][k]) - refpix ; 
 
 	return corrected_intfs;
 
@@ -191,7 +193,7 @@ def get_initial_ANC_ranking(xdata, ydata, data_all, dates, date_pairs, width_of_
 	else:  # Otherwise we need to do a computation. 
 		ofile = open(ANCfile,'w');
 		for i in range(len(dates)):
-			[my_aps, ANC] = compute_aps_image(dates, date_pairs, data_all, aps_array_initial, width_of_stencil, dates[i]);
+			[my_aps, ANC] = compute_aps_image(dates, date_pairs, data_all, width_of_stencil, dates[i]);
 			ANC_array.append(ANC);
 			ANCfile.write('%s: %.2f \n' % (dates[i], ANC) );
 		ANCfile.close();
@@ -199,7 +201,7 @@ def get_initial_ANC_ranking(xdata, ydata, data_all, dates, date_pairs, width_of_
 
 
 
-def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_threshold, out_dir):
+def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_threshold, rowref, colref, out_dir):
 
 	# Automated selection of dates and interferograms for APS construction. This will: 
 	# Rank days based on ANC
@@ -227,7 +229,7 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_thr
 		# print(ordered_ANCs);
 		# print(ordered_dates);
 		if ordered_ANCs[0]<ANC_threshold:
-			print("Exiting loop. %d images iteratively corrected. ")
+			print("Exiting loop. %d images iteratively corrected. " % i )
 			break;
 
 		given_date=ordered_dates[0];  # THIS IS THE KEY
@@ -235,7 +237,7 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, ANC_thr
 		[my_aps,ANC]=compute_aps_image(dates, date_pairs, corrected_intfs, width_of_stencil, given_date);
 
 		# Fix interferograms
-		corrected_intfs = correct_intf_stack(corrected_intfs, my_aps, given_date, date_pairs);
+		corrected_intfs = correct_intf_stack(corrected_intfs, my_aps, given_date, date_pairs, rowref, colref);
 
 		# At this stage, the ANC for your chosen image is zero by construction. 
 		# At the same time, the ANC for the neighboring images have been changed. 
@@ -359,13 +361,28 @@ def display_myaps_array(myaps_array, dates, out_dir, filename):
 
 	return;
 
+def intf_stack_to_grds(xdata, ydata, corrected_intfs, date_pairs, out_dir):
+	print("Writing corrected interferograms to file. ")
+	zdim, rowdim, coldim = np.shape(corrected_intfs);
+	for i in range(zdim):
+		item_name=date_pairs[i]
+		netcdfname=out_dir+'/'+item_name+'_unwrap.grd';
+		netcdf_read_write.produce_output_netcdf(xdata, ydata, corrected_intfs[i][:][:], 'unwrapped_phase', netcdfname);
+		netcdf_read_write.flip_if_necessary(netcdfname);
+	return;
 
-def outputs(data_all, corrected_intfs, myaps_array, dates, out_dir):
+
+def outputs(xdata, ydata, data_all, corrected_intfs, myaps_array, date_pairs, dates, out_dir):
+
+	print("Starting the output process");
 
 	# Display raw intfs
 	display_many_intfs(data_all, out_dir,'raw_intfs');
 	display_many_intfs(corrected_intfs, out_dir,'aps_intfs');
 	display_myaps_array(myaps_array, dates, out_dir, 'APS_arrays');
+
+	intf_stack_to_grds(xdata, ydata, corrected_intfs, date_pairs, out_dir);
+
 
 	# view_one_image(data_all, date_pairs, mydate, my_aps, loopcheck, intf1_index, intf1_corrected, intf2_index, intf2_corrected, ANC, out_dir);
 
