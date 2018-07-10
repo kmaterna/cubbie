@@ -19,7 +19,7 @@ def identify_all_loops():
 	loops=[]; 
 	edges=[];
 	nodes=[];
-	directories = glob.glob("intf_all/*_*");
+	directories = glob.glob("intf_all/???????_???????");
 	for item in directories:
 		edgepair=item.split('/')[-1];
 		edges.append(edgepair);
@@ -62,7 +62,7 @@ def identify_all_loops():
 
 
 
-def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
+def compute_loops(all_loops, loops_dir, loops_guide, rowref, colref):
 	subprocess.call(['mkdir','-p',loops_dir],shell=False);
 	ofile=open(loops_dir+loops_guide,'w');
 	for i in range(len(all_loops)):
@@ -71,6 +71,8 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 
 	unwrapped='unwrap.grd'
 	wrapped='phasefilt.grd'
+	z1_sample = netcdf_read_write.read_grd('intf_all/'+all_loops[0][0]+'_'+all_loops[0][1]+'/'+unwrapped);
+	number_of_errors = np.zeros(np.shape(z1_sample));
 
 	for i in range(0, len(all_loops)):
 		edge1=all_loops[i][0]+'_'+all_loops[i][1];
@@ -86,29 +88,23 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 
 		print("Loop "+str(i)+":");
 
+		rowdim, coldim = np.shape(z1);
+
 		histdata_raw=[];
 		histdata_fix=[];
 		znew_raw = np.zeros(np.shape(z1));
 		znew_fix = np.zeros(np.shape(z1));
 		errorcount=0;
 
-		for j in range(np.shape(z1)[0]):
-			for k in range(np.shape(z1)[1]):
+		for j in range(rowdim):
+			for k in range(coldim):
 				
-				if len(reference_pixel)>0:
-					wr1=wr_z1[j][k]-wr_z1[reference_pixel[0], reference_pixel[1]];
-					z1_adj=z1[j][k]-z1[reference_pixel[0], reference_pixel[1]];
-					wr2=wr_z2[j][k]-wr_z2[reference_pixel[0], reference_pixel[1]];
-					z2_adj=z2[j][k]-z2[reference_pixel[0], reference_pixel[1]];
-					wr3=wr_z3[j][k]-wr_z3[reference_pixel[0], reference_pixel[1]];
-					z3_adj=z3[j][k]-z3[reference_pixel[0], reference_pixel[1]];
-				else:
-					wr1=wr_z1[j][k];
-					wr2=wr_z2[j][k];
-					wr3=wr_z3[j][k];
-					z1_adj=z1[j][k];
-					z2_adj=z2[j][k];
-					z3_adj=z3[j][k];
+				wr1=wr_z1[j][k]-wr_z1[rowref, colref];
+				z1_adj=z1[j][k]-z1[rowref, colref];
+				wr2=wr_z2[j][k]-wr_z2[rowref, colref];
+				z2_adj=z2[j][k]-z2[rowref, colref];
+				wr3=wr_z3[j][k]-wr_z3[rowref, colref];
+				z3_adj=z3[j][k]-z3[rowref, colref];
 
 
 				# Using equation from Heresh Fattahi's PhD thesis to isolate unwrapping errors. 
@@ -128,8 +124,9 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 					histdata_raw.append(znew_raw[j][k]/np.pi);
 				if ~np.isnan(znew_fix[j][k]):
 					histdata_fix.append(znew_fix[j][k]/np.pi);
-				if abs(znew_fix[j][k])>0.5:
+				if abs(znew_fix[j][k])>0.5:  # if this pixel has 
 					errorcount=errorcount+1;
+					number_of_errors[j][k]=number_of_errors[j][k]+1; 
 
 		errorpixels = round(100*float(errorcount)/len(histdata_fix),2);
 		print("Most common raw loop sum: ")
@@ -141,7 +138,7 @@ def compute_loops(all_loops, loops_dir, loops_guide, reference_pixel):
 		make_plot(xdata, ydata, znew_fix, loops_dir+'phase_closure_'+str(i)+'.eps', errorpixels);
 		make_histogram(histdata_fix, loops_dir+'histogram_'+str(i)+'.eps');
 
-	return;
+	return [xdata, ydata, number_of_errors];
 
 
 
@@ -175,8 +172,15 @@ def make_histogram(histdata, plotname):
 if __name__=="__main__":
 	loops_dir="Phase_Circuits/"
 	loops_guide="loops.txt";
-	reference_pixel = [168, 265]; # doing correction for phase ambiguity
+	rowref = 237; # doing correction for phase ambiguity
+	colref = 172;
 	# reference_pixel = [];  # not doing any correction for phase ambiguity
 
-	all_loops=identify_all_loops();
-	compute_loops(all_loops,loops_dir,loops_guide, reference_pixel);
+	all_loops = identify_all_loops();
+	[xdata, ydata, number_of_errors] = compute_loops(all_loops,loops_dir,loops_guide, rowref, colref);
+
+	# Print how often phase unwrapping errors affect different pixels. 
+	outfile=loops_dir+"how_many_errors.grd"
+	netcdf_read_write.produce_output_netcdf(xdata, ydata, number_of_errors, 'phase unwrapping errors', outfile);
+	netcdf_read_write.flip_if_necessary(outfile);
+	make_plot(xdata, ydata, number_of_errors, loops_dir+'Number of Unwrapping Errors',0.00);
