@@ -29,23 +29,31 @@ def configure(config_params, staging_directory):
 
 
 # ------------- INPUTS ------------ # 
-def inputs(file_names):
+def inputs(file_names, config_params):
 	[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
 	data_all=[];
-	for ifile in file_names:  # this happens to be in date order on my mac
-		data = netcdf_read_write.read_grd(ifile);
-		data_all.append(data);
 	date_pairs=[];
 	dates=[];
-	for name in file_names:
-		pairname=name.split('/')[-1][0:15];
-		date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
-		splitname=pairname.split('_');
-		dates.append(splitname[0])
-		dates.append(splitname[1])
+	start_dt = dt.datetime.strptime(str(config_params.start_time),"%Y%m%d");
+	end_dt = dt.datetime.strptime(str(config_params.end_time),"%Y%m%d");
+
+	for ifile in file_names:  # this happens to be in date order on my mac
+		pairname=ifile.split('/')[-1][0:15];
+		image1=pairname.split('_')[0];
+		image2=pairname.split('_')[1];
+		image1_dt = dt.datetime.strptime(image1,"%Y%j");
+		image2_dt = dt.datetime.strptime(image2,"%Y%j");
+		if image1_dt>=start_dt and image1_dt<= end_dt:
+			if image2_dt>=start_dt and image2_dt <= end_dt:
+				data = netcdf_read_write.read_grd(ifile);
+				data_all.append(data);
+				date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
+				dates.append(image1);
+				dates.append(image2);
 	dates=list(set(dates));
 	dates=sorted(dates);
 	print(dates);
+	print("Reading %d interferograms from %d acquisitions. " % (len(date_pairs), len(dates) ) );
 	return [xdata, ydata, data_all, dates, date_pairs];
 
 
@@ -275,6 +283,6 @@ def geocode(ifile, directory):
 
 def do_nsbas(config_params, staging_directory):
 	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params, staging_directory);
-	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names);
+	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names, config_params);
 	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
 	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);

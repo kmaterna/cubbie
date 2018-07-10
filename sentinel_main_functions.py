@@ -434,12 +434,11 @@ def do_timeseries(config_params):
     if config_params.aps:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/aps_unwrap.grd';
-        aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
+        #aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';
-        detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
-        # Still need to implement the reference pixel after all these adjustments. 
+        #detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
 
 
     if config_params.ts_type=="SBAS":
