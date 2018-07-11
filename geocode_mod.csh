@@ -69,8 +69,10 @@ gmt grdtrack rapln -nl -Gralt.grd -bi4f -bo5f > raplnlt
 gmt gmtconvert raplnlt -bi5f -bo3f -o3,4,2 > llp
 #
 #
-set incs="2.0s/1.5s" # choosing pretty high resolution  # THIS IS THE KEY. THIS IS A PARAMETER THAT YOU SHOULD ADJUST. 
-# If you ask for a higher geocoded resolution than your RADRA data actually has, then you 
+# IMORTANT: CHANGE YOUR SAMPLING FOR GEOCODED VALUES
+set incs="6.0s/4.5s" # choosing pretty high resolution  # THIS IS THE KEY. THIS IS A PARAMETER THAT YOU SHOULD ADJUST. 
+# Originally was "2.0s/1.5s"
+# If you ask for a higher geocoded resolution than your RADAR data actually has, then you 
 # will end up filling your vel_ll with nans. 
 
 set R =  `gmt gmtinfo llp -I$incs -bi3f `

@@ -7,7 +7,7 @@ import collections
 import sys
 import netcdf_read_write
 import aps
-
+import nsbas
 
 
 def how_many_nans(filename):
@@ -207,3 +207,8 @@ filename='intf_all/'+folder+'/phasefilt.grd'
 # out_dir='intf_all/aps_unwrap.grd'
 # aps.main_function(staging_directory, out_dir);
 
+
+
+# GEOCODE TESTING
+outdir = "nsbas_12days_standard_smoothing"
+nsbas.geocode(outdir+'/vel.grd',outdir);

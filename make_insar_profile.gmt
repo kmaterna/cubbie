@@ -32,11 +32,18 @@ brange="$lmin/$lmax/-40/40" # The edges of the eventual cross-section (in km)
 bprojection="x0.15/0.12"  # to control the width of the profile graph.  
 
 
+# -------------------------------- #
+# SOME PROCESSING #
+gmt grd2xyz $input_file -s > vel_table.txt 
+# Turns the grd file into a xyz table. 
+# -s suppresses any NaN outputs. 
+
+
 # ---------------------------------- # 
 # PART 1: The Regular Map 
 gmt makecpt -T-80/80/0.5 -Crainbow > mycpt.cpt 
-gmt pscoast -R$range -J$projection -Dh -Slightblue -Ggray -B0.5 -Wthin,black -P -K > $output
-gmt grdimage $input_file -R$range -J$projection -Cmycpt.cpt -P -K -O >> $output  # this can be improved later. The pixels are too small. 
+gmt pscoast -R$range -J$projection -Dh -Sskyblue2 -Ggray36 -B0.5 -Wthin,black -P -K > $output
+gmt grdimage $input_file -R$range -J$projection -Q -Cmycpt.cpt -P -K -O >> $output  # this can be improved later. The pixels are too small. 
 gmt psxy -R$range -J$projection -Sc0.2 -Wblue -Gblue -P -K -O <<EOF>> $output
 $Cx $Cy
 EOF
@@ -64,9 +71,6 @@ EOF
 # X and Y: move this axis relative to map
 # Goal with these box dimensions: make it larger than the box, you won't see anything. 
 
-gmt grd2xyz $input_file -s > vel_table.txt 
-# Turns the grd file into a xyz table. 
-# -s suppresses any NaN outputs. 
 
 gmt project vel_table.txt -C$Cx/$Cy -A$azimuth -Fxyzpqrs -L$lmin/$lmax -W$width_min/$width_max -Q -V >!tprofile.tmp
 # F: format x,y,z,parallel-distance-from-center,perp-distance-from-center,long-projected-into-XS,lat-projected-intoXS
