@@ -29,6 +29,15 @@ def read_grd_xyz(filename):
 	zdata=zdata0.copy();
 	return [xdata, ydata, zdata]; 
 
+def read_grd_lonlatz(filename):
+	xdata0 = netcdf.netcdf_file(filename,'r').variables['lon'][::-1];
+	ydata0 = netcdf.netcdf_file(filename,'r').variables['lat'][::-1];
+	zdata0 = netcdf.netcdf_file(filename,'r').variables['z'][::-1];
+	xdata=xdata0.copy();
+	ydata=ydata0.copy();
+	zdata=zdata0.copy();
+	return [xdata, ydata, zdata]; 
+
 
 # --------------- WRITING ------------------- # 
 
