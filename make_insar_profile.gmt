@@ -1,0 +1,83 @@
+#!/bin/bash
+# GMT script to make a plot of InSAR LOS velocities and a profile across that plot. 
+# Kathryn Materna
+# July 2018
+
+# ---------------------------------- # 
+# PART 0: Parameters
+lonE=-122.8
+lonW=-124.5
+latS=39.7
+latN=41.5
+range="$lonW/$lonE/$latS/$latN"
+projection="M4i"
+input_file="vel_ll.grd"  # you can change this! 
+output="image_projection.ps"
+
+# Projection Parameters (Center, width in km, length in km, azimuth)
+# YOU CAN CHANGE THESE
+Cx=-123.65
+Cy=40.3   # This works for the middle of the image. 
+# Cx=-123.45
+# Cy=40.1  # This works for the south of the image, near the landslide
+azimuth=75  # in degrees CW from north. 
+lmin=-55  # in km. 
+lmax=55
+width_min=-8
+width_max=8
+
+# The edges of the profile box 
+twice_length=$(echo $lmax - $lmin | bc)  # for the full profile
+brange="$lmin/$lmax/-40/40" # The edges of the eventual cross-section (in km)
+bprojection="x0.15/0.12"  # to control the width of the profile graph.  
+
+
+# ---------------------------------- # 
+# PART 1: The Regular Map 
+gmt makecpt -T-80/80/0.5 -Crainbow > mycpt.cpt 
+gmt pscoast -R$range -J$projection -Dh -Slightblue -Ggray -B0.5 -Wthin,black -P -K > $output
+gmt grdimage $input_file -R$range -J$projection -Cmycpt.cpt -P -K -O >> $output  # this can be improved later. The pixels are too small. 
+gmt psxy -R$range -J$projection -Sc0.2 -Wblue -Gblue -P -K -O <<EOF>> $output
+$Cx $Cy
+EOF
+gmt psscale -R$range -J$projection -DjTR+w4c/0.5c+o-2.5/1.5 -Cmycpt.cpt -B40.0:"LOS":/:mm/yr: -P -O -K >> $output
+# D: Dimensions (MUST BE IN inches / centimeters)
+# B: Scale has 5km boxes.  I just copied the syntax on the annotation.  
+
+# Draw the cross-section annotations (SJ means rotated rectangle)
+gmt psxy -R$range -J$projection -P -O -K -SJ -Wthick,blue <<EOF >>$output
+$Cx $Cy $azimuth $(echo $lmax - $lmin | bc) $(echo $width_max - $width_min | bc) 
+EOF
+# The pipe bc is for adding floating point numbers
+
+
+# ---------------------------------- # 
+# PART 2: The Cross-Section
+# Establish the cross-section in a new box
+gmt psxy -R${brange} -J${bprojection} -Bf2.5a10:"Distance (km)":/f10a10:"LOS (mm/yr)":WesN -P -K -O -X0 -Y16 -V <<EOF>>$output
+120.0 0.0
+120.0 100.0
+-120.0 100.0
+-120.0 0.0
+EOF
+# BaX: annotate the axes every X km
+# X and Y: move this axis relative to map
+# Goal with these box dimensions: make it larger than the box, you won't see anything. 
+
+gmt grd2xyz $input_file -s > vel_table.txt 
+# Turns the grd file into a xyz table. 
+# -s suppresses any NaN outputs. 
+
+gmt project vel_table.txt -C$Cx/$Cy -A$azimuth -Fxyzpqrs -L$lmin/$lmax -W$width_min/$width_max -Q -V >!tprofile.tmp
+# F: format x,y,z,parallel-distance-from-center,perp-distance-from-center,long-projected-into-XS,lat-projected-intoXS
+# C: center
+# A: Azimuth
+# Q: put km units
+
+# Plot the LOS on the cross section profile 
+awk '{print $4, $3, $3}' !tprofile.tmp | gmt psxy -J${bprojection} -R${brange} -Cmycpt.cpt -P -O -K -Sc0.06 -V >> $output
+# OPTION: Can do -Ggray for a more subdued plot. 
+
+rm gmt.history
+rm !tprofile.tmp 
+
