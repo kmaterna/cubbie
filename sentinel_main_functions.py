@@ -434,7 +434,7 @@ def do_timeseries(config_params):
     if config_params.aps:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/aps_unwrap.grd';
-        #aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
+        aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';
@@ -444,8 +444,8 @@ def do_timeseries(config_params):
     if config_params.ts_type=="SBAS":
         sbas.do_sbas(config_params, post_staging_directory);
     if config_params.ts_type=="NSBAS":
-        print("No need to actually do NSBAS")
-        nsbas.do_nsbas(config_params, post_staging_directory);
+        # nsbas.do_nsbas(config_params, post_staging_directory);
+        print("skipping NSBAS");
     return;
 
 

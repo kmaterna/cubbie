@@ -84,4 +84,5 @@ awk '{print $4, $3, $3}' !tprofile.tmp | gmt psxy -J${bprojection} -R${brange} -
 
 rm gmt.history
 rm !tprofile.tmp 
+rm vel_table.txt
 
