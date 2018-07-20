@@ -4,7 +4,7 @@
 import numpy as np 
 import scipy.io.netcdf as netcdf
 import matplotlib.pyplot as plt 
-from subprocess import check_output
+import subprocess
 
 
 # --------------- READING ------------------- # 
@@ -38,6 +38,20 @@ def read_grd_lonlatz(filename):
 	zdata=zdata0.copy();
 	return [xdata, ydata, zdata]; 
 
+def read_netcdf4_xy(filename):
+	netcdf4file=filename;
+	netcdf3file=filename+'nc3';
+	subprocess.call('nccopy -k classic '+netcdf4file+' '+netcdf3file,shell=True); 
+	[xdata, ydata] = read_grd_xy(netcdf3file);
+	return [xdata, ydata];
+
+def read_netcdf4(filename):
+	netcdf4file=filename;
+	netcdf3file=filename+'nc3';
+	subprocess.call('nccopy -k classic '+netcdf4file+' '+netcdf3file,shell=True); 
+	data = read_grd(netcdf3file);
+	return data;
+
 
 # --------------- WRITING ------------------- # 
 
@@ -62,8 +76,8 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 
 def flip_if_necessary(filename):
 	# IF WE NEED TO FLIP DATA:
-	xinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
-	yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
+	xinc = subprocess.check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
+	yinc = subprocess.check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
 	xinc=float(xinc.split()[0]);
 	yinc=float(yinc.split()[0]);
 
@@ -74,7 +88,7 @@ def flip_if_necessary(filename):
 		# This is the key! Flip the x-axis when necessary.  
 		#xdata=np.flip(xdata,0);  # This is sometimes necessary and sometimes not!  Not sure why. 
 		produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
-		xinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
+		xinc = subprocess.check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $8}\'',shell=True);  # the x-increment
 		xinc = float(xinc.split()[0]);
 		print("New xinc is: %f " % (xinc) );
 	if yinc < 0:
@@ -84,7 +98,7 @@ def flip_if_necessary(filename):
 		# Flip the y-axis when necessary.  
 		# ydata=np.flip(ydata,0);  
 		produce_output_netcdf(xdata, ydata, data, 'mm/yr',filename);
-		yinc = check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
+		yinc = subprocess.check_output('gmt grdinfo -M -C '+filename+' | awk \'{print $9}\'',shell=True);  # the x-increment
 		yinc = float(yinc.split()[0]);
 		print("New yinc is: %f" % (yinc) );
 	return;
