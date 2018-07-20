@@ -444,8 +444,8 @@ def do_timeseries(config_params):
     if config_params.ts_type=="SBAS":
         sbas.do_sbas(config_params, post_staging_directory);
     if config_params.ts_type=="NSBAS":
-        # nsbas.do_nsbas(config_params, post_staging_directory);
-        print("skipping NSBAS");
+        nsbas.do_nsbas(config_params, post_staging_directory);
+        # print("skipping NSBAS");
     return;
 
 

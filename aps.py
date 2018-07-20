@@ -22,7 +22,7 @@ def main_function(staging_directory, out_dir, rowref, colref, starttime, endtime
 # ------------- CONFIGURE ------------ # 
 def configure(staging_directory, out_dir):
 	width_of_stencil = 25;   # in days.  
-	n_iter = 1;  # The number of times we're running the APS solver. 
+	n_iter = 3;  # The number of times we're running the APS solver. 
 
 	# Setting up the input and output directories. 
 	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
@@ -239,12 +239,14 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter,
 	ANC_array = get_initial_ANC(dates, date_pairs, data_all, width_of_stencil);  # Start from the middle. 
 
 	# Recording the initial ANC values. 
-	ofile=open("test_ANC.txt");
+	ofile=open("test_ANC.txt",'w');
 	for i in range(len(ANC_array)):
-		ofile.write("%s %f\n" % (dates[i], ANC[i]) );
+		ofile.write("%s %f\n" % (dates[i], ANC_array[i]) );
 	ofile.close();
 
-	sys.exit(0);
+	# July 12, 2018: The work is competent up to here.  
+	# A nice file was produced with ordered ANCs, the max being 10 and the min being 0. 
+	# Let's see if it can produce a good set of interferograms tomorrow. 
 
 	for i in range(n_iter):
 
@@ -262,7 +264,6 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter,
 			APS_array[given_date_index][:][:] = np.zeros((nrows,ncols));  # Set the current day's APS to zero, because we're going to solve for it. 
 
 			# Fix interferograms
-			# corrected_intfs = correct_intf_stack(corrected_intfs, my_aps, given_date, date_pairs, rowref, colref);
 			los_out_new = remove_aps(data_all, APS_array, date_pairs, dates, rowref, colref);
 
 			# Compute a single APS using corrected interferograms. 
@@ -382,7 +383,6 @@ def display_myaps_array(myaps_array, dates, out_dir, filename):
 	plt.savefig(out_dir+'/'+filename+'.eps');
 	plt.close();
 
-
 	return;
 
 def intf_stack_to_grds(xdata, ydata, corrected_intfs, date_pairs, out_dir):
@@ -406,7 +406,6 @@ def outputs(xdata, ydata, data_all, corrected_intfs, myaps_array, date_pairs, da
 	display_myaps_array(myaps_array, dates, out_dir, 'APS_arrays');
 
 	intf_stack_to_grds(xdata, ydata, corrected_intfs, date_pairs, out_dir);
-
 
 	# view_one_image(data_all, date_pairs, mydate, my_aps, loopcheck, intf1_index, intf1_corrected, intf2_index, intf2_corrected, ANC, out_dir);
 
