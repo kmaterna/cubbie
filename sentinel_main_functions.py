@@ -434,7 +434,7 @@ def do_timeseries(config_params):
     if config_params.aps:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/aps_unwrap.grd';
-        aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+        # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';

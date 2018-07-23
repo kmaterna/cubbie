@@ -349,6 +349,16 @@ def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_stag
         netcdf_read_write.flip_if_necessary(outname);
     return;
 
+def implement_reference_pixel(data_all, rowref, colref):
+    new_data_all=np.zeros(np.shape(data_all));
+    zdim,rowdim,coldim = np.shape(data_all);
+    for i in range(zdim):
+        for j in range(rowdim):
+            for k in range(coldim):
+                new_data_all[i][j][k]=data_all[i][j][k]-data_all[i][rowref][colref];
+    return new_data_all;
+
+
 #
 # Reporting and defensive programming
 #

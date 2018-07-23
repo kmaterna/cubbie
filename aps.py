@@ -7,6 +7,7 @@ from subprocess import call
 import glob, sys, os
 from copy import deepcopy
 import datetime as dt 
+import sentinel_utilities
 import netcdf_read_write
 
 
@@ -32,6 +33,7 @@ def configure(staging_directory, out_dir, run_type):
 	
 	file_names=sorted(file_names);
 	print("Performing APS on %d files in %s " % (len(file_names), staging_directory));
+	print("Placing result files in %s " % (out_dir));
 	if len(file_names)==0:
 		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
@@ -76,6 +78,7 @@ def inputs(file_names, start_time, end_time, run_type):
 					data = netcdf_read_write.read_netcdf4(ifile);
 				if run_type=="test":
 					data_all.append(data*-0.0555/4/np.pi);  # mcandis preprocessing involves changing to LOS distances. 
+					print("Converting phase to LOS (mm) with 55.5mm wavelength");
 				else:
 					data_all.append(data);
 				pairname=dt.datetime.strftime(image1_dt,"%Y%j")+'_'+dt.datetime.strftime(image2_dt,"%Y%j");
@@ -171,9 +174,8 @@ def remove_aps(data_all, APS, date_pairs, dates):
 	return corrected_intfs;
 
 def remove_reference_pixel(data_all, rowref, colref):
-	# Will write this later to use a reference pixel after APS common scene stacking. 
-
-	print("********* WARNING !! ************* \nYou still haven't written the reference pixel function. \n\n");
+	# Force a reference pixel after APS common scene stacking. 
+	new_data_all=sentinel_utilities.implement_reference_pixel(data_all, rowref, colref);
 	return data_all;
 
 
@@ -285,13 +287,9 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter,
 	# Produce an array of corrected interferogram data.
 
 	ANC_array = get_initial_ANC(dates, date_pairs, data_all, width_of_stencil);  # Start from the middle. 
-	# make_APS_plot(APS_array,dates,'pythonIT0');
 
 	# Recording the initial ANC values. 
-	ofile=open("../RESULTS_python/ANC0.txt",'w');
-	for i in range(len(ANC_array)):
-		ofile.write("%s %f\n" % (dates[i], ANC_array[i]) );
-	ofile.close();
+	write_ANC_to_file(dates,ANC_array,'ANC',0)
 
 	# The main loop to iterate through common scene stacking. 
 	for i in range(1,n_iter+1):
@@ -302,13 +300,10 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter,
 		ANC_array = compute_ANC(APS_array);  # compute ANCs with the updated APS stack. 
 		
 		make_APS_plot(APS_array,dates,'pythonIT'+str(i));
-		write_APS_to_files(xdata, ydata, APS_array, dates, i);  # writes grid files. 
+		# write_APS_to_files(xdata, ydata, APS_array, dates, i);  # writes grid files. 
 
 		# Recording the ANCs. 
-		ofile=open("../RESULTS_python/ANC"+str(i)+".txt",'w');
-		for j in range(len(ANC_array)):
-			ofile.write("%s %f\n" % (dates[j], ANC_array[j]) );
-		ofile.close();
+		write_ANC_to_file(dates, ANC_array, 'ANC', i);
 
 	# Final product for use in SBAS time series analysis. 
 	los_out_new = remove_aps(data_all, APS_array, date_pairs, dates);  # update the original intfs with the new APS. 
@@ -321,19 +316,49 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter,
 # ----------- OUTPUTS ------------- # 
 
 
+# Functions that are called from the Compute loop (don't explicitly have outdir yet)
+def write_ANC_to_file(dates, ANC_array, filename_base,iteration):
+	ofile=open(filename_base+str(iteration)+".txt",'w');
+	for i in range(len(ANC_array)):
+		ofile.write("%s %f\n" % (dates[i], ANC_array[i]) );
+	ofile.close();
+	return;
+
+
 def write_APS_to_files(xdata, ydata, aps_array, dates, iteration):
 	nsar=np.shape(aps_array)[0];
 	for i in range(nsar):
-		filename="../RESULTS_python/APS_"+str(dates[i])+"_IT"+str(iteration)+".grd";
+		filename="APS_"+str(dates[i])+"_IT"+str(iteration)+".grd";
 		netcdf_read_write.produce_output_netcdf(xdata, ydata, aps_array[i][:][:],'',filename);
 		netcdf_read_write.flip_if_necessary(filename);
 	return;
+
+def make_APS_plot(myaps_array, dates, filename):
+	number_of_plots = np.shape(myaps_array)[0];
+	sidelength = int(np.floor(np.sqrt(number_of_plots)));
+	caps=0.07;
+	caps=20;
+
+	# display APS
+	fig, ax = plt.subplots(sidelength,sidelength,sharey=True,sharex=True);
+	for i in range(sidelength):
+		for j in range(sidelength):
+			ax[i,j].imshow(myaps_array[i*sidelength+j][:][:],aspect=0.5,cmap='YlGnBu',vmin=-caps,vmax=caps);
+			plt.gca().get_xaxis().set_ticks([]);
+			plt.gca().get_yaxis().set_ticks([]);
+			ax[i,j].set_title(dates[i*sidelength+j],fontsize=9);			
+	plt.savefig(filename+'.eps');
+	plt.close();
+	return;
+
 
 
 def display_many_intfs(data_all, out_dir, filename):
 
 	vmin=-0.1;
 	vmax=0.1;
+	vmin=-20;
+	vmax=20;
 
 	# Start by making a nice group of plots. 
 	number_of_plots = np.shape(data_all)[0];
@@ -356,28 +381,12 @@ def display_many_intfs(data_all, out_dir, filename):
 
 
 
-def make_APS_plot(myaps_array, dates, filename):
-	number_of_plots = np.shape(myaps_array)[0];
-	sidelength = int(np.floor(np.sqrt(number_of_plots)));
-	caps=0.07;
-
-	# display APS
-	fig, ax = plt.subplots(sidelength,sidelength,sharey=True,sharex=True);
-	for i in range(sidelength):
-		for j in range(sidelength):
-			ax[i,j].imshow(myaps_array[i*sidelength+j][:][:],aspect=0.5,cmap='YlGnBu',vmin=-caps,vmax=caps);
-			plt.gca().get_xaxis().set_ticks([]);
-			plt.gca().get_yaxis().set_ticks([]);
-			ax[i,j].set_title(dates[i*sidelength+j],fontsize=9);			
-	plt.savefig('../RESULTS_python/'+filename+'.eps');
-	plt.close();
-	return;
-
 
 def display_myaps_array(myaps_array, dates, out_dir, filename):
 	number_of_plots = np.shape(myaps_array)[0];
 	sidelength = int(np.floor(np.sqrt(number_of_plots)));
 	caps=0.07;
+	caps=20;
 
 	# display APS
 	fig, ax = plt.subplots(sidelength,sidelength,sharey=True,sharex=True);

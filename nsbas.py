@@ -14,7 +14,7 @@ import sentinel_utilities
 def configure(config_params, staging_directory):
 
 	# Time Series parameters
-	smoothing = 0.5;  
+	smoothing = 3.0;  
 	out_dir='nsbas';
 
 	# Setting up the input and output directories. 
