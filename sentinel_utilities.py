@@ -327,6 +327,7 @@ def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
 
 def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory):
     files = glob.glob(prior_staging_directory+"/*");
+    print("Imposing reference pixel on %d files in %s; saving output in %s" % (len(files), prior_staging_directory, post_staging_directory) );
     out_dir=post_staging_directory+"/";
     call(['mkdir','-p',out_dir],shell=False);
 

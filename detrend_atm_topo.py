@@ -8,11 +8,12 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import glob, sys, os
 import subprocess
+import datetime as dt 
 import netcdf_read_write
 
 
-def main_function(staging_directory, outdir, rowref, colref):
-	[filenames,demfile]=configure(staging_directory, outdir);
+def main_function(staging_directory, outdir, rowref, colref, starttime, endtime):
+	[filenames,demfile]=configure(staging_directory, outdir, starttime, endtime);
 	demdata = subsample_read_dem(filenames[0], demfile);
 
 	for item in filenames:
@@ -25,14 +26,31 @@ def main_function(staging_directory, outdir, rowref, colref):
 
 
 # ------ CONFIGURE THE MAJOR LOOP ------------ # 
-def configure(staging_directory, outdir):
+def configure(staging_directory, outdir, starttime, endtime):
 	print("Detrending atm/topo for all files in %s and storing the result in %s " % (staging_directory, outdir) )
 	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
+	valid_file_names=[];
 	if len(file_names)==0:
 		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
+
+	# Only read in the files within the starttime and endtime boundaries. 
+	start_dt = dt.datetime.strptime(str(starttime),"%Y%m%d");
+	end_dt = dt.datetime.strptime(str(endtime),"%Y%m%d");
+
+	for ifile in file_names:  
+		pairname=ifile.split('/')[-1][0:15];
+		image1=pairname.split('_')[0];
+		image2=pairname.split('_')[1];
+		image1_dt = dt.datetime.strptime(image1,"%Y%j");
+		image2_dt = dt.datetime.strptime(image2,"%Y%j");
+	
+		if image1_dt>=start_dt and image1_dt<= end_dt:
+			if image2_dt>=start_dt and image2_dt <= end_dt:
+				valid_file_names.append(ifile);
+
 	subprocess.call(['mkdir','-p',outdir],shell=False);
 	demfile='topo/topo_ra.grd';
-	return [file_names, demfile];
+	return [valid_file_names, demfile];
 
 
 # -------- PREPROCESS I/O FUNCTIONS ---------- # 

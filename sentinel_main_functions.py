@@ -12,8 +12,8 @@ import sbas
 import nsbas
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
-    'mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','nsbas_min_intfs','choose_refpixel','solve_unwrap_errors','detrend_atm_topo',
-    'gacos','aps','start_time','end_time','threshold_snaphu']);
+    'mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','sbas_smoothing','nsbas_min_intfs','choose_refpixel',
+    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','start_time','end_time','threshold_snaphu']);
 
 def read_config():
     ################################################
@@ -61,6 +61,7 @@ def read_config():
     detrend_atm_topo = config.getint('timeseries-config','detrend_atm_topo');
     bypass=config.get('timeseries-config','bypass')
     nsbas_min_intfs=config.getint('timeseries-config','nsbas_min_intfs');
+    sbas_smoothing = config.getfloat('timeseries-config','sbas_smoothing');
     start_time = config.getint('timeseries-config','start_time');
     end_time = config.getint('timeseries-config','end_time');
     threshold_snaphu=config.getfloat('csh-config','threshold_snaphu');
@@ -117,7 +118,7 @@ def read_config():
 
     config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,intf_file=intf_file,
         orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
-        numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
+        numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, sbas_smoothing=sbas_smoothing, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
         solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, detrend_atm_topo=detrend_atm_topo, start_time=start_time, end_time=end_time, threshold_snaphu=threshold_snaphu);
 
     return config_params; 
@@ -422,23 +423,23 @@ def do_timeseries(config_params):
         post_staging_directory='intf_all/referenced_unwrap.grd';
         rowref=237; colref=172;  # bypass these function calls for time reasons.
         # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
-        # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
+        sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
     if config_params.solve_unwrap_errors:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/unwrap_corrected.grd';
-        #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory);
+        #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
     if config_params.gacos:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/gacos_corrected.grd';
-        #gacos.main_function(prior_staging_directory, post_staging_directory);
+        #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
     if config_params.aps:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/aps_unwrap.grd';
-        # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
+        aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
     if config_params.detrend_atm_topo:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/atm_topo_corrected.grd';
-        #detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
+        detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
 
 
     if config_params.ts_type=="SBAS":
@@ -446,6 +447,12 @@ def do_timeseries(config_params):
     if config_params.ts_type=="NSBAS":
         nsbas.do_nsbas(config_params, post_staging_directory);
         # print("skipping NSBAS");
+
+
+    # NOTE: 
+    # Should copy batch.config into the nsbas directory
+    # Should implement reference pixel at end of GACOS and unwrapping_errors
+
     return;
 
 
