@@ -13,7 +13,7 @@ import netcdf_read_write
 def main_function(staging_directory, out_dir, rowref, colref, starttime, endtime, run_type):
 	[file_names, width_of_stencil, n_iter] = configure(staging_directory, out_dir, run_type);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names, starttime, endtime, run_type);
-	[aps_array, corrected_intfs] = compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter, rowref, colref, run_type);
+	[aps_array, corrected_intfs] = compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter, rowref, colref);
 	outputs(xdata, ydata, data_all, corrected_intfs, aps_array, date_pairs, dates, out_dir);
 	return;
 
@@ -74,17 +74,21 @@ def inputs(file_names, start_time, end_time, run_type):
 					data = netcdf_read_write.read_grd(ifile);
 				except TypeError:
 					data = netcdf_read_write.read_netcdf4(ifile);
-
-				data_all.append(data);
+				if run_type=="test":
+					data_all.append(data*-0.0555/4/np.pi);  # mcandis preprocessing involves changing to LOS distances. 
+				else:
+					data_all.append(data);
 				pairname=dt.datetime.strftime(image1_dt,"%Y%j")+'_'+dt.datetime.strftime(image2_dt,"%Y%j");
 				date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
 				dates.append(dt.datetime.strftime(image1_dt,"%Y%j"));
 				dates.append(dt.datetime.strftime(image2_dt,"%Y%j"));
 
+	data_all=np.array(data_all);  # this allows easy indexing later on.
 	dates=list(set(dates));
 	dates=sorted(dates);
 	print(date_pairs);
 	print("Reading %d interferograms from %d acquisitions. " % (len(date_pairs), len(dates) ) );
+
 	return [xdata, ydata, data_all, dates, date_pairs];
 
 
@@ -124,7 +128,6 @@ def form_APS_pairs(date_pairs, mydate, width_of_stencil):
 				pairlist.append([index1, index2])
 
 	# Debugging statements
-	daydiff = "12"
 	for i in range(len(pairlist)):
 		index1=pairlist[i][0];
 		intf1=date_pairs[index1];
@@ -144,44 +147,6 @@ def form_APS_pairs(date_pairs, mydate, width_of_stencil):
 	# Example of pairlist: [[63,65],[62,66]], where the numbers are the indeces of paired interferograms used for APS construction
 
 	return pairlist; 
-
-
-def compute_aps_image(dates, date_pairs, data_all, width_of_stencil, mydate, run_type):
-	# For a given date and stack of interferograms, estimate an atmospheric phase screen through Common Scene Stacking. 
-	# Be aware: the NANs will propagate through your network if you iterate too many times.  
-
-	print("Computing APS for image %s " % mydate);
-	zdim, rowdim, coldim = np.shape(data_all);
-	my_aps=np.zeros((rowdim,coldim));
-
-	# A list of valid interferogram pairs by index in the stack, which we use for making APS
-	pairlist = form_APS_pairs(date_pairs, mydate, width_of_stencil);
-	if len(pairlist)==0:
-		print("ERROR! No valid APS stencils were detected in the stack for image %s" % mydate)
-		return my_aps;
-
-	for i in range(rowdim):
-		for j in range(coldim):  # for each pixel...
-
-			aps_temp_sum=0;
-			pair_counter=0;
-
-			for k in range(len(pairlist)):  # for each pair of interferograms that we can use for APS formation... 
-				intf1_index=pairlist[k][0];
-				intf2_index=pairlist[k][1];
-				if ~np.isnan(data_all[intf1_index][i][j]) and ~np.isnan(data_all[intf2_index][i][j]):  
-				# if both interferograms are numbers, then add to APS estimate. 
-					pair_counter=pair_counter+1;
- 
-					aps_temp_sum = aps_temp_sum + (data_all[intf1_index][i][j] - data_all[intf2_index][i][j]);
-			
-			if pair_counter>0:
-				my_aps[i][j]=(1.0/(2*pair_counter))*aps_temp_sum;
-			else:
-				my_aps[i][j]=np.nan;
-
-	return my_aps;
-
 
 
 def remove_aps(data_all, APS, date_pairs, dates):
@@ -205,6 +170,11 @@ def remove_aps(data_all, APS, date_pairs, dates):
 
 	return corrected_intfs;
 
+def remove_reference_pixel(data_all, rowref, colref):
+	# Will write this later to use a reference pixel after APS common scene stacking. 
+
+	print("********* WARNING !! ************* \nYou still haven't written the reference pixel function. \n\n");
+	return data_all;
 
 
 def compute_ANC(APS_array):
@@ -238,27 +208,87 @@ def get_initial_ANC(dates, date_pairs, data_all, width_of_stencil):
 	middlei=np.floor(zdim/2);
 	for i in range(zdim):
 		ANC_array[i]=10-intervals*abs(i-middlei);
+		if i<zdim/2:
+			ANC_array[i]=ANC_array[i]+0.01;  # In case of two identical ANCs, Matlab takes the earlier one; Python takes the later one.  
+			# So we force Python to do the same. 
 	return ANC_array; 
 
 
+def calculate_aps_linear(data_all, dates, date_pairs, width_of_stencil, ANC_array):
 
-def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter, rowref, colref, run_type):
+	zdim, rowdim, coldim = np.shape(data_all);
+	APS_array=np.zeros((len(dates),rowdim,coldim));
+
+	ordered_ANCs = [x for x,_ in sorted(zip(ANC_array, dates),reverse=True)]
+	ordered_dates = [x for _,x in sorted(zip(ANC_array, dates), reverse=True)];
+
+	# EACH DAY IN ORDERED ANC.  This loop is "Calculate_aps_linear.m"
+	for j in range(len(ordered_dates)): 
+
+		given_date=ordered_dates[j];  # THIS IS THE KEY
+		print("Solving APS for day %s with ANC %f " % (given_date, ordered_ANCs[j]) );
+		given_date_index = dates.index(given_date);
+		print("Given date index: %d" % given_date_index);
+
+		# A list of valid interferogram pairs by index in the stack, which we use for making APS
+		pairlist = form_APS_pairs(date_pairs, given_date, width_of_stencil);
+		if len(pairlist)==0:
+			print("ERROR! No valid APS stencils were detected in the stack for image %s" % given_date);
+			continue;
+
+		# Set the current day's APS to zero, because we're going to solve for it. 
+		APS_array[given_date_index][:][:] = np.zeros((rowdim,coldim));  
+
+		# Fix interferograms
+		los_out_new = remove_aps(data_all, APS_array, date_pairs, dates);
+
+		# Compute the APS for given date date
+		indx1=np.array([i[0] for i in pairlist]);
+		indx2=np.array([i[1] for i in pairlist]);
+		nforward=len(indx1);
+		nbackward=len(indx2);
+
+		los_backward=los_out_new[indx1][:][:];
+		los_forward=-los_out_new[indx2][:][:];   # Use the updated interferograms
+		los_backward_total=np.zeros((rowdim,coldim));
+		los_forward_total=np.zeros((rowdim,coldim));
+		for i in range(nforward):
+			los_forward_total=np.add(los_forward_total,los_forward[i][:][:]);
+		for i in range(nbackward):
+			los_backward_total=np.add(los_backward_total,los_backward[i][:][:]);
+
+		# Implement the APS Equation in Tymofyeyeva and Fialko, 2015. 
+		my_aps=np.zeros((rowdim,coldim));
+		if (nforward+nbackward)>0:
+			my_aps= np.add(los_backward_total,los_forward_total);
+			my_aps= np.divide(my_aps,(nbackward+nforward) );  
+			# Looks like the issue is between line 292 and here. 
+		else:
+			my_aps=np.zeros((rowdim,coldim));
+
+		# Update the APS array. 
+		APS_array[given_date_index][:][:]=deepcopy(my_aps);
+
+		# print(given_date);
+		# print(np.nanmin(APS_array[given_date_index][:][:]));
+		# print(np.nanmax(APS_array[given_date_index][:][:]));
+
+	return APS_array;
+
+
+def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter, rowref, colref):
 
 	# Automated selection of dates and interferograms for APS construction. Pseudocode:
 	# Produce ANCs from the original data, without altering the interferograms. 
 	# Iterate several complete times throughout the stack of APS
 	# Each time, iterate closer to a nice estimate of each image's APS. 
 	# Produce an array of corrected interferogram data.
-	# Run NSBAS. 
 
-	nrows = len(ydata);
-	ncols = len(xdata);
-	APS_array = np.zeros((len(dates),nrows,ncols));
 	ANC_array = get_initial_ANC(dates, date_pairs, data_all, width_of_stencil);  # Start from the middle. 
-	make_APS_plot(APS_array,dates,'pythonIT0');
+	# make_APS_plot(APS_array,dates,'pythonIT0');
 
 	# Recording the initial ANC values. 
-	ofile=open("test_ANC0.txt",'w');
+	ofile=open("../RESULTS_python/ANC0.txt",'w');
 	for i in range(len(ANC_array)):
 		ofile.write("%s %f\n" % (dates[i], ANC_array[i]) );
 	ofile.close();
@@ -268,48 +298,42 @@ def compute(xdata, ydata, data_all, dates, date_pairs, width_of_stencil, n_iter,
 
 		print("######## Beginning iteration %d #########" % i);
 
-		ordered_ANCs = [x for x,_ in sorted(zip(ANC_array, dates),reverse=True)]
-		ordered_dates = [x for _,x in sorted(zip(ANC_array, dates), reverse=True)];
-
-		# EACH DAY IN ORDERED ANC.  This loop is "Calculate_aps_linear.m"
-		for j in range(len(ordered_dates)): 
-
-			given_date=ordered_dates[j];  # THIS IS THE KEY
-			print("Solving APS for day %s " % given_date);
-			given_date_index = dates.index(given_date);
-			APS_array[given_date_index][:][:] = np.zeros((nrows,ncols));  # Set the current day's APS to zero, because we're going to solve for it. 
-
-			# Fix interferograms
-			los_out_new = remove_aps(data_all, APS_array, date_pairs, dates);
-
-			# Compute a single APS using corrected interferograms. 
-			my_aps = compute_aps_image(dates, date_pairs, los_out_new, width_of_stencil, given_date, run_type);
-
-			# Update the APS array. 
-			APS_array[given_date_index][:][:]=my_aps;
-
-		# At this point we have an updated stack of APS. 
-		ANC_array = compute_ANC(APS_array);  # compute ANCs for the next iteration. 
-		los_out_new = remove_aps(data_all, APS_array, date_pairs, dates);  # update the original intfs with the new APS. 
-
+		APS_array = calculate_aps_linear(data_all, dates, date_pairs, width_of_stencil, ANC_array);
+		ANC_array = compute_ANC(APS_array);  # compute ANCs with the updated APS stack. 
+		
 		make_APS_plot(APS_array,dates,'pythonIT'+str(i));
+		write_APS_to_files(xdata, ydata, APS_array, dates, i);  # writes grid files. 
 
 		# Recording the ANCs. 
-		ofile=open("test_ANC"+str(i)+".txt",'w');
+		ofile=open("../RESULTS_python/ANC"+str(i)+".txt",'w');
 		for j in range(len(ANC_array)):
 			ofile.write("%s %f\n" % (dates[j], ANC_array[j]) );
 		ofile.close();
 
-	return [APS_array, los_out_new];
+	# Final product for use in SBAS time series analysis. 
+	los_out_new = remove_aps(data_all, APS_array, date_pairs, dates);  # update the original intfs with the new APS. 
 
+	# Remove reference pixel.
+	los_out_new = remove_reference_pixel(los_out_new, rowref, colref);
+
+	return [APS_array, los_out_new];
 
 # ----------- OUTPUTS ------------- # 
 
 
+def write_APS_to_files(xdata, ydata, aps_array, dates, iteration):
+	nsar=np.shape(aps_array)[0];
+	for i in range(nsar):
+		filename="../RESULTS_python/APS_"+str(dates[i])+"_IT"+str(iteration)+".grd";
+		netcdf_read_write.produce_output_netcdf(xdata, ydata, aps_array[i][:][:],'',filename);
+		netcdf_read_write.flip_if_necessary(filename);
+	return;
+
+
 def display_many_intfs(data_all, out_dir, filename):
 
-	vmin=-20;
-	vmax=20;
+	vmin=-0.1;
+	vmax=0.1;
 
 	# Start by making a nice group of plots. 
 	number_of_plots = np.shape(data_all)[0];
@@ -335,12 +359,13 @@ def display_many_intfs(data_all, out_dir, filename):
 def make_APS_plot(myaps_array, dates, filename):
 	number_of_plots = np.shape(myaps_array)[0];
 	sidelength = int(np.floor(np.sqrt(number_of_plots)));
+	caps=0.07;
 
 	# display APS
 	fig, ax = plt.subplots(sidelength,sidelength,sharey=True,sharex=True);
 	for i in range(sidelength):
 		for j in range(sidelength):
-			ax[i,j].imshow(myaps_array[i*sidelength+j][:][:],aspect=0.5,cmap='YlGnBu',vmin=-4,vmax=4);
+			ax[i,j].imshow(myaps_array[i*sidelength+j][:][:],aspect=0.5,cmap='YlGnBu',vmin=-caps,vmax=caps);
 			plt.gca().get_xaxis().set_ticks([]);
 			plt.gca().get_yaxis().set_ticks([]);
 			ax[i,j].set_title(dates[i*sidelength+j],fontsize=9);			
@@ -352,12 +377,13 @@ def make_APS_plot(myaps_array, dates, filename):
 def display_myaps_array(myaps_array, dates, out_dir, filename):
 	number_of_plots = np.shape(myaps_array)[0];
 	sidelength = int(np.floor(np.sqrt(number_of_plots)));
+	caps=0.07;
 
 	# display APS
 	fig, ax = plt.subplots(sidelength,sidelength,sharey=True,sharex=True);
 	for i in range(sidelength):
 		for j in range(sidelength):
-			ax[i,j].imshow(myaps_array[i*sidelength+j][:][:],aspect=0.5,cmap='hsv',vmin=-20,vmax=20);
+			ax[i,j].imshow(myaps_array[i*sidelength+j][:][:],aspect=0.5,cmap='hsv',vmin=-caps,vmax=caps);
 			plt.gca().invert_yaxis()
 			plt.gca().invert_xaxis()
 			plt.gca().get_xaxis().set_ticks([]);
