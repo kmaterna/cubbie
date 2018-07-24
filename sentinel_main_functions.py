@@ -423,7 +423,7 @@ def do_timeseries(config_params):
         post_staging_directory='intf_all/referenced_unwrap.grd';
         rowref=237; colref=172;  # bypass these function calls for time reasons.
         # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
-        sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
+        # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
     if config_params.solve_unwrap_errors:
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/unwrap_corrected.grd';
@@ -446,7 +446,7 @@ def do_timeseries(config_params):
         sbas.do_sbas(config_params, post_staging_directory);
     if config_params.ts_type=="NSBAS":
         nsbas.do_nsbas(config_params, post_staging_directory);
-        # print("skipping NSBAS");
+        print("skipping NSBAS");
 
 
     # NOTE: 

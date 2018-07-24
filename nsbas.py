@@ -112,7 +112,7 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 	model_num=len(dates)-1;
 
 	G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
-	print(np.shape(G));
+	# print(np.shape(G));
 	
 	for i in range(len(d)):  # building G matrix line by line. 
 		ith_intf = date_pairs_used[i];

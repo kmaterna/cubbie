@@ -147,8 +147,6 @@ def develop_median_phase(phase_array):
 
 # Step 1: Figure out how many nan's are in a netcdf file. 
 # And how many correlation values are below a certain value. 
-folder='2018017_2018029'
-filename='intf_all/'+folder+'/phasefilt.grd'
 # [nanpixels, totalpixels] = how_many_nans(filename);
 # plot_grid_file(filename,'phasefilt');
 
@@ -203,8 +201,22 @@ filename='intf_all/'+folder+'/phasefilt.grd'
 
 
 # APS TESTING
-staging_directory='intf_all/referenced_unwrap.grd'
-out_dir='intf_all/aps_unwrap.grd'
-aps.main_function(staging_directory, out_dir);
+# staging_directory='intf_all/referenced_unwrap.grd'
+# out_dir='intf_all/aps_unwrap.grd'
+# aps.main_function(staging_directory, out_dir);
 
 
+# TESTING OUTPUTS OF ATM/TOPO CORRECTION
+filename="intf_all/referenced_unwrap.grd/2015153_2015177_unwrap.grd"
+zc=netcdf_read_write.read_grd(filename);
+print(np.shape(zc));
+
+
+filename="topo/topo_ra_subsampled.grd"
+zc=netcdf_read_write.read_grd(filename);
+print(np.shape(zc));
+
+
+filename="intf_all/atm_topo_corrected.grd/2018113_2018125_unwrap.grd"
+zc=netcdf_read_write.read_grd(filename);
+print(np.shape(zc));
