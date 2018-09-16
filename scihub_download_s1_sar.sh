@@ -42,12 +42,13 @@ done
 
 
 # the -i '' is because of mac computers. Might need to delete the '' on a linux machine. 
-if [ ! -z am_i_linux ]; then  # I am on a linux machine
+if [ ! -z $am_i_linux ]; then  # I am on a linux machine
     sed -i 's/<str name=\"uuid\">//g' $id_results
     sed -i 's/<title>//g' $id_results
     sed -i 's/<\/title>//g' $id_results
     sed -i 's/<\/str>//g' $id_results
 else  # we are on a mac or non-linux machine! Macs need the -i '' in the sed call.
+    echo "I'm a mac"
     sed -i '' 's/<str name=\"uuid\">//g' $id_results
     sed -i '' 's/<title>//g' $id_results
     sed -i '' 's/<\/title>//g' $id_results
