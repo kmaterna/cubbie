@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob as glob
 import sys
+import datetime as dt
 import netcdf_read_write
 
 
@@ -47,24 +48,33 @@ def make_plots(xdata,ydata,data_all,date_pairs):
 			count=i;
 			fignum=i/(num_plots_y*num_plots_x);
 			f,axarr = plt.subplots(num_plots_y, num_plots_x,figsize=(10,10));
-			for i in range(num_plots_y):
-				for j in range(num_plots_x):
-					if count==len(data_all)-1:
+			for k in range(num_plots_y):
+				for m in range(num_plots_x):
+					if count==len(data_all):
 						break;
+
+					# How many days separate this interferogram? 
+					day1=date_pairs[count].split('_')[0];
+					day2=date_pairs[count].split('_')[1];
+					dt1=dt.datetime.strptime(day1,'%Y%j');
+					dt2=dt.datetime.strptime(day2,'%Y%j');
+					deltat=dt2-dt1;
+					daysdiff=deltat.days;
+
 					numelements=np.shape(data_all[count]);
 					mycorrs=np.reshape(data_all[count],(numelements[0]*numelements[1],1));
 					nonans=mycorrs[~np.isnan(mycorrs)];
 					above_threshold=mycorrs[np.where(mycorrs>0.2)];
 					above_threshold=int(len(above_threshold)/1000);
 
-					axarr[i][j].hist(nonans);
+					axarr[k][m].hist(nonans);
 
-					axarr[i][j].set_title(str(date_pairs[count]),fontsize=8);
-					axarr[i][j].set_yscale('log');
-					axarr[i][j].set_xlim([0,1]);
-					axarr[i][j].set_ylim([1,1000*1000]);
-					axarr[i][j].plot([0.1,0.1],[0,1000*1000],'--r');
-					axarr[i][j].text(0.75,200*1000,str(above_threshold)+'K',fontsize=8);
+					axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8);
+					axarr[k][m].set_yscale('log');
+					axarr[k][m].set_xlim([0,1]);
+					axarr[k][m].set_ylim([1,1000*1000]);
+					axarr[k][m].plot([0.1,0.1],[0,1000*1000],'--r');
+					axarr[k][m].text(0.75,200*1000,str(above_threshold)+'K',fontsize=8);
 
 					count=count+1;
 			plt.savefig("corr_hist_"+str(fignum)+".eps");
