@@ -5,12 +5,13 @@ import os
 import sys
 import glob
 import datetime
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mdates
 import numpy as np
 import datetime as dt
 import netcdf_read_write
-
 
 def get_all_xml_names(directory, polarization, swath):
     pathname1=directory+"/*-vv-*-00"+swath+".xml";
@@ -301,6 +302,7 @@ def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
 
 
 def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
+    print("printing network plot");
     plt.figure();
     for item in intf_pairs:
         scene1=item[0:18];    # has some format like S1A20160817_ALL_F2
@@ -322,6 +324,7 @@ def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
     plt.title("Network Geometry");
     plt.savefig("Network_Geometry.eps");
     plt.close();
+    print("finished printing network plot");
     return;
 
 

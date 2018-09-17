@@ -368,8 +368,8 @@ def make_interferograms(config_params):
     call("chmod +x README_proc.txt",shell=True);
     call("./README_proc.txt",shell=True);
 
-    print("Summarizing correlation for all interferograms.")
-    analyze_coherence.analyze_coherence_function();
+    #print("Summarizing correlation for all interferograms.")
+    #analyze_coherence.analyze_coherence_function();
 
     return;
 
