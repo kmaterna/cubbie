@@ -20,7 +20,7 @@ def configure():
 	if len(file_names)==0:
 		print("Error! No files matching search pattern."); sys.exit(1);
 	print("Reading "+str(len(file_names))+" files.");
-	return [file_names[0:-2]];
+	return [file_names];
 
 
 # ------------- INPUTS ------------ # 
@@ -54,12 +54,17 @@ def make_plots(xdata,ydata,data_all,date_pairs):
 					numelements=np.shape(data_all[count]);
 					mycorrs=np.reshape(data_all[count],(numelements[0]*numelements[1],1));
 					nonans=mycorrs[~np.isnan(mycorrs)];
+					above_threshold=mycorrs[np.where(mycorrs>0.2)];
+					above_threshold=int(len(above_threshold)/1000);
+
 					axarr[i][j].hist(nonans);
+
 					axarr[i][j].set_title(str(date_pairs[count]),fontsize=8);
 					axarr[i][j].set_yscale('log');
 					axarr[i][j].set_xlim([0,1]);
 					axarr[i][j].set_ylim([1,1000*1000]);
 					axarr[i][j].plot([0.1,0.1],[0,1000*1000],'--r');
+					axarr[i][j].text(0.75,200*1000,str(above_threshold)+'K',fontsize=8);
 
 					count=count+1;
 			plt.savefig("corr_hist_"+str(fignum)+".eps");
