@@ -26,6 +26,7 @@ shift $((OPTIND -1))
 # Defining parameters
 id_results=uuid_file.txt
 am_i_linux=`uname -a | grep 'Linux'`
+echo $am_i_linux
 
 # Where will the data live? 
 mkdir -p DATA
@@ -42,7 +43,8 @@ done
 
 
 # the -i '' is because of mac computers. Might need to delete the '' on a linux machine. 
-if [ ! -z $am_i_linux ]; then  # I am on a linux machine
+if [ ! -z "$am_i_linux" ]; then  # I am on a linux machine
+	echo "I'm a linux"
     sed -i 's/<str name=\"uuid\">//g' $id_results
     sed -i 's/<title>//g' $id_results
     sed -i 's/<\/title>//g' $id_results
