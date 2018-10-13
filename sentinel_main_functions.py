@@ -368,8 +368,8 @@ def make_interferograms(config_params):
     call("chmod +x README_proc.txt",shell=True);
     call("./README_proc.txt",shell=True);
 
-    #print("Summarizing correlation for all interferograms.")
-    #analyze_coherence.analyze_coherence_function();
+    print("Summarizing correlation for all interferograms.")
+    analyze_coherence.analyze_coherence_function();
 
     return;
 
@@ -385,7 +385,7 @@ def unwrapping(config_params):
 
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
-    sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+    # sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
     # Here or somewhere higher, I should add a function to only take the interferograms within the time range of interest. 
 
     print("Ready to call "+unwrap_sh_file)

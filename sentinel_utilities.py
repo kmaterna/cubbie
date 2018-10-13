@@ -1,6 +1,6 @@
 # Sentinel Utilities
 
-from subprocess import call
+import subprocess
 import os
 import sys
 import glob
@@ -10,6 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mdates
 import numpy as np
+import collections
 import datetime as dt
 import netcdf_read_write
 
@@ -182,7 +183,7 @@ def write_super_master_batch_config(masterid):
             ofile.write(line);
     ifile.close();
     ofile.close();
-    call(['mv','batch.config.new','batch.config'],shell=False);
+    subprocess.call(['mv','batch.config.new','batch.config'],shell=False);
     print "Writing master_image into batch.config";
     return;
 
@@ -332,7 +333,7 @@ def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_stag
     files = glob.glob(prior_staging_directory+"/*");
     print("Imposing reference pixel on %d files in %s; saving output in %s" % (len(files), prior_staging_directory, post_staging_directory) );
     out_dir=post_staging_directory+"/";
-    call(['mkdir','-p',out_dir],shell=False);
+    subprocess.call(['mkdir','-p',out_dir],shell=False);
 
     for filename in files:
         individual_name=filename.split('/')[-1];
