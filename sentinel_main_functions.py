@@ -12,7 +12,7 @@ import sbas
 import nsbas
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
-    'mode','swath','polarization','frame1','frame2','numproc','xdec','ydec','ts_type','bypass','sbas_smoothing','nsbas_min_intfs','choose_refpixel',
+    'mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass','sbas_smoothing','nsbas_min_intfs','choose_refpixel',
     'solve_unwrap_errors','detrend_atm_topo','gacos','aps','start_time','end_time','threshold_snaphu']);
 
 def read_config():
@@ -51,8 +51,6 @@ def read_config():
     polarization=config.get('py-config','polarization') 
     frame_nearrange1=config.get('py-config','frame_nearrange1')
     frame_nearrange2=config.get('py-config','frame_nearrange2')
-    xdec = config.get('csh-config','custom_xdec');
-    ydec = config.get('csh-config','custom_ydec');
     ts_type=config.get('timeseries-config','ts_type')
     choose_refpixel = config.getint('timeseries-config','choose_refpixel');
     solve_unwrap_errors = config.getint('timeseries-config','solve_unwrap_errors');
@@ -118,7 +116,7 @@ def read_config():
 
     config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,intf_file=intf_file,
         orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
-        numproc=numproc, xdec=xdec, ydec=ydec, ts_type=ts_type, bypass=bypass, sbas_smoothing=sbas_smoothing, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
+        numproc=numproc, ts_type=ts_type, bypass=bypass, sbas_smoothing=sbas_smoothing, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
         solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, detrend_atm_topo=detrend_atm_topo, start_time=start_time, end_time=end_time, threshold_snaphu=threshold_snaphu);
 
     return config_params; 
