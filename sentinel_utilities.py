@@ -80,8 +80,8 @@ def get_eof_from_date_sat(mydate, sat, eof_dir):
     [previous_day,following_day]=get_previous_and_following_day(mydate);
     eof_name=glob.glob(eof_dir+"/"+sat.upper()+"*"+previous_day+"*"+following_day+"*.EOF"); 
     if eof_name==[]:
-        print "ERROR: did not find any EOF files matching the pattern "+eof_dir+"/"+sat.upper()+"*"+previous_day+"*"+following_day+"*.EOF";
-        print "Exiting..."
+        print("ERROR: did not find any EOF files matching the pattern "+eof_dir+"/"+sat.upper()+"*"+previous_day+"*"+following_day+"*.EOF");
+        print("Exiting...")
         sys.exit(1);
     else:
         eof_name=eof_name[0];
@@ -128,7 +128,7 @@ def make_data_in(polarization, swath, master_date="00000000"):
                 eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
                 outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
     outfile.close();
-    print "data.in successfully printed."
+    print("data.in successfully printed.")
     return;
 
 def read_baseline_table(baselinefilename):
@@ -138,6 +138,17 @@ def read_baseline_table(baselinefilename):
     missiondays = baselineFile[:,2].astype(str);
     baselines = baselineFile[:,4].astype(float);    
     return [stems, times, baselines, missiondays];
+
+def read_intf_table(tablefilename):
+    tablefile = np.genfromtxt(tablefilename,dtype=str);
+    intf_all = tablefile[:].astype(str);
+    return intf_all;
+def write_intf_table(intf_all, tablefilename):
+    ofile=open(tablefilename,'w');
+    for i in intf_all:
+        ofile.write("%s\n" % i);
+    ofile.close();
+    return;
 
 
 # after running the baseline calculation from the first pre_proc_batch, choose a new master that is close to the median baseline and timespan.
@@ -150,7 +161,7 @@ def choose_master_image():
  
     #GMTSAR (currently) guarantees that this file has the same order of lines as baseline_table.dat.
     dataDotIn=np.genfromtxt('raw/data.in',dtype='str').tolist()
-    print dataDotIn;    
+    print(dataDotIn);
 
     # calculate shortest distance from median to scenes
     consider_time=True
@@ -184,7 +195,7 @@ def write_super_master_batch_config(masterid):
     ifile.close();
     ofile.close();
     subprocess.call(['mv','batch.config.new','batch.config'],shell=False);
-    print "Writing master_image into batch.config";
+    print("Writing master_image into batch.config");
     return;
 
 def write_ordered_unwrapping(numproc, sh_file, config_file):
@@ -262,8 +273,8 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
                             else:                    # if the images are in reverse chronological order
                                 intf_pairs.append(stems[j]+":"+stems[i]);
                         else:
-                            print "WARNING: %s:%s rejected due to large perpendicular baseline of %f m." % (stems[i], stems[j], abs(xbaseline[i]-xbaseline[j]));
-    print "Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. "
+                            print("WARNING: %s:%s rejected due to large perpendicular baseline of %f m." % (stems[i], stems[j], abs(xbaseline[i]-xbaseline[j])) );
+    print("Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. ")
     # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
     return intf_pairs;
 
@@ -277,7 +288,7 @@ def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
         intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
         if i>1 and sorted_stems[i][3:11] in bypass_items:
             intf_pairs.append(sorted_stems[i-1]+':'+sorted_stems[i+1])
-    print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
+    print("Returning "+str(len(intf_pairs))+" interferograms to compute. ")
     return intf_pairs;
 
 
@@ -297,8 +308,8 @@ def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
         for k in force_chain_images:  # if we have images that were rejected in SBAS due to large perpendicular baseline
             if k in sorted_stems[i]:
                 intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
-    print "Returning "+str(len(intf_pairs))+" interferograms to compute. "
-    print intf_pairs;
+    print("Returning "+str(len(intf_pairs))+" interferograms to compute. ")
+    print(intf_pairs);
     return intf_pairs;
 
 

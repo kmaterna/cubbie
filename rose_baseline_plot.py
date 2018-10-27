@@ -2,60 +2,113 @@
 # And give a visual tool to determine which are the best 
 # one-year interferograms to make. 
 
-import matplotlib.pyplot as plt 
 import numpy as np 
+import matplotlib.pyplot as plt 
 import sentinel_utilities
 
-
-
 def top_level_driver():
-	baselinefile='baseline_table.dat'
+	baselinefile='baseline_table.dat';
+	intf_file='intf_initial.in';
+	intf_file_out='intf_record.in';
 	[stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baselinefile);
-	rose_plot(times, baselines);
+	intf_pairs_initial=sentinel_utilities.read_intf_table(intf_file);
+
+	# Computing new pairs. 
+	[times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points, new_intfs]=compute_new_pairs(stems, times, baselines);
+	
+	# Combining the existing and new interferogram lists. 
+	intf_pairs_initial=list(intf_pairs_initial);
+	all_intfs=intf_pairs_initial+new_intfs;
+	
+	# Outputs
+	rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points);
+	sentinel_utilities.make_network_plot(all_intfs,stems,times,baselines);
+	sentinel_utilities.write_intf_table(all_intfs,intf_file_out);
 	return;
 
-def rose_plot(times, baselines):
 
-	t2015=[]; r2015=[]; d2015=[]; t2016=[]; r2016=[]; d2016=[]; t2017=[]; r2017=[]; d2017=[]; t2018=[]; r2018=[]; d2018=[];
-	plt.figure();
 
+
+def compute_new_pairs(stems, times, baselines):
+
+	crit_days=30;   # days
+	close_in_theta=2*np.pi*(crit_days/365.25);  # days 
+	close_in_baseline=20;  # meters
+	count=0;
+
+	times_dict={}; days_dict={}; radius_dict={}; theta_dict={}; color_dict={};
+	r_points=[]; th_points=[]; new_intfs=[];
+	color_order='bgrkc';
+
+	# Build the dictionaries of data
 	for i in range(len(times)):
 		year=str(times[i])[0:4];
 		day=str(times[i])[4:7];
-
 		theta=2*np.pi*float(day)/365.25;
-		radius=baselines[i]-min(baselines);		
+		radius=baselines[i]-min(baselines);
 
-		if year=='2015':
-			r2015.append(radius);
-			t2015.append(theta);
-			d2015.append(day);
-		elif year=='2016':
-			r2016.append(radius);
-			t2016.append(theta);
-			d2016.append(day);
-		elif year=='2017':
-			r2017.append(radius);
-			t2017.append(theta);
-			d2017.append(day);
-		else:
-			r2018.append(radius);
-			t2018.append(theta);
-			d2018.append(day);
-	
-	dot1=plt.polar(t2015,r2015,'.',color='b',label='2015');
-	dot2=plt.polar(t2016,r2016,'.',color='k',label='2016');
-	dot3=plt.polar(t2017,r2017,'.',color='r',label='2017');	
-	dot4=plt.polar(t2018,r2018,'.',color='g',label='2018');
+		if year not in days_dict:
+			times_dict[year]=[];
+			days_dict[year]=[];
+			radius_dict[year]=[];
+			theta_dict[year]=[];
+			color_dict[year]=color_order[len(color_dict)];
 
-	for i in range(len(d2017)):
-		plt.annotate(d2017[i],xy=(t2017[i],r2017[i]),fontsize=6,color='r');
-	for i in range(len(d2016)):
-		plt.annotate(d2016[i],xy=(t2016[i],r2016[i]),fontsize=6,color='k');
+		times_dict[year].append(times[i]);
+		days_dict[year].append(day);
+		radius_dict[year].append(radius);
+		theta_dict[year].append(theta);
+
+	# Find candidate interferograms.
+	year_list=sorted(set(times_dict));
+
+	for i in range(len(year_list)-1):  # Looking for interferograms that are close in baseline and time (in the next year)
+		this_year=year_list[i];
+		next_year=year_list[i+1];
+		for j in range(len(radius_dict[this_year])):  # for each year
+			for k in range(len(radius_dict[next_year])):  # for the next year
+
+				if abs(radius_dict[this_year][j]-radius_dict[next_year][k])<close_in_baseline:
+					if abs(theta_dict[this_year][j]-theta_dict[next_year][k])<close_in_theta:
+						count=count+1;
+						print("%f %f %f meters" % (times_dict[this_year][j],times_dict[next_year][k],abs(radius_dict[this_year][j]-radius_dict[next_year][k])) );
+						# We have a close pair. 
+						indx1=np.where(times==times_dict[this_year][j]);
+						indx2=np.where(times==times_dict[next_year][k]);
+						stem1=stems[indx1][0];
+						stem2=stems[indx2][0];
+						r_points.append([radius_dict[this_year][j],radius_dict[next_year][k]]);
+						th_points.append([theta_dict[this_year][j],theta_dict[next_year][k]]);
+						new_intf=stem1+':'+stem2;
+						new_intfs.append(new_intf);  # FOUND NEW INTERFEROGRAM!
+
+	print("Found %d new interferograms " % count);
+
+	return [times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points, new_intfs];
+
+
+
+def rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points):
+
+	# Make the polar plot. 
+	plt.figure();
+	dots=[];
+	for myyear in sorted(radius_dict):
+		dots.append(plt.polar(theta_dict[myyear],radius_dict[myyear],'.',color=color_dict[myyear],label=myyear));
+
+	# The new connections we plan to make. 
+	for i in range(len(r_points)):
+		plt.polar(th_points[i],r_points[i],color='black',linewidth=0.4);
+
+	labelyear='2017';
+	for i in range(len(days_dict[labelyear])):
+		plt.annotate(days_dict[labelyear][i],xy=(theta_dict[labelyear][i],radius_dict[labelyear][i]),fontsize=6,color=color_dict[labelyear]);
 
 	plt.legend(loc=4);
 	plt.savefig('roseplot.eps');
 	return;
+
+
 
 
 
