@@ -355,7 +355,7 @@ def make_interferograms(config_params):
     intf_all=intf_pairs+long_intfs;
 
     # Make the stick plot of baselines 
-    sentinel_utilities.make_network_plot(intf_pairs+long_intfs,stems,times, baselines);
+    sentinel_utilities.make_network_plot(intf_all,stems,times, baselines);
 
     # Write the intf.in files
     # Writing to process interferograms. 
