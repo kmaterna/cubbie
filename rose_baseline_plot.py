@@ -10,18 +10,21 @@ def top_level_driver():
 	baselinefile='baseline_table.dat';
 	intf_file='intf_initial.in';
 	intf_file_out='intf_record.in';
+
+	crit_days=30;  # days
+	crit_baseline=20; # meters
+
 	[stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baselinefile);
 	intf_pairs_initial=sentinel_utilities.read_intf_table(intf_file);
+	intf_pairs_initial=list(intf_pairs_initial);
 
 	# Computing new pairs. 
-	[times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points, new_intfs]=compute_new_pairs(stems, times, baselines);
+	new_intfs=compute_new_pairs(stems, times, baselines, crit_days, crit_baseline);
 	
 	# Combining the existing and new interferogram lists. 
-	intf_pairs_initial=list(intf_pairs_initial);
 	all_intfs=intf_pairs_initial+new_intfs;
 	
 	# Outputs
-	rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points);
 	sentinel_utilities.make_network_plot(all_intfs,stems,times,baselines);
 	sentinel_utilities.write_intf_table(all_intfs,intf_file_out);
 	return;
@@ -29,11 +32,9 @@ def top_level_driver():
 
 
 
-def compute_new_pairs(stems, times, baselines):
+def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline):
 
-	crit_days=30;   # days
-	close_in_theta=2*np.pi*(crit_days/365.25);  # days 
-	close_in_baseline=20;  # meters
+	crit_theta=2*np.pi*(crit_days/365.25);  # days 
 	count=0;
 
 	times_dict={}; days_dict={}; radius_dict={}; theta_dict={}; color_dict={};
@@ -68,10 +69,10 @@ def compute_new_pairs(stems, times, baselines):
 		for j in range(len(radius_dict[this_year])):  # for each year
 			for k in range(len(radius_dict[next_year])):  # for the next year
 
-				if abs(radius_dict[this_year][j]-radius_dict[next_year][k])<close_in_baseline:
-					if abs(theta_dict[this_year][j]-theta_dict[next_year][k])<close_in_theta:
+				if abs(radius_dict[this_year][j]-radius_dict[next_year][k])<crit_baseline:
+					if abs(theta_dict[this_year][j]-theta_dict[next_year][k])<crit_theta:
 						count=count+1;
-						print("%f %f %f meters" % (times_dict[this_year][j],times_dict[next_year][k],abs(radius_dict[this_year][j]-radius_dict[next_year][k])) );
+						# print("%f %f %f meters" % (times_dict[this_year][j],times_dict[next_year][k],abs(radius_dict[this_year][j]-radius_dict[next_year][k])) );
 						# We have a close pair. 
 						indx1=np.where(times==times_dict[this_year][j]);
 						indx2=np.where(times==times_dict[next_year][k]);
@@ -82,9 +83,11 @@ def compute_new_pairs(stems, times, baselines):
 						new_intf=stem1+':'+stem2;
 						new_intfs.append(new_intf);  # FOUND NEW INTERFEROGRAM!
 
-	print("Found %d new interferograms " % count);
+	print("Year-long: Returning %d long interferograms within %.1f days and %.1f meters" % (count, crit_days, crit_baseline) );
 
-	return [times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points, new_intfs];
+	rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points);
+
+	return new_intfs;
 
 
 

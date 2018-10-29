@@ -274,7 +274,7 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
                                 intf_pairs.append(stems[j]+":"+stems[i]);
                         else:
                             print("WARNING: %s:%s rejected due to large perpendicular baseline of %f m." % (stems[i], stems[j], abs(xbaseline[i]-xbaseline[j])) );
-    print("Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. ")
+    print("SBAS Pairs: Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. ")
     # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
     return intf_pairs;
 
@@ -288,7 +288,7 @@ def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
         intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
         if i>1 and sorted_stems[i][3:11] in bypass_items:
             intf_pairs.append(sorted_stems[i-1]+':'+sorted_stems[i+1])
-    print("Returning "+str(len(intf_pairs))+" interferograms to compute. ")
+    print("Connected Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
     return intf_pairs;
 
 
@@ -308,8 +308,8 @@ def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
         for k in force_chain_images:  # if we have images that were rejected in SBAS due to large perpendicular baseline
             if k in sorted_stems[i]:
                 intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
-    print("Returning "+str(len(intf_pairs))+" interferograms to compute. ")
-    print(intf_pairs);
+    print("Manual Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
+    # print(intf_pairs);
     return intf_pairs;
 
 

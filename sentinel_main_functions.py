@@ -8,6 +8,7 @@ import choose_reference_pixel
 import unwrapping_errors
 import aps 
 import detrend_atm_topo
+import rose_baseline_plot
 import sbas
 import nsbas
 
@@ -346,18 +347,26 @@ def make_interferograms(config_params):
         print("config_params.ts_type is not a valid ts_type");
         sys.exit(1);
 
-    # Make the stick plot of baselines 
-    sentinel_utilities.make_network_plot(intf_pairs,stems,times, baselines);
 
+    # intf_pairs is the list of interferogram pairs made from SBAS or NSBAS or manual or chain 
+    # Now we want to add the longer interferograms. 
+    crit_days=30; crit_baseline=20;  # days, meters
+    long_intfs = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline);
+    intf_all=intf_pairs+long_intfs;
+
+    # Make the stick plot of baselines 
+    sentinel_utilities.make_network_plot(intf_pairs+long_intfs,stems,times, baselines);
+
+    # Write the intf.in files
     # Writing to process interferograms. 
     outfile=open("README_proc.txt",'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch process Sentinel-1 TOPS mode data sets.\n\n");
     outfile.write("# First, create the files needed for intf_tops.csh\n\n");
     outfile.write("rm intf*.in\n");
-    for i,item in enumerate(intf_pairs):
+    for i,item in enumerate(intf_all):
         outfile.write('echo "' + item +'" >> intf_record.in\n');
-    for i,item in enumerate(intf_pairs):
+    for i,item in enumerate(intf_all):
         outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');        
     outfile.write("\n# Process the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");
