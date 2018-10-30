@@ -10,6 +10,7 @@ import aps
 import detrend_atm_topo
 import rose_baseline_plot
 import flattentopo_driver
+import phasefilt_plot
 import sbas
 import nsbas
 
@@ -191,7 +192,6 @@ def check_raw_orig_sanity():
         raise sentinel_utilities.Directory_error('Huge error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
     return;
 
-
 def get_frames_for_raw_orig(config_params):
     # This will read the batch.config file, make frames, and put the results into the file_list 
     # (for later porting into raw_orig)
@@ -259,8 +259,6 @@ def preprocess(config_params):
     call("./README_prep.txt",shell=True); # This calls preproc_batch_tops.csh the second time.  Aligning will happen!  
     # NOTE: We automatically put the super-master into batch_tops.config (format is like [S1A20160829_ALL_F2])   
     return;
-
-
 
 def write_xml_prep(polarization, swath):
     list_of_xml=sentinel_utilities.get_all_xml_names('raw_orig',polarization,swath);
@@ -392,8 +390,11 @@ def unwrapping(config_params):
         return;   
 
     # Marie-Pierre's atmosphere correction 
-    if config_params.detrend_atm_topo==1:
-        flattentopo_driver.main_function();
+    # if config_params.detrend_atm_topo==1:
+        # flattentopo_driver.main_function();
+
+    # Make plots of phasefilt.grd files. 
+    make_phase_plots.top_level_driver();
 
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
@@ -447,10 +448,10 @@ def do_timeseries(config_params):
         prior_staging_directory=post_staging_directory;
         post_staging_directory='intf_all/aps_unwrap.grd';
         aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
-    if config_params.detrend_atm_topo:
-        prior_staging_directory=post_staging_directory;
-        post_staging_directory='intf_all/atm_topo_corrected.grd';
-        detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    # if config_params.detrend_atm_topo:
+    #     prior_staging_directory=post_staging_directory;
+    #     post_staging_directory='intf_all/atm_topo_corrected.grd';
+    #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
 
 
     if config_params.ts_type=="SBAS":

@@ -221,13 +221,13 @@ def write_unordered_unwrapping(numproc, sh_file, config_file):
     infile='intf_record.in';
     intfs=[];
     for line in open(infile):
-        intfs.append(line);
+        intfs.append(line[0:-1]);
     outfile=open(sh_file,'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
     outfile.write("rm intf?.in\n");
-    for item in intfs:
-        outfile.write('echo '+item+' >> intf'+str(np.mod(i,numproc))+'.in\n'); 
+    for i,item in enumerate(intfs):
+        outfile.write('echo "'+item+'" >> intf'+str(np.mod(i,numproc))+'.in\n'); 
         # outfile.write("echo S1A20180106_ALL_F1:S1A20180118_ALL_F1 >> intf0.in\n"); break;   
     outfile.write("\n# Unwrap the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");

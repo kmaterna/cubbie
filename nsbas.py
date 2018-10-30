@@ -64,9 +64,30 @@ def compute(xdata, ydata, zdata_all, nsbas_good_num, dates, date_pairs, smoothin
 	[zdim, xdim, ydim] = np.shape(zdata_all);
 	number_of_datas=np.zeros([xdim, ydim]);
 	vel=np.zeros([xdim,ydim]);
-	[number_of_datas,zdim] = analyze_coherent_number(zdata_all);
+	# [number_of_datas] = analyze_coherent_number(zdata_all);  # commented for debugging. 
+	number_of_datas=np.zeros([xdim,ydim]);
+
 	vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
 	return [vel,number_of_datas,zdim];
+
+
+def analyze_coherent_number(zdata):
+	# Analyze the number of coherent acquisitions for each pixel
+	print("Analyzing the number of coherent interferograms per pixel.")
+	[zdim, xdim, ydim] = np.shape(zdata)
+	number_of_datas=np.zeros([xdim,ydim]);
+	for k in range(zdim):
+		for i in range(xdim):
+			for j in range(ydim):
+				if not math.isnan(zdata[k][i][j]):
+					number_of_datas[i][j]=number_of_datas[i][j]+1;
+
+	plt.figure();
+	plt.imshow(number_of_datas);
+	plt.savefig('number_of_datas.eps');
+
+	return [number_of_datas];
+
 
 
 def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
@@ -76,14 +97,21 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_p
 	[zdim, xdim, ydim] = np.shape(zdata)
 	vel = np.zeros([xdim, ydim]);
 	
+	nsbas_good_num=-2;  # for debugging. 
+
 	for i in range(xdim):  # A loop through each pixel. 
 		for j in range(ydim):
+
+	# for i in range(124,127):
+		# for j in range(296,299):
 			pixel_value = [zdata[k][i][j] for k in range(zdim)];  # slicing the values of phase for a pixel across the various interferograms
 			
 			if number_of_datas[i][j] >= nsbas_good_num:  # If we have a pixel that will be analyzed: Do SBAS
 				print("%d %d " % (i, j) )
 
 				vel[i][j] = do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength); 
+				# print(vel[i][j]);
+				# sys.exit(0)
 				# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
 				# dates: if we have 35 images, this is the date of each image
 				# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image
@@ -182,18 +210,6 @@ def do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength):
 	return vel;
 
 
-def analyze_coherent_number(zdata):
-	# Analyze the number of coherent acquisitions for each pixel
-	print("Analyzing the number of coherent interferograms per pixel.")
-	[zdim, xdim, ydim] = np.shape(zdata)
-	number_of_datas=np.zeros([xdim,ydim]);
-	for k in range(zdim):
-		for i in range(xdim):
-			for j in range(ydim):
-				if not math.isnan(zdata[k][i][j]):
-					number_of_datas[i][j]=number_of_datas[i][j]+1;
-
-	return [number_of_datas, zdim];
 
 
 

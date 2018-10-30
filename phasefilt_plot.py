@@ -3,13 +3,14 @@ import numpy as np
 import glob as glob
 import sys
 import datetime as dt 
+import subprocess
 import netcdf_read_write
 
 # TOP LEVEL DRIVER
 def top_level_driver():
-	[file_names]=configure();
+	[file_names,outdir, num_plots_x, num_plots_y]=configure();
 	[xdata,ydata,data_all,date_pairs]=inputs(file_names);
-	make_plots(xdata,ydata,data_all,date_pairs);
+	make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y);
 	return;
 
 
@@ -17,32 +18,43 @@ def top_level_driver():
 def configure():
 	file_dir="intf_all";
 	file_type="phasefilt.grd";
+	outdir='phasefilt/'
+
+	subprocess.call(['mkdir','-p',outdir],shell=False);
 	
 	file_names=glob.glob(file_dir+"/*/"+file_type);
 	if len(file_names)==0:
 		print("Error! No files matching search pattern."); sys.exit(1);
 	print("Reading "+str(len(file_names))+" files.");
-	return [file_names];
+	num_plots_x=4; num_plots_y=3; 
+	return [file_names, outdir, num_plots_x, num_plots_y];
 
 
 # ------------- INPUTS ------------ # 
 def inputs(file_names):
-	[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
+	try:
+		[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);  # can read either netcdf3 or netcdf4. 
+	except TypeError:
+		[xdata,ydata] = netcdf_read_write.read_netcdf4_xy(file_names[0]);
 	data_all=[];
-	for ifile in file_names:  # this happens to be in date order on my mac
-		data = netcdf_read_write.read_grd(ifile);
-		data_all.append(data);
 	date_pairs=[];
-	for name in file_names:
-		pairname=name.split('/')[-2][0:15];
+
+	file_names=sorted(file_names); # To force into date-ascending order. 
+	
+	for ifile in file_names:  # Read the data
+		try:
+			data = netcdf_read_write.read_grd(ifile);
+		except TypeError: 
+			data = netcdf_read_write.read_netcdf4(ifile);
+		data_all.append(data);
+		pairname=ifile.split('/')[-2][0:15];
 		date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
-		print(pairname)
+		print(pairname);
+
 	return [xdata, ydata, data_all, date_pairs];
 
 
-def make_plots(xdata,ydata,data_all,date_pairs):
-	num_plots_x=4;
-	num_plots_y=3;
+def make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y):
 
 	for i in range(len(data_all)):
 		if np.mod(i,num_plots_y*num_plots_x)==0:
@@ -73,7 +85,7 @@ def make_plots(xdata,ydata,data_all,date_pairs):
 					axarr[k][m].get_yaxis().set_ticks([]);
 					axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8);
 					count=count+1;
-			plt.savefig("selected_data_"+str(fignum)+".eps");
+			plt.savefig(outdir+"selected_data_"+str(fignum)+".eps");
 			plt.close();
 	return;
 
