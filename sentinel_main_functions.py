@@ -9,6 +9,7 @@ import unwrapping_errors
 import aps 
 import detrend_atm_topo
 import rose_baseline_plot
+import flattentopo_driver
 import sbas
 import nsbas
 
@@ -390,10 +391,13 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
+    # Marie-Pierre's atmosphere correction 
+    if config_params.detrend_atm_topo==1:
+        flattentopo_driver.main_function();
+
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
-    # sentinel_utilities.write_ordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
-    # Here or somewhere higher, I should add a function to only take the interferograms within the time range of interest. 
+    sentinel_utilities.write_unordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
     print("Ready to call "+unwrap_sh_file)
     call(['chmod','+x',unwrap_sh_file],shell=False);

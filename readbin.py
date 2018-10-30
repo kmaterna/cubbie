@@ -1,7 +1,8 @@
 #!/bin/env/python
 import numpy as np 
 import matplotlib.pyplot as plt 
-import sys, math
+import sys, math, os
+import subprocess
 import struct
 import netcdf_read_write
 
@@ -37,7 +38,7 @@ def phase_amp2real_imag(phase,amp):
 	return [real, imag];
 
 
-def read_binary_roipac_real_imag(filename, width):
+def read_binary_roipac_real_imag(filename):
 	# Reads a binary file that expects two fields (such as real and imaginary)
 	# returns one-dimensional arrays. 
 	with open(filename, mode='rb') as file: # b is important -> binary
@@ -118,7 +119,7 @@ def write_rsc_file(filename):
 
 
 # Plotting
-def outputs(phase, amp, width, length, plotname):
+def output_plots(phase, amp, width, length, plotname):
 	# Takes 1D arrays and plots them in graphical format. 
 	phase=np.reshape(phase,(length,width));
 	amp=np.reshape(amp,(length,width));
@@ -130,14 +131,11 @@ def outputs(phase, amp, width, length, plotname):
 	plt.close();
 
 
-def write_gmtsar2roipac_phase(input_directory, outfilename, outfile_filt):
+def write_gmtsar2roipac_phase(input_directory, phasefile, phasefilt_file, ampfile, outfilename, outfile_filt):
 	"""
 	A function that reads phase and amplitude grids in GMT format and writes a Binary format file 
 	with the real and imaginary components of the values. 
 	"""
-	phasefile=input_directory+"/phase.grd";
-	phasefilt_file=input_directory+"/phasefilt.grd";
-	ampfile=input_directory+"/amp.grd";
 
 	# INPUTS
 	[xdata, ydata, phase]=netcdf_read_write.read_grd_xyz(phasefile);
@@ -182,6 +180,15 @@ def write_gmtsar2roipac_topo(infile, out_topo):
 	# outputs(topo_1d, topo_1d, width, length, 'mendocino_topo_orig.eps');
 	return [width, length];
 
+
+def prep_files(phasefile, phasefilt_file, orig_phasefile, orig_phasefilt_file):
+	# For new interferograms, you need to save a copy of phase.grd and phasefilt.grd because they're going to be 
+	# overwritten when we're doing Marie-Pierre's insar workflow. 
+	if not os.path.isfile(orig_phasefile):
+		subprocess.call(['cp',phasefile,orig_phasefile],shell=False);
+	if not os.path.isfile(orig_phasefilt_file):
+		subprocess.call(['cp',phasefilt_file,orig_phasefilt_file],shell=False);
+	return;
 
 
 
