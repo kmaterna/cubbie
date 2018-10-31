@@ -16,15 +16,17 @@ output="image_projection.ps"
 
 # Projection Parameters (Center, width in km, length in km, azimuth)
 # YOU CAN CHANGE THESE
-Cx=-123.65
-Cy=40.3   # This works for the middle of the image. 
-# Cx=-123.45
-# Cy=40.1  # This works for the south of the image, near the landslide
+# Cx=-123.65
+# Cy=40.3   # This works for the middle of the image. 
+Cx=-123.45
+Cy=40.1  # This works for the south of the image, near the landslide
 azimuth=75  # in degrees CW from north. 
 lmin=-55  # in km. 
 lmax=55
-width_min=-8
-width_max=8
+width_min=-2
+width_max=2
+scalemax=10;
+scalelabel=5;
 
 # The edges of the profile box 
 twice_length=$(echo $lmax - $lmin | bc)  # for the full profile
@@ -41,13 +43,13 @@ gmt grd2xyz $input_file -s > vel_table.txt
 
 # ---------------------------------- # 
 # PART 1: The Regular Map 
-gmt makecpt -T-80/80/0.5 -Crainbow > mycpt.cpt 
+gmt makecpt -T-$scalemax/$scalemax/0.5 -Crainbow > mycpt.cpt 
 gmt pscoast -R$range -J$projection -Dh -Sskyblue2 -Ggray36 -B0.5 -Wthin,black -P -K > $output
 gmt grdimage $input_file -R$range -J$projection -Q -Cmycpt.cpt -P -K -O >> $output  # this can be improved later. The pixels are too small. 
 gmt psxy -R$range -J$projection -Sc0.2 -Wblue -Gblue -P -K -O <<EOF>> $output
 $Cx $Cy
 EOF
-gmt psscale -R$range -J$projection -DjTR+w4c/0.5c+o-2.5/1.5 -Cmycpt.cpt -B40.0:"LOS":/:mm/yr: -P -O -K >> $output
+gmt psscale -R$range -J$projection -DjTR+w4c/0.5c+o-2.5/1.5 -Cmycpt.cpt -B$scalelabel:"LOS":/:mm/yr: -P -O -K >> $output
 # D: Dimensions (MUST BE IN inches / centimeters)
 # B: Scale has 5km boxes.  I just copied the syntax on the annotation.  
 

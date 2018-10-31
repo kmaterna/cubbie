@@ -94,6 +94,7 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_p
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an SBAS matrix describing each image that's a real number (not nan). 
 	print("Analyzing the nsbas timeseries per pixel.")
+	outfile=open("velocity_writer.txt",'w');
 	[zdim, xdim, ydim] = np.shape(zdata)
 	vel = np.zeros([xdim, ydim]);
 	
@@ -110,6 +111,7 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_p
 				print("%d %d " % (i, j) )
 
 				vel[i][j] = do_nsbas_pixel(pixel_value, dates, date_pairs, smoothing, wavelength); 
+				outfile.write("%d %d %f\n" % (i, j, vel[i][j]) );
 				# print(vel[i][j]);
 				# sys.exit(0)
 				# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
@@ -119,6 +121,8 @@ def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_p
 
 			else:
 				vel[i][j]=np.nan;
+
+	outfile.close();
 
 	return vel;
 

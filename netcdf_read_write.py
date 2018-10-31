@@ -52,6 +52,21 @@ def read_netcdf4(filename):
 	data = read_grd(netcdf3file);
 	return data;
 
+def read_netcdf4_xyz(filename):
+	netcdf4file=filename;
+	netcdf3file=filename+'nc3';
+	subprocess.call('nccopy -k classic '+netcdf4file+' '+netcdf3file,shell=True); 
+	zdata = read_grd(netcdf3file);
+	[xdata, ydata] = read_grd_xy(netcdf3file);
+	return [xdata, ydata, zdata];
+
+def read_any_grd_xyz(filename):
+	# Switch between netcdf4 and netcdf3 automatically. 
+	try:
+		[xdata, ydata, zdata] = read_grd_xyz(filename);
+	except TypeError: 
+		[xdata, ydata, zdata] = read_netcdf4_xyz(filename);
+	return [xdata, ydata, zdata];
 
 # --------------- WRITING ------------------- # 
 

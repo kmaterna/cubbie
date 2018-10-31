@@ -78,13 +78,13 @@ def compute_loops(all_loops, loops_dir, loops_guide, rowref, colref):
 		edge1=all_loops[i][0]+'_'+all_loops[i][1];
 		edge2=all_loops[i][1]+'_'+all_loops[i][2];
 		edge3=all_loops[i][0]+'_'+all_loops[i][2];
-		[xdata, ydata, z1 ] = netcdf_read_write.read_grd_xyz('intf_all/'+edge1+'/'+unwrapped);
-		z2 = netcdf_read_write.read_grd('intf_all/'+edge2+'/'+unwrapped);
-		z3 = netcdf_read_write.read_grd('intf_all/'+edge3+'/'+unwrapped);
+		[xdata, ydata, z1 ] = netcdf_read_write.read_any_grd_xyz('intf_all/'+edge1+'/'+unwrapped);
+		[_,_,z2] = netcdf_read_write.read_any_grd_xyz('intf_all/'+edge2+'/'+unwrapped);
+		[_,_,z3] = netcdf_read_write.read_any_grd_xyz('intf_all/'+edge3+'/'+unwrapped);
 
-		[xdata, ydata, wr_z1 ] = netcdf_read_write.read_grd_xyz('intf_all/'+edge1+'/'+wrapped);
-		wr_z2 = netcdf_read_write.read_grd('intf_all/'+edge2+'/'+wrapped);
-		wr_z3 = netcdf_read_write.read_grd('intf_all/'+edge3+'/'+wrapped);
+		[xdata, ydata, wr_z1] = netcdf_read_write.read_any_grd_xyz('intf_all/'+edge1+'/'+wrapped);
+		[_,_,wr_z2] = netcdf_read_write.read_any_grd_xyz('intf_all/'+edge2+'/'+wrapped);
+		[_,_,wr_z3] = netcdf_read_write.read_any_grd_xyz('intf_all/'+edge3+'/'+wrapped);
 
 		print("Loop "+str(i)+":");
 
