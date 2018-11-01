@@ -59,6 +59,10 @@ $Cx $Cy $azimuth $(echo $lmax - $lmin | bc) $(echo $width_max - $width_min | bc)
 EOF
 # The pipe bc is for adding floating point numbers
 
+# Draw the available GPS
+awk '{print $1, $2, $3, $4 0 0 0 0}' gps_los.txt | gmt psvelo -R$range -J$projection -Se0.03/0.68/0 -A+e+pthin,black -P -O -K >> $output
+awk '{print $1, $2, $5}' gps_los.txt | gmt psxy -R$range -J$projection -P -O -K -Si0.4 -Wthinner,black -Cmycpt.cpt >> $output
+
 
 # ---------------------------------- # 
 # PART 2: The Cross-Section
