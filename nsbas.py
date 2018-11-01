@@ -15,7 +15,9 @@ def configure(config_params, staging_directory):
 
 	# Time Series parameters
 	smoothing = config_params.sbas_smoothing;  
-	out_dir='nsbas';
+	out_dir=config_params.ts_output_dir;
+
+	outfile_writer=out_dir+'/velocity_writer';  # a text file where we write nsbas results in case the program crashes. 
 
 	# Setting up the input and output directories. 
 	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
@@ -23,7 +25,7 @@ def configure(config_params, staging_directory):
 	if len(file_names)==0:
 		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
 	call(['mkdir','-p',out_dir],shell=False);
-	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, out_dir];
+	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, outfile_writer, out_dir];
 
 
 
@@ -60,14 +62,14 @@ def inputs(file_names, config_params):
 
 
 # ------------ COMPUTE ------------ #
-def compute(xdata, ydata, zdata_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
+def compute(xdata, ydata, zdata_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength, outfile_writer):
 	[zdim, xdim, ydim] = np.shape(zdata_all);
 	number_of_datas=np.zeros([xdim, ydim]);
 	vel=np.zeros([xdim,ydim]);
 	# [number_of_datas] = analyze_coherent_number(zdata_all);  # commented for debugging. 
 	number_of_datas=np.zeros([xdim,ydim]);
 
-	vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
+	vel = analyze_velocity_nsbas(zdata_all, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength, outfile_writer);
 	return [vel,number_of_datas,zdim];
 
 
@@ -90,11 +92,11 @@ def analyze_coherent_number(zdata):
 
 
 
-def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength):
+def analyze_velocity_nsbas(zdata, number_of_datas, nsbas_good_num, dates, date_pairs, smoothing, wavelength, outfile_writer):
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an SBAS matrix describing each image that's a real number (not nan). 
 	print("Analyzing the nsbas timeseries per pixel.")
-	outfile=open("velocity_writer.txt",'w');
+	outfile=open(outfile_writer,'w');
 	[zdim, xdim, ydim] = np.shape(zdata)
 	vel = np.zeros([xdim, ydim]);
 	
@@ -302,7 +304,7 @@ def geocode(ifile, directory):
 # ------------ THE MAIN PROGRAM------------ # 
 
 def do_nsbas(config_params, staging_directory):
-	[file_names, nsbas_good_num, smoothing, wavelength, out_dir] = configure(config_params, staging_directory);
+	[file_names, nsbas_good_num, smoothing, wavelength, outfile_writer, out_dir] = configure(config_params, staging_directory);
 	[xdata, ydata, data_all, dates, date_pairs] = inputs(file_names, config_params);
-	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength);
+	[vel, number_of_datas, zdim] = compute(xdata, ydata, data_all, nsbas_good_num, dates, date_pairs, smoothing, wavelength, outfile_writer);
 	outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir);

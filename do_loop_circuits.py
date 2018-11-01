@@ -11,7 +11,7 @@ import subprocess
 import netcdf_read_write
 
 
-
+# BROKE AT LOOP # 120 OR # 121. NOT SURE WHY. 
 
 def identify_all_loops():
 	# This function takes the glob intf_all directories and then makes all possible triangles. 

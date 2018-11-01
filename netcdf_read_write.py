@@ -38,6 +38,15 @@ def read_grd_lonlatz(filename):
 	zdata=zdata0.copy();
 	return [xdata, ydata, zdata]; 
 
+def read_grd_variables(filename, var1, var2, var3):
+	xdata0= netcdf.netcdf_file(filename,'r').variables[var1][::-1];
+	xdata=xdata0.copy();
+	ydata0= netcdf.netcdf_file(filename,'r').variables[var2][::-1];
+	ydata=ydata0.copy();
+	zdata0= netcdf.netcdf_file(filename, 'r').variables[var3][::-1];
+	zdata=zdata0.copy();
+	return [xdata, ydata, zdata];
+
 def read_netcdf4_xy(filename):
 	netcdf4file=filename;
 	netcdf3file=filename+'nc3';
@@ -60,6 +69,14 @@ def read_netcdf4_xyz(filename):
 	[xdata, ydata] = read_grd_xy(netcdf3file);
 	return [xdata, ydata, zdata];
 
+def read_netcdf4_variables(filename, var1, var2, var3):
+	netcdf4file=filename;
+	netcdf3file=filename+'nc3';
+	subprocess.call('nccopy -k classic '+netcdf4file+' '+netcdf3file,shell=True); 
+	[xdata, ydata, zdata] = read_grd_variables(filename, var1, var2, var3);
+	return [xdata, ydata, zdata];
+
+
 def read_any_grd_xyz(filename):
 	# Switch between netcdf4 and netcdf3 automatically. 
 	try:
@@ -67,6 +84,16 @@ def read_any_grd_xyz(filename):
 	except TypeError: 
 		[xdata, ydata, zdata] = read_netcdf4_xyz(filename);
 	return [xdata, ydata, zdata];
+
+
+def read_any_grd_variables(filename, var1, var2, var3):
+	# Switch between netcdf4 and netcdf3 automatically. 
+	try:
+		[xdata, ydata, zdata] = read_grd_variables(filename, var1, var2, var3);
+	except TypeError: 
+		[xdata, ydata, zdata] = read_netcdf4_variables(filename, var1, var2, var3);
+	return [xdata, ydata, zdata];
+
 
 # --------------- WRITING ------------------- # 
 
