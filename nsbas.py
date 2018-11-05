@@ -16,22 +16,59 @@ def configure(config_params, staging_directory):
 	# Time Series parameters
 	smoothing = config_params.sbas_smoothing;  
 	out_dir=config_params.ts_output_dir;
-
 	outfile_writer=out_dir+'/velocity_writer';  # a text file where we write nsbas results in case the program crashes. 
 
 	# Setting up the input and output directories. 
-	file_names=glob.glob(staging_directory+"/*_*_unwrap.grd");
-	print("Performing NSBAS on files in %s " % staging_directory);
-	if len(file_names)==0:
-		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
+	[file_names, intf_pairs]=get_nsbas_intfs(staging_directory, config_params.skip_file);
 	call(['mkdir','-p',out_dir],shell=False);
+
+	sentinel_utilities.make_network_plot(intf_pairs, [],[],[], 'Selected_Network_Geometry.eps'); # will read from the raw/baseline_table.dat file. 
+	print("Performing NSBAS on %d files in %s " % (len(file_names), staging_directory));
+
 	return [file_names, config_params.nsbas_min_intfs, smoothing, config_params.wavelength, outfile_writer, out_dir];
 
 
+def get_nsbas_intfs(staging_directory, skip_file):
+	# The purpose of this function is to remove the interferograms manually selected for exclusion. 
+	# They will be placed in a separate folder called 'noisy'. 
+	# First remove interferograms from the manual_remove.txt file. 
+	
+	intf_pairs=[];
+	ifile=open(skip_file,'r');
+	for line in ifile:
+		intf_pairs.append(line.split()[0]);
+	ifile.close();
+
+	# Set up the noisy directory, and move everything inside back into staging dir. 
+	noisy_dir=staging_directory+'/noisy';
+	call(['mkdir','-p',noisy_dir],shell=False);
+	tempfiles = glob.glob(noisy_dir+"/*_*_unwrap.grd");
+	for item in tempfiles:
+		call(['mv',item,staging_directory],shell=False);
+
+	# Move all noisy files into a noisy directory. 
+	file_names_total=glob.glob(staging_directory+"/*_*_unwrap.grd");
+	for item in file_names_total:
+		for intf in intf_pairs:
+			if intf in item:
+				call(['mv',item,noisy_dir],shell=False);
+				print('mv '+item+' '+noisy_dir);
+
+	file_names_clean=glob.glob(staging_directory+"/*_*_unwrap.grd");
+	if len(file_names_clean)==0:
+		print("Error! No files matching search pattern within "+staging_directory); sys.exit(1);
+	clean_intf_pairs=[];
+	for item in file_names_clean:
+		imname=item.split('/')[-1];
+		im1=imname[0:7]
+		im2=imname[8:15]
+		clean_intf_pairs.append(im1+':'+im2);
+	return [file_names_clean, clean_intf_pairs]; 
 
 
 # ------------- INPUTS ------------ # 
 def inputs(file_names, config_params):
+
 	[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
 	data_all=[];
 	date_pairs=[];
@@ -232,7 +269,7 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	netcdf_read_write.produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
 	netcdf_read_write.flip_if_necessary(out_dir+'/vel.grd');
 	geocode(out_dir+'/vel.grd',out_dir);
-	
+
 
 	# Visualizing the velocity field in a few different ways. 
 	zdata2=np.reshape(vel, [len(xdata)*len(ydata), 1])

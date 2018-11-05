@@ -4,14 +4,13 @@ import subprocess
 import os
 import sys
 import glob
-import datetime
+import datetime as dt
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mdates
 import numpy as np
 import collections
-import datetime as dt
 import netcdf_read_write
 
 def get_all_xml_names(directory, polarization, swath):
@@ -36,16 +35,15 @@ def get_all_tiff_names(directory, polarization, swath):
         list_of_images.append(item[:])
     return list_of_images;
 
-
 def get_previous_and_following_day(datestring):
     """ This is a function that takes a date like 20160827 and generates 
     [20160826, 20160828]: the day before and the day after the date in question. """
     year=int(datestring[0:4]);
     month=int(datestring[4:6]);
     day=int(datestring[6:8]);
-    mydate=datetime.date(year, month, day);
-    tomorrow =mydate + datetime.timedelta(days=1);
-    yesterday=mydate - datetime.timedelta(days=1);
+    mydate=dt.date(year, month, day);
+    tomorrow =mydate + dt.timedelta(days=1);
+    yesterday=mydate - dt.timedelta(days=1);
     previous_day=pad_string_zeros(yesterday.year)+pad_string_zeros(yesterday.month)+pad_string_zeros(yesterday.day);
     following_day=pad_string_zeros(tomorrow.year)+pad_string_zeros(tomorrow.month)+pad_string_zeros(tomorrow.day);
     return [previous_day, following_day];
@@ -64,14 +62,12 @@ def get_sat_from_xml(xml_name):
     sat=xml_name[0:3];
     return sat;
 
-
 def pad_string_zeros(num):
     if num<10:
         numstring="0"+str(num);
     else:
         numstring=str(num);
     return numstring;
-
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
@@ -93,7 +89,6 @@ def glob_intf_computed():
     for item in full_names:
         intf_computed.append(item[9:]);
     return intf_computed;
-
 
 def make_data_in(polarization, swath, master_date="00000000"):
     """
@@ -143,13 +138,13 @@ def read_intf_table(tablefilename):
     tablefile = np.genfromtxt(tablefilename,dtype=str);
     intf_all = tablefile[:].astype(str);
     return intf_all;
+
 def write_intf_table(intf_all, tablefilename):
     ofile=open(tablefilename,'w');
     for i in intf_all:
         ofile.write("%s\n" % i);
     ofile.close();
     return;
-
 
 # after running the baseline calculation from the first pre_proc_batch, choose a new master that is close to the median baseline and timespan.
 def choose_master_image():    
@@ -331,28 +326,64 @@ def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
     return intf_pairs;
 
 
-def make_network_plot(intf_pairs,stems,tbaseline,xbaseline):
+def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselinefile = 'raw/baseline_table.dat'):
     print("printing network plot");
+    if len(stems)==0 and len(xbaseline)==0:
+        [stems, times, baselines, missiondays] = read_baseline_table(baselinefile);
+    if len(intf_pairs)==0:
+        print("Error! Cannot make network plot because there are no interferograms. "); sys.exit(1);
+    xstart=[]; xend=[]; tstart=[]; tend=[];
+
+    # If there's a format like "S1A20160817_ALL_F2:S1A20160829_ALL_F2"
+    if "S1" in intf_pairs[0]:
+        for item in intf_pairs:
+            scene1=item[0:18];    # has some format like S1A20160817_ALL_F2
+            scene2=item[19:];     # has some format like S1A20160817_ALL_F2
+            for x in range(len(stems)):
+                if stems[x]==scene1:
+                    xstart.append(xbaseline[x]);
+                    tstart.append(dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j'));
+                if stems[x]==scene2:
+                    xend.append(xbaseline[x]);
+                    tend.append(dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j'));
+
+
+    # If there's a format like "2017089:2018101"....
+    # WRITE THIS NEXT. 
+    if len(intf_pairs[0])==15: 
+        dtarray=[]; im1_dt=[]; im2_dt=[];
+        for i in range(len(times)):
+            dtarray.append(dt.datetime.strptime(str(times[i])[0:7],'%Y%j'));
+
+        # Make the list of datetimes for the images. 
+        for i in range(len(intf_pairs)):
+            scene1=intf_pairs[i][0:7];
+            scene2=intf_pairs[i][8:15];
+            im1_dt.append(dt.datetime.strptime(scene1,'%Y%j'));
+            im2_dt.append(dt.datetime.strptime(scene2,'%Y%j'));
+
+        # Find the appropriate image pairs and baseline pairs
+        for i in range(len(intf_pairs)):
+            for x in range(len(dtarray)):
+                if dtarray[x] == im1_dt[i]:
+                    xstart.append(baselines[x]);
+                    tstart.append(dtarray[x]);
+                if dtarray[x] == im2_dt[i]:
+                    xend.append(baselines[x]);
+                    tend.append(dtarray[x]);
+
+
     plt.figure();
-    for item in intf_pairs:
-        scene1=item[0:18];    # has some format like S1A20160817_ALL_F2
-        scene2=item[19:];
-        for x in range(len(stems)):
-            if stems[x]==scene1:
-                xstart=xbaseline[x];
-                tstart=dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j');
-            if stems[x]==scene2:
-                xend=xbaseline[x];
-                tend=dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j');
-        plt.plot_date(tstart, xstart,'.b');
-        plt.plot_date(tend, xend,'.b');
-        plt.plot_date([tstart,tend],[xstart,xend],'b');
+    plt.plot_date(tstart,xstart,'.b');
+    plt.plot_date(tend,xend,'.b');
+    for i in range(len(tstart)):
+        plt.plot_date([tstart[i],tend[i]],[xstart[i],xend[i]],'b');
     yrs_formatter=mdates.DateFormatter('%m-%y');
     plt.xlabel("Date");
     plt.gca().xaxis.set_major_formatter(yrs_formatter);
     plt.ylabel("Baseline (m)");
     plt.title("Network Geometry");
-    plt.savefig("Network_Geometry.eps");
+    plt.savefig(plotname);
     plt.close();
     print("finished printing network plot");
     return;

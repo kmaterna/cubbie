@@ -17,7 +17,7 @@ import gps_into_LOS
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
     'mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass','sbas_smoothing','nsbas_min_intfs','choose_refpixel',
-    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','start_time','end_time','threshold_snaphu','gps_file','flight_angle','look_angle','ts_output_dir']);
+    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','start_time','end_time','threshold_snaphu','gps_file','flight_angle','look_angle','skip_file','ts_output_dir']);
 
 def read_config():
     ################################################
@@ -69,6 +69,7 @@ def read_config():
     gps_file = config.get('timeseries-config','gps_file');
     flight_angle = config.getfloat('timeseries-config','flight_angle');
     look_angle = config.getfloat('timeseries-config','look_angle');
+    skip_file = config.get('timeseries-config','skip_file');
     ts_output_dir = config.get('timeseries-config','ts_output_dir');
     threshold_snaphu=config.getfloat('csh-config','threshold_snaphu');
 
@@ -126,7 +127,7 @@ def read_config():
         orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
         numproc=numproc, ts_type=ts_type, bypass=bypass, sbas_smoothing=sbas_smoothing, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
         solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, detrend_atm_topo=detrend_atm_topo, start_time=start_time, end_time=end_time, 
-        threshold_snaphu=threshold_snaphu, gps_file=gps_file, flight_angle=flight_angle, look_angle=look_angle, ts_output_dir=ts_output_dir);
+        threshold_snaphu=threshold_snaphu, gps_file=gps_file, flight_angle=flight_angle, look_angle=look_angle, skip_file=skip_file, ts_output_dir=ts_output_dir);
 
     return config_params; 
 
@@ -360,7 +361,7 @@ def make_interferograms(config_params):
     intf_all=intf_pairs+long_intfs;
 
     # Make the stick plot of baselines 
-    sentinel_utilities.make_network_plot(intf_all,stems,times, baselines);
+    sentinel_utilities.make_network_plot(intf_all,stems,times, baselines, "Total_Network_Geometry.eps");
 
     # Write the intf.in files
     # Writing to process interferograms. 
@@ -400,7 +401,7 @@ def unwrapping(config_params):
         # flattentopo_driver.main_function();
 
     # Make plots of phasefilt.grd files. 
-    phasefilt_plot.top_level_driver();
+    phasefilt_plot.top_level_driver('manual_remove.txt');
 
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
@@ -463,11 +464,11 @@ def do_timeseries(config_params):
     if config_params.ts_type=="SBAS":
         sbas.do_sbas(config_params, post_staging_directory);
     if config_params.ts_type=="NSBAS":
-        # nsbas.do_nsbas(config_params, post_staging_directory);
+        nsbas.do_nsbas(config_params, post_staging_directory);
         print("skipping NSBAS");
 
     # For later plotting, we want to project available GPS into LOS. 
-    gps_into_LOS.top_level_driver(config_params, rowref, colref);
+    # gps_into_LOS.top_level_driver(config_params, rowref, colref);
 
     # NOTE: 
     # Should copy batch.config into the nsbas directory

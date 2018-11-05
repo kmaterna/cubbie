@@ -7,10 +7,10 @@ import subprocess
 import netcdf_read_write
 
 # TOP LEVEL DRIVER
-def top_level_driver():
+def top_level_driver(skip_file=[]):
 	[file_names,outdir, num_plots_x, num_plots_y]=configure();
-	[xdata,ydata,data_all,date_pairs]=inputs(file_names);
-	make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y);
+	[xdata,ydata,data_all,date_pairs, skip_intfs]=inputs(file_names, skip_file);
+	make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y, skip_intfs);
 	return;
 
 
@@ -31,7 +31,7 @@ def configure():
 
 
 # ------------- INPUTS ------------ # 
-def inputs(file_names):
+def inputs(file_names, skip_file):
 	try:
 		[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);  # can read either netcdf3 or netcdf4. 
 	except TypeError:
@@ -51,10 +51,17 @@ def inputs(file_names):
 		date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
 		print(pairname);
 
-	return [xdata, ydata, data_all, date_pairs];
+	skip_intfs=[];
+	if len(skip_file)>0:
+		ifile=open(skip_file,'r');
+		for line in ifile:
+			skip_intfs.append(line.split()[0]);
+		ifile.close();
+
+	return [xdata, ydata, data_all, date_pairs, skip_intfs];
 
 
-def make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y):
+def make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y, skip_intfs):
 
 	for i in range(len(data_all)):
 		if np.mod(i,num_plots_y*num_plots_x)==0:
@@ -83,7 +90,11 @@ def make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y)
 					axarr[k][m].invert_xaxis();
 					axarr[k][m].get_xaxis().set_ticks([]);
 					axarr[k][m].get_yaxis().set_ticks([]);
-					axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8);
+					if str(date_pairs[count]) in skip_intfs:
+						axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8,color='red',fontweight='bold');
+					else:
+						axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8,color='black');
+
 					count=count+1;
 			plt.savefig(outdir+"selected_data_"+str(fignum)+".eps");
 			plt.close();
