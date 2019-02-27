@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # SCRIPT TO CHECK DOWNLOAD STATUS
-# This wil tell us if certain search results did not successfully get downloaded. Will have to fix these some other way.  
+# This will tell us if certain search results did not successfully get downloaded. Will have to fix these some other way.  
 # K. Materna, March. 2018
 
 # Parse inputs
@@ -24,7 +24,7 @@ fi
 while getopts :i:d: opt; do
   case $opt in
   	i)  # the file with search results
-      echo "-i was triggered, Parameter: $OPTARG" >&2
+      echo "-i was triggered, parameter: $OPTARG" >&2
       search_file=$OPTARG
       ;;
     d)  # the directory where data lives
@@ -41,12 +41,16 @@ while getopts :i:d: opt; do
   esac
 done
 
+# Setting up Parameters and temp files 
+safe_results="safe_results.txt"
+undownloaded="undownloaded.txt"
+search_directory=`pwd`/$relpath
+grep "\.SAFE" $search_file > $safe_results
+
 
 # List the .SAFE files that we expect
 am_i_linux=`uname -a | grep 'Linux'`
 echo $am_i_linux
-safe_results="safe_results.txt"
-grep "\.SAFE" $search_file > $safe_results
 # the -i '' is because of mac computers. Might need to delete the '' on a linux machine. 
 if [ ! -z "$am_i_linux" ]; then  # I am on a linux machine
     sed -i 's/<str name=\"filename\">//g' $safe_results
@@ -56,19 +60,26 @@ else  # we are on a mac or non-linux machine! Macs need the -i '' in the sed cal
     sed -i '' 's/<\/str>//g' $safe_results
 fi
 
-search_directory=`pwd`/$relpath
-rm undownloaded.txt
-echo "Files we failed to download:" > undownloaded.txt
-
-echo "The files we should have downloaded, but are not in the DATA directory: "
+# Decide which files we don't have already
+echo "# Files we failed to download:" > $undownloaded
+echo "The files we should download, i.e. are not in the DATA directory: "
 while IFS= read -r var
 do
   if [ ! -d $relpath/"$var" ]; then  # if the files that we searched are NOT in the DATA directory after downloading, then we have to chase them down some other way. 
-   	echo "$var" >> undownloaded.txt
-    echo "do not have file"
-    echo $relpath/"$var"
+   	echo "$var" >> $undownloaded
+    echo "do not have file: "$relpath/"$var"
+    # echo $relpath/"$var"
   fi
 done < "$safe_results"
+
+# Print outputs
+num_of_search_file=`cat $safe_results | wc -l`
+num_of_current_file=`ls $relpath | grep 'SAFE' | wc -l`
+num_of_missing_file=`grep 'SAFE' $undownloaded | wc -l`
+echo "RESULTS"
+echo ">> Input $search_file returned "$num_of_search_file" SAFE results"
+echo ">> Data directory $relpath contains "$num_of_current_file" SAFE results"
+echo ">> We must download "$num_of_missing_file" SAFE results"
 
 rm $safe_results
 

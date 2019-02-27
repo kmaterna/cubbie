@@ -89,7 +89,7 @@ latmax=`awk '{if(min==""){min=max=$2}; if($2>max) {max=$2}; if($2<min) {min=$2};
 projection="M6.1i"
 range="$lonmin/$lonmax/$latmin/$latmax"
 echo "Results displayed: " $num_results
-gmt pscoast -R$range -J$projection -Dh -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
+gmt pscoast -R$range -J$projection -Dh -N1 -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
 gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile
 
 # Nice little thing: adding the point or rectangle that was used for searching. 
@@ -104,7 +104,7 @@ fi
 
 # Make the timing plot
 projection="X10iTi/4i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
-region="2014-10-01T00:00/2018-10-30T00:00/0.1/1"  # The beginning and end of Sentinel. 
+region="2014-10-01T00:00/2019-10-30T00:00/0.1/1"  # The beginning and end of Sentinel. 
 
 gmt psbasemap -R$region -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K --FORMAT_DATE_MAP=mm/dd > $timing_file
 # -Bpx = primary x-axis; -Bs = secondary. a6O means primary annotate every 6 months; f2O means secondary annotate every 2 months
