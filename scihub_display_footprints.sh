@@ -44,8 +44,10 @@ for val in "${multi[@]}"; do
     grep 'name=\"footprint' $val >> $footprints
     grep 'title>S1' $val >> $timing
 done
- 
+# Are we getting a problem with MULTIPOLYGON? 
+
 # Find descriptive numbers for summarizing the search results
+# Build the $timing file
 num_results=`cat $footprints | wc -l`  # counting the results 
 cut -c25-32 $timing > temp_timing.txt  # finding the timing of the acquisitions. 
 rm $timing
@@ -54,22 +56,30 @@ while IFS='' read -r line || [[ -n "$line" ]]; do
 done < temp_timing.txt
 rm temp_timing.txt;
 
+# Build the footprints file. 
 am_i_linux=`uname -a | grep 'Linux'`
 if [ ! -z "$am_i_linux" ]; then # WE ARE ON A LINUX MACHINE 
     sed -i 's/<str name=\"footprint\">POLYGON //g' $footprints
+    sed -i 's/<str name=\"footprint\">MULTIPOLYGON //g' $footprints  # added new
     sed -i 's/))<\/str>//g' $footprints
     sed -i $'s/((/>\\\n/g' $footprints
     sed -i $'s/,/\\\n/g' $footprints
+    sed -i 's/(/ /g' $footprints  # addd new
+    sed -i 's/)/ /g' $footprints  # added new
 
     # Making a file with two columns: lon, lat
     cp $footprints new_footprints.txt
     sed -i $'s/>//g' new_footprints.txt
     sed -i '/^$/d' new_footprints.txt
+
 else       # WE ARE ON A MAC or OTHER non-LINUX MACHINE
     sed -i '' 's/<str name=\"footprint\">POLYGON //g' $footprints
+    sed -i '' 's/<str name=\"footprint\">MULTIPOLYGON //g' $footprints
     sed -i '' 's/))<\/str>//g' $footprints
     sed -i '' $'s/((/>\\\n/g' $footprints
     sed -i '' $'s/,/\\\n/g' $footprints
+    sed -i '' 's/(/ /g' $footprints
+    sed -i '' 's/)/ /g' $footprints
 
     # Making a file with two columns: lon, lat
     cp $footprints new_footprints.txt
@@ -88,6 +98,7 @@ latmax=`awk '{if(min==""){min=max=$2}; if($2>max) {max=$2}; if($2<min) {min=$2};
 # In the best case scenario I would also plot a timeseries of the acquisition dates (nice and fancy)
 projection="M6.1i"
 range="$lonmin/$lonmax/$latmin/$latmax"
+echo $range
 echo "Results displayed: " $num_results
 gmt pscoast -R$range -J$projection -Dh -N1 -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
 gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile

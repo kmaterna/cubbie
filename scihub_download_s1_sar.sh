@@ -64,7 +64,7 @@ while read p; do
 
     if [ ! -d DATA/$title.SAFE ]; then
     # In this version, I actually download from the ASF. The download goes about 5x faster for some reason. 
-      echo DATA/$title
+      echo "Downloading DATA/"$title
       wget -c --http-user=kmaterna@berkeley.edu --http-password=Access_d4t4 -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
 
       cd DATA
@@ -72,6 +72,8 @@ while read p; do
       rm $title.SAFE/measurement/*-slc-vh-*.tiff
       rm $title.zip
       cd ../
+    else
+      echo "Already in the data directory: Skipping "$title
     fi
     counter=1
   	continue
