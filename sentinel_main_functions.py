@@ -148,11 +148,11 @@ def manifest2raw_orig_eof(config_params):
     print("Removing raw/ and raw_orig to proceed fresh. ");
     try:
          shutil.rmtree("raw_orig");
-    except OSError, e:
+    except OSError as e:
          print("Error: %s - %s." % (e.filename, e.strerror));
     try:
          shutil.rmtree("raw");
-    except OSError, e:
+    except OSError as e:
           print("Error: %s - %s." % (e.filename, e.strerror));
 
     # Unpack the .SAFE directories into raw_orig

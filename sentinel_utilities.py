@@ -268,7 +268,8 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
     intf_pairs=[];
     datetimearray=[];
     for k in tbaseline:
-        datetimearray.append(dt.datetime.strptime(str(int(k)),"%Y%j"));  # convert to datetime arrays. 
+        datetimearray.append(dt.datetime.strptime(str(int(k)+1),"%Y%j"));  # convert to datetime arrays. 
+    print(datetimearray);
     for i in range(0,nacq):
         for j in range(i+1,nacq):
             dtdelta=datetimearray[i]-datetimearray[j];
@@ -313,7 +314,7 @@ def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
     intf_pairs=[];
     sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value 
     sorted_tbaseline=sorted(tbaseline);
-    sorted_datetimes=[dt.datetime.strptime(str(int(k)),"%Y%j") for k in sorted_tbaseline];
+    sorted_datetimes=[dt.datetime.strptime(str(int(k)+1),"%Y%j") for k in sorted_tbaseline];
     for i in range(len(sorted_stems)-1):
         deltadays=sorted_datetimes[i+1]-sorted_datetimes[i];
         if deltadays.days >= tbaseline_max:
@@ -342,10 +343,10 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
             for x in range(len(stems)):
                 if stems[x]==scene1:
                     xstart.append(xbaseline[x]);
-                    tstart.append(dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j'));
+                    tstart.append(dt.datetime.strptime(str(int(tbaseline[x])+1),'%Y%j'));
                 if stems[x]==scene2:
                     xend.append(xbaseline[x]);
-                    tend.append(dt.datetime.strptime(str(int(tbaseline[x])),'%Y%j'));
+                    tend.append(dt.datetime.strptime(str(int(tbaseline[x])+1),'%Y%j'));
 
 
     # If there's a format like "2017089:2018101"....
