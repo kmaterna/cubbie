@@ -403,6 +403,8 @@ def unwrapping(config_params):
     # Make plots of phasefilt.grd files. 
     phasefilt_plot.top_level_driver('manual_remove.txt');
 
+    sys.exit(0);
+
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";
     sentinel_utilities.write_unordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);

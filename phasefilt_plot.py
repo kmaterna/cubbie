@@ -79,6 +79,10 @@ def make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y,
 					# How many days separate this interferogram? 
 					day1=date_pairs[count].split('_')[0];
 					day2=date_pairs[count].split('_')[1];
+					if day1[4:7]=="000":
+						day1=day1[0:6]+"1";
+					if day2[4:7]=="000":
+						day2=day2[0:6]+"1";
 					dt1=dt.datetime.strptime(day1,'%Y%j');
 					dt2=dt.datetime.strptime(day2,'%Y%j');
 					deltat=dt2-dt1;
@@ -96,7 +100,7 @@ def make_plots(xdata,ydata,data_all,date_pairs,outdir, num_plots_x, num_plots_y,
 						axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8,color='black');
 
 					count=count+1;
-			plt.savefig(outdir+"selected_data_"+str(fignum)+".eps");
+			plt.savefig(outdir+"selected_data_"+str(int(fignum))+".eps");
 			plt.close();
 	return;
 

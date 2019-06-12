@@ -4,6 +4,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
 import datetime as dt
+import sys
 import glob as glob
 from subprocess import call, check_output
 import sentinel_utilities
@@ -27,8 +28,9 @@ def write_corr_results(filename):
 		call("gmt grdmath "+item+"/corr.grd MEAN = "+item+"/out.grd",shell=True);
 		corr = check_output("gmt grdinfo "+item+"/out.grd | grep z | awk \'{print $3}\'", shell=True);
 		corr = corr.split()[0];
-		SLCs=check_output("ls "+item+"/*.SLC",shell=True);
-		slc1=SLCs.split()[0];
+		SLCs=check_output("ls "+item+"/*.SLC",shell=True); # THIS WILL BREAK IF USING PYTHON3.  USE PYTHON2. PROBLEM WITH BYTES vs STRING. 
+		# IN CHECK OUTPUT, THE RETURN VALUE IS A BYTES OBJECT IN PYTHON3. OOPS. 
+		slc1=SLCs.split('\n')[0];
 		slc1=slc1.split('/')[-1];
 		slc2=SLCs.split()[1];
 		slc2=slc2.split('/')[-1];
