@@ -397,13 +397,12 @@ def unwrapping(config_params):
         return;   
 
     # Marie-Pierre's atmosphere correction 
-    # if config_params.detrend_atm_topo==1:
-        # flattentopo_driver.main_function();
+    if config_params.detrend_atm_topo==1:
+        flattentopo_driver.main_function();
 
     # Make plots of phasefilt.grd files. 
     phasefilt_plot.top_level_driver('manual_remove.txt');
-
-    sys.exit(0);
+    # If you want to do this before and after flattentopo, you have to do it separately. 
 
     call("rm intf?.in",shell=True);
     unwrap_sh_file="README_unwrap.txt";

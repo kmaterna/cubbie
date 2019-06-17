@@ -8,6 +8,7 @@ import sys
 import netcdf_read_write
 import aps
 import nsbas
+import readbin
 
 
 def how_many_nans(filename):
@@ -206,17 +207,18 @@ def develop_median_phase(phase_array):
 # aps.main_function(staging_directory, out_dir);
 
 
-# TESTING OUTPUTS OF ATM/TOPO CORRECTION
-filename="intf_all/referenced_unwrap.grd/2015153_2015177_unwrap.grd"
-zc=netcdf_read_write.read_grd(filename);
-print(np.shape(zc));
+# # TESTING OUTPUTS OF ATM/TOPO CORRECTION
+# filename="intf_all/referenced_unwrap.grd/2015153_2015177_unwrap.grd"
+# zc=netcdf_read_write.read_grd(filename);
+# print(np.shape(zc));
 
 
-filename="topo/topo_ra_subsampled.grd"
-zc=netcdf_read_write.read_grd(filename);
-print(np.shape(zc));
+# filename="topo/topo_ra_subsampled.grd"
+# zc=netcdf_read_write.read_grd(filename);
+# print(np.shape(zc));
 
 
-filename="intf_all/atm_topo_corrected.grd/2018113_2018125_unwrap.grd"
-zc=netcdf_read_write.read_grd(filename);
-print(np.shape(zc));
+
+in_topo="topo/topo_ra_subsampled_june.grd"
+out_topo="topo/topo_radar.hgt"
+[width, length]=readbin.write_gmtsar2roipac_topo(in_topo, out_topo);

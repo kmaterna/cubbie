@@ -18,6 +18,7 @@ def main_function():
 	ivar=1
 	alt_ref=100
 	thresh_amp=0.2
+	subsampled_dem_grd="topo/topo_ra_subsampled_june.grd"  # subsampled in the same way as the intf grd files. 
 	demfile="topo/topo_radar.hgt"
 	example_rsc="rsc_files/example_sd.int.rsc"
 
@@ -25,9 +26,11 @@ def main_function():
 	intf_list=glob.glob("intf_all/???????_???????");
 	print(intf_list);
 
+	# [width, length] = readbin.write_gmtsar2roipac_topo(subsampled_dem_grd,demfile);  # copying the demfile into roipac format just in case we've switched the master. 
+
 	# COMPUTE
 	for data_dir in intf_list:
-		# print(data_dir);
+		print(data_dir);
 		intf_name=data_dir.split('/')[1];
 		infile=data_dir+"/intf_sd.int";
 		infile_filtered=data_dir+"/intf_filt.int";
@@ -65,7 +68,7 @@ def main_function():
 		[phasefilt_out,amp_late]=readbin.real_imag2phase_amp(real,imag);  # 1d arrays
 
 
-		# Write the GRD files , fixing an issue with pixel node registration. 
+		# # Write the GRD files , fixing an issue with pixel node registration. 
 		[xdata_p,ydata_p]=netcdf_read_write.read_grd_xy(orig_phasefile);
 		[xdata_pf,ydata_pf]=netcdf_read_write.read_grd_xy(orig_phasefilt_file);
 		phase_out_grd=np.reshape(phase_out,(length,width));
