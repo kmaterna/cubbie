@@ -66,6 +66,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
 	[xdata, ydata,zdata]=netcdf_read_write.read_any_grd_xyz(velfile);
 
 	# Flipping the x-axis direction and the data itself. Required for descending data, unsure about ascending. 
+	# All of this will change with better grid referencing in the future. 
 	colref=len(xdata)-1-colref; 
 	# rowref=len(ydata)-1-rowref;
 	zdata = np.fliplr(zdata);

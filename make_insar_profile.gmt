@@ -12,6 +12,7 @@ latN=41.5
 range="$lonW/$lonE/$latS/$latN"
 projection="M4i"
 input_file="vel_ll.grd"  # you can change this! 
+gps_input="gps_ll_enu_los.txt"
 output="image_projection.ps"
 
 # Projection Parameters (Center, width in km, length in km, azimuth)
@@ -61,8 +62,8 @@ EOF
 # The pipe bc is for adding floating point numbers
 
 # Draw the available GPS
-awk '{print $1, $2, $3, $4 0 0 0 0}' gps_los.txt | gmt psvelo -R$range -J$projection -Se0.03/0.68/0 -A+e+pthin,black -P -O -K >> $output
-awk '{print $1, $2, $5}' gps_los.txt | gmt psxy -R$range -J$projection -P -O -K -Si0.4 -Wthinner,black -Cmycpt.cpt >> $output
+awk '{print $1, $2, $3, $4 0 0 0 0}' $gps_input | gmt psvelo -R$range -J$projection -Se0.03/0.68/0 -A+e+pthin,black -P -O -K >> $output
+awk '{print $1, $2, $6}' $gps_input | gmt psxy -R$range -J$projection -P -O -K -Si0.4 -Wthinner,black -Cmycpt.cpt >> $output
 
 
 # ---------------------------------- # 
