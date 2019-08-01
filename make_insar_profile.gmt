@@ -17,21 +17,22 @@ output="image_projection.ps"
 # Projection Parameters (Center, width in km, length in km, azimuth)
 # YOU CAN CHANGE THESE
 # Cx=-123.65
-# Cy=40.3   # This works for the middle of the image. 
+Cy=40.69 # This works for the north of the image
+# Cy=40.4   # This works for the middle of the image. 
 Cx=-123.45
-Cy=40.1  # This works for the south of the image, near the landslide
+# Cy=40.1  # This works for the south of the image, near the landslide
 azimuth=75  # in degrees CW from north. 
 lmin=-55  # in km. 
 lmax=55
 width_min=-2
 width_max=2
-scalemax=10;
+scalemax=9;
 scalelabel=5;
 
 # The edges of the profile box 
 twice_length=$(echo $lmax - $lmin | bc)  # for the full profile
-brange="$lmin/$lmax/-40/40" # The edges of the eventual cross-section (in km)
-bprojection="x0.15/0.12"  # to control the width of the profile graph.  
+brange="$lmin/$lmax/-$scalemax/$scalemax" # The edges of the eventual cross-section (in km)
+bprojection="x0.15/0.25"  # to control the width of the profile graph.  
 
 
 # -------------------------------- #

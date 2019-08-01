@@ -357,12 +357,13 @@ def make_interferograms(config_params):
     # intf_pairs is the list of interferogram pairs made from SBAS or NSBAS or manual or chain 
     # Now we want to add the longer interferograms. 
     crit_days=30; crit_baseline=20;  # days, meters
+    long_intfs=[];
     long_intfs = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline);
     intf_all=intf_pairs+long_intfs;
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_all,stems,times, baselines, "Total_Network_Geometry.eps");
-
+    
     # Write the intf.in files
     # Writing to process interferograms. 
     outfile=open("README_proc.txt",'w');
@@ -382,7 +383,7 @@ def make_interferograms(config_params):
     call("./README_proc.txt",shell=True);
 
     print("Summarizing correlation for all interferograms.")
-    analyze_coherence.analyze_coherence_function();
+    # analyze_coherence.analyze_coherence_function();
 
     return;
 
@@ -436,40 +437,42 @@ def do_timeseries(config_params):
     # Step 3A: Try GACOS atmospheric correction
     # Step 3B: Try APS-based atmospheric correction
     # Step 3C: Detrend topo-correlated atmosphere
-    prior_staging_directory='intf_all/unwrap.grd'  # the direcotry where interferograms live. 
-    post_staging_directory='intf_all/unwrap.grd'
-    if config_params.choose_refpixel:
-        prior_staging_directory=prior_staging_directory;
-        post_staging_directory='intf_all/referenced_unwrap.grd';
-        rowref=237; colref=172;  # bypass these function calls for time reasons.
-        # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
-        # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
-    if config_params.solve_unwrap_errors:
-        prior_staging_directory=post_staging_directory;
-        post_staging_directory='intf_all/unwrap_corrected.grd';
-        #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-    if config_params.gacos:
-        prior_staging_directory=post_staging_directory;
-        post_staging_directory='intf_all/gacos_corrected.grd';
-        #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-    if config_params.aps:
-        prior_staging_directory=post_staging_directory;
-        post_staging_directory='intf_all/aps_unwrap.grd';
-        # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
-    # if config_params.detrend_atm_topo:
+    # prior_staging_directory='intf_all/unwrap.grd'  # the direcotry where interferograms live. 
+    # post_staging_directory='intf_all/unwrap.grd'
+    # if config_params.choose_refpixel:
+    #     prior_staging_directory=prior_staging_directory;
+    #     post_staging_directory='intf_all/referenced_unwrap.grd';
+    #     rowref=237; colref=172;  # bypass these function calls for time reasons.
+    #     # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
+    #     # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
+    # if config_params.solve_unwrap_errors:
     #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/atm_topo_corrected.grd';
-    #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    #     post_staging_directory='intf_all/unwrap_corrected.grd';
+    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    # if config_params.gacos:
+    #     prior_staging_directory=post_staging_directory;
+    #     post_staging_directory='intf_all/gacos_corrected.grd';
+    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    # if config_params.aps:
+    #     prior_staging_directory=post_staging_directory;
+    #     post_staging_directory='intf_all/aps_unwrap.grd';
+    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
+    # # if config_params.detrend_atm_topo:
+    # #     prior_staging_directory=post_staging_directory;
+    # #     post_staging_directory='intf_all/atm_topo_corrected.grd';
+    # #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
 
 
-    if config_params.ts_type=="SBAS":
-        sbas.do_sbas(config_params, post_staging_directory);
-    if config_params.ts_type=="NSBAS":
-        nsbas.do_nsbas(config_params, post_staging_directory);
-        print("skipping NSBAS");
+    # if config_params.ts_type=="SBAS":
+    #     sbas.do_sbas(config_params, post_staging_directory);
+    # if config_params.ts_type=="NSBAS":
+    #     nsbas.do_nsbas(config_params, post_staging_directory);
+    #     print("skipping NSBAS");
 
     # For later plotting, we want to project available GPS into LOS. 
-    # gps_into_LOS.top_level_driver(config_params, rowref, colref);
+    rowref=1524-621;
+    colref=32;
+    gps_into_LOS.top_level_driver(config_params, rowref, colref);
 
     # NOTE: 
     # Should copy batch.config into the nsbas directory

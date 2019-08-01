@@ -103,9 +103,10 @@ def rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_poin
 	for i in range(len(r_points)):
 		plt.polar(th_points[i],r_points[i],color='black',linewidth=0.4);
 
-	labelyear='2017';
-	for i in range(len(days_dict[labelyear])):
-		plt.annotate(days_dict[labelyear][i],xy=(theta_dict[labelyear][i],radius_dict[labelyear][i]),fontsize=6,color=color_dict[labelyear]);
+	# Optional: A code to put labels on individual days in the rose plot. 
+	# labelyear='2017';
+	# for i in range(len(days_dict[labelyear])):
+	# 	plt.annotate(days_dict[labelyear][i],xy=(theta_dict[labelyear][i],radius_dict[labelyear][i]),fontsize=6,color=color_dict[labelyear]);
 
 	plt.legend(loc=4);
 	plt.savefig('roseplot.eps');

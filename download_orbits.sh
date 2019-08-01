@@ -23,7 +23,7 @@ DOWN_DIR="S1_orbits" # directory for store precise orbits files
 CAL_DIR="S1_orbits" # directory for store AUX_CAL files
 # number of pages to check
 PAGE_START=1; # website pages for precise orbits
-PAGE_END=32 # Pages for precise orbits
+PAGE_END=8 # Pages for precise orbits
 CAL_PAGES=4 # Calibration pages
 
 ###############################
