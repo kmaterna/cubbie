@@ -94,14 +94,14 @@ def make_data_in(polarization, swath, master_date="00000000"):
     """
     data.in is a reference table that links the xml file with the correct orbit file.
     """
-    list_of_images=get_all_xml_names("raw_orig",polarization,swath);
-    outfile=open("data.in",'w');
+    list_of_images=get_all_xml_names("F"+str(swath)+"/raw_orig",polarization,swath);
+    outfile=open("F"+str(swath)+"/data.in",'w');
     if master_date=="00000000":
         for item in list_of_images:
             item=item.split("/")[-1];  # getting rid of the directory
             mydate=get_date_from_xml(item);
             sat=get_sat_from_xml(item);
-            eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
+            eof_name=get_eof_from_date_sat(mydate,sat,"F"+str(swath)+"/raw_orig");
             outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
     else:
         # write the master date first. 
@@ -111,7 +111,7 @@ def make_data_in(polarization, swath, master_date="00000000"):
                 item=item.split("/")[-1];  # getting rid of the directory
                 mydate=get_date_from_xml(item);
                 sat=get_sat_from_xml(item);                
-                eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
+                eof_name=get_eof_from_date_sat(mydate,sat,"F"+str(swath)+"/raw_orig");
                 outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
         # then write the other dates. 
         for item in list_of_images:
@@ -120,7 +120,7 @@ def make_data_in(polarization, swath, master_date="00000000"):
                 item=item.split("/")[-1];  # getting rid of the directory
                 mydate=get_date_from_xml(item);
                 sat=get_sat_from_xml(item);                     
-                eof_name=get_eof_from_date_sat(mydate,sat,"raw_orig");
+                eof_name=get_eof_from_date_sat(mydate,sat,"F"+str(swath)+"/raw_orig");
                 outfile.write(item[:-4]+":"+eof_name.split("/")[-1]+"\n");
     outfile.close();
     print("data.in successfully printed.")
@@ -129,6 +129,14 @@ def make_data_in(polarization, swath, master_date="00000000"):
 def read_baseline_table(baselinefilename):
     baselineFile = np.genfromtxt(baselinefilename,dtype=str);
     stems = baselineFile[:,0].astype(str);
+    if len(stems[0])>60:  # adapting for a different format of baseline_table.dat sometimes happens. 
+        new_stems = [];
+        for item in stems:
+            swath=int(item[-1]);
+            if swath>4:
+                swath=swath-3;
+            new_stems.append("S1_"+item[15:23]+"_ALL_F"+str(swath));
+        stems=new_stems;
     times = baselineFile[:,1].astype(float);
     missiondays = baselineFile[:,2].astype(str);
     baselines = baselineFile[:,4].astype(float);    
@@ -147,36 +155,45 @@ def write_intf_table(intf_all, tablefilename):
     return;
 
 # after running the baseline calculation from the first pre_proc_batch, choose a new master that is close to the median baseline and timespan.
-def choose_master_image():    
+def choose_master_image(default_master, swath):    
+    print("Selecting master image; default_master is %s" % (default_master) );
+
     # load baseline table
-    baselineFile = np.genfromtxt('raw/baseline_table.dat',dtype=str)
+    baselineFile = np.genfromtxt('F'+str(swath)+'/raw/baseline_table.dat',dtype=str)
     time = baselineFile[:,1].astype(float)
     baseline = baselineFile[:,4].astype(float)
     shortform_names = baselineFile[:,0].astype(str);
  
     #GMTSAR (currently) guarantees that this file has the same order of lines as baseline_table.dat.
-    dataDotIn=np.genfromtxt('raw/data.in',dtype='str').tolist()
+    dataDotIn=np.genfromtxt('F'+str(swath)+'/raw/data.in',dtype='str').tolist()
     print(dataDotIn);
 
-    # calculate shortest distance from median to scenes
-    consider_time=True
-    if consider_time:
-        time_baseline_scale=1 #arbitrary scaling factor, units of (meters/day)
-        sceneDistance = np.sqrt(((time-np.median(time))/time_baseline_scale)**2 + (baseline-np.median(baseline))**2)
-    else:
-        sceneDistance = np.sqrt((baseline-np.median(baseline))**2)
-    
-    minID=np.argmin(sceneDistance)
-    masterID=dataDotIn[minID]    
+    if default_master=="":
+        # calculate shortest distance from median to scenes
+        consider_time=True
+        if consider_time:
+            time_baseline_scale=1 #arbitrary scaling factor, units of (meters/day)
+            sceneDistance = np.sqrt(((time-np.median(time))/time_baseline_scale)**2 + (baseline-np.median(baseline))**2)
+        else:
+            sceneDistance = np.sqrt((baseline-np.median(baseline))**2)
+        
+        minID=np.argmin(sceneDistance)
+        masterID=dataDotIn[minID]    
    
+    else:  # if the user has selected a master on purpose
+        for x in range(len(dataDotIn)):
+            if default_master in dataDotIn[x]:
+                masterID=dataDotIn[x];
+                minID=x;
+
     # put masterId in the first line of data.in
-    dataDotIn.pop(dataDotIn.index(masterID))
+    dataDotIn.pop(dataDotIn.index(masterID)) 
     dataDotIn.insert(0,masterID)
     master_shortform = shortform_names[minID];  # because GMTSAR initially puts the baseline_table and data.in in the same order. 
     
-    os.rename('raw/data.in','raw/data.in.old')
-    np.savetxt('raw/data.in',dataDotIn,fmt='%s')
-    np.savetxt('data.in',dataDotIn,fmt='%s')
+    os.rename('F'+str(swath)+'/raw/data.in','F'+str(swath)+'/raw/data.in.old')
+    np.savetxt('F'+str(swath)+'/raw/data.in',dataDotIn,fmt='%s')
+    np.savetxt('F'+str(swath)+'/data.in',dataDotIn,fmt='%s')
     return master_shortform
 
 def write_super_master_batch_config(masterid):
@@ -269,7 +286,7 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
     datetimearray=[];
     for k in tbaseline:
         datetimearray.append(dt.datetime.strptime(str(int(k)+1),"%Y%j"));  # convert to datetime arrays. 
-    print(datetimearray);
+    # print(datetimearray);
     for i in range(0,nacq):
         for j in range(i+1,nacq):
             dtdelta=datetimearray[i]-datetimearray[j];
@@ -306,12 +323,15 @@ def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
     return intf_pairs;
 
 
-def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
+def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images=[]):
     # The point of this is to manually force the SBAS algorithm to connect adjacent scenes, 
     # even if they're technically over the time limit used in the SBAS algorithm. 
     # Force_chain_images is an array of images (first images) that were rejected in SBAS due to large perpendicular baseline
     # But we want to force the interferograms to be made anyway, regardless of perpendicular baseline. 
     intf_pairs=[];
+    if force_chain_images==[]:
+        print("Manual Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
+        return intf_pairs;
     sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value 
     sorted_tbaseline=sorted(tbaseline);
     sorted_datetimes=[dt.datetime.strptime(str(int(k)+1),"%Y%j") for k in sorted_tbaseline];
@@ -323,12 +343,11 @@ def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images):
             if k in sorted_stems[i]:
                 intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
     print("Manual Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
-    # print(intf_pairs);
     return intf_pairs;
 
 
 def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselinefile = 'raw/baseline_table.dat'):
-    print("printing network plot");
+    print("printing network plot with %d intfs" % (len(intf_pairs)) );
     if len(stems)==0 and len(xbaseline)==0:
         [stems, times, baselines, missiondays] = read_baseline_table(baselinefile);
     if len(intf_pairs)==0:
@@ -378,7 +397,7 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
     plt.plot_date(tstart,xstart,'.b');
     plt.plot_date(tend,xend,'.b');
     for i in range(len(tstart)):
-        plt.plot_date([tstart[i],tend[i]],[xstart[i],xend[i]],'b');
+        plt.plot_date([tstart[i],tend[i]],[xstart[i],xend[i]],'b',linewidth=0.5);
     yrs_formatter=mdates.DateFormatter('%m-%y');
     plt.xlabel("Date");
     plt.gca().xaxis.set_major_formatter(yrs_formatter);

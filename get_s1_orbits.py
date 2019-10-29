@@ -8,7 +8,7 @@ import sentinel_utilities
 
 date=sys.argv[1]
 sat =sys.argv[2]
-eof_dir="/home/kmaterna/Documents/S1_insar/S1_orbits"
+eof_dir="/Volumes/Ironwolf/S1_orbits"
 # Should find a more automatic way to get this (like from batch.config)
 
 print("Copying orbit file into current directory...")

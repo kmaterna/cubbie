@@ -33,11 +33,13 @@
   set direname = $4   # maybe it wasn't so great for someone to name a variable dirname? 
   set called=($_)
   if ( "$called" != "" ) then ### called by source
-    set script_fn = `readlink -f $called[1]`
+    set script_fn = `greadlink -f $called[1]`
   else 
-    set script_fn = `readlink -f $0`
+    set script_fn = `greadlink -f $0`
   endif
   set code_path = `dirname $script_fn`  # the place where the scripts all live. 
+  echo "code path:"
+  echo $code_path
 
   if (-f frame.list) rm -f frame.list
   if (-f tmprecord)  rm -f tmprecord
@@ -47,6 +49,8 @@
     set file1 = `echo $line | awk -F"," '{print $1}'`  # a full path to a .SAFE directory
     set date1 = `echo $file1 | awk '{print substr($1,length($1)-54,8)}'`   # something like 20171201
     set SAT1 = `echo $file1 | awk '{print substr($1,length($1)-71,3)}'`    # something like S1A
+    echo $file1
+    echo $date1
 
     if ($ii == 0) then
       set file0 = `echo $file1`
@@ -67,9 +71,9 @@
         foreach line2 (`awk '{print $0}' tmprecord`)
           echo $line2 | awk '{printf("%s ",$1)}'
           set tt = `echo $line2 | awk '{print substr($1,length($1)-54,15)}'`
-       #   set t1 = `date -jf "%Y%m%dT%H%M%S" $tt +%s`
+       #   set t1 = `gdate -jf "%Y%m%dT%H%M%S" $tt +%s`
          set ss1 = `echo $tt|awk '{print substr($1,1,4)"/"substr($1,5,2)"/"substr($1,7,2)" "substr($1,10,2)":"substr($1,12,2)":"substr($1,14,2)}'` 
-          set t1 = `date --date="$ss1" +%s`  
+          set t1 = `gdate --date="$ss1" +%s`  
          if ($t2 == "9999999999") then
              echo $line2 >> tmprecord_new
          else
@@ -80,13 +84,13 @@
    
           set tt = `echo $line2 | awk '{print substr($1,length($1)-38,15)}'`
         set ss2 = `echo $tt|awk '{print substr($1,1,4)"/"substr($1,5,2)"/"substr($1,7,2)" "substr($1,10,2)":"substr($1,12,2)":"substr($1,14,2)}'`
-#          set t2 = `date -jf "%Y%m%dT%H%M%S" $tt +%s`
-          set t2 = `date --date="$ss2" +%s`
+#          set t2 = `gdate -jf "%Y%m%dT%H%M%S" $tt +%s`
+          set t2 = `gdate --date="$ss2" +%s`
         end
         echo "" | awk '{printf("%s\n","...")}'
 
-        set n1 = ` date --date="$date0 - 1 day" +%Y%m%d `
-        set n2 = ` date --date="$date0 + 1 day" +%Y%m%d `
+        set n1 = ` gdate --date="$date0 - 1 day" +%Y%m%d `
+        set n2 = ` gdate --date="$date0 + 1 day" +%Y%m%d `
         if ($SAT0 == "S1A") then
             python $code_path/get_s1_orbits.py $date0 s1a
             #get_s1a_orbit.csh $date0
@@ -177,9 +181,9 @@
   foreach line2 (`awk '{print $0}' tmprecord`)
     echo $line2 | awk '{printf("%s ",$1)}'
           set tt = `echo $line2 | awk '{print substr($1,length($1)-54,15)}'`
-       #   set t1 = `date -jf "%Y%m%dT%H%M%S" $tt +%s`
+       #   set t1 = `gdate -jf "%Y%m%dT%H%M%S" $tt +%s`
          set ss1 = `echo $tt|awk '{print substr($1,1,4)"/"substr($1,5,2)"/"substr($1,7,2)" "substr($1,10,2)":"substr($1,12,2)":"substr($1,14,2)}'`
-          set t1 = `date --date="$ss1" +%s`
+          set t1 = `gdate --date="$ss1" +%s`
 #          if ($t1 > $t2) set jj = 0
          if ($t2 == "9999999999") then
              echo $line2 >> tmprecord_new
@@ -191,15 +195,15 @@
          
         set tt = `echo $line2 | awk '{print substr($1,length($1)-38,15)}'`
         set ss2 = `echo $tt|awk '{print substr($1,1,4)"/"substr($1,5,2)"/"substr($1,7,2)" "substr($1,10,2)":"substr($1,12,2)":"substr($1,14,2)}'`
-#          set t2 = `date -jf "%Y%m%dT%H%M%S" $tt +%s`
-          set t2 = `date --date="$ss2" +%s`
+#          set t2 = `gdate -jf "%Y%m%dT%H%M%S" $tt +%s`
+          set t2 = `gdate --date="$ss2" +%s`
   end
   echo "" | awk '{printf("%s\n","...")}'
 
   # get the orbit file names and download
 
-  set n1 = ` date --date="$date0 - 1 day" +%Y%m%d `
-  set n2 = ` date --date="$date0 + 1 day" +%Y%m%d `
+  set n1 = ` gdate --date="$date0 - 1 day" +%Y%m%d `
+  set n2 = ` gdate --date="$date0 + 1 day" +%Y%m%d `
   if ($SAT0 == "S1A") then
     python $code_path/get_s1_orbits.py $date0 s1a
     #get_s1a_orbit.csh $date0

@@ -32,7 +32,7 @@ def top_level_driver():
 
 
 
-def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline):
+def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, num_years = 1):
 
 	crit_theta=2*np.pi*(crit_days/365.25);  # days 
 	count=0;
@@ -63,9 +63,9 @@ def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline):
 	# Find candidate interferograms.
 	year_list=sorted(set(times_dict));
 
-	for i in range(len(year_list)-1):  # Looking for interferograms that are close in baseline and time (in the next year)
+	for i in range(len(year_list)-num_years):  # Looking for interferograms that are close in baseline and time (in the next year)
 		this_year=year_list[i];
-		next_year=year_list[i+1];
+		next_year=year_list[i+num_years];
 		for j in range(len(radius_dict[this_year])):  # for each year
 			for k in range(len(radius_dict[next_year])):  # for the next year
 
@@ -76,14 +76,14 @@ def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline):
 						# We have a close pair. 
 						indx1=np.where(times==times_dict[this_year][j]);
 						indx2=np.where(times==times_dict[next_year][k]);
-						stem1=stems[indx1][0];
-						stem2=stems[indx2][0];
+						stem1=stems[indx1[0][0]]; # oct 2019 added a second [0]
+						stem2=stems[indx2[0][0]];
 						r_points.append([radius_dict[this_year][j],radius_dict[next_year][k]]);
 						th_points.append([theta_dict[this_year][j],theta_dict[next_year][k]]);
 						new_intf=stem1+':'+stem2;
 						new_intfs.append(new_intf);  # FOUND NEW INTERFEROGRAM!
 
-	print("Year-long: Returning %d long interferograms within %.1f days and %.1f meters" % (count, crit_days, crit_baseline) );
+	print("Year-long: Returning %d %d-year-long interferograms within %.1f days and %.1f meters" % (count, num_years, crit_days, crit_baseline) );
 
 	rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points);
 

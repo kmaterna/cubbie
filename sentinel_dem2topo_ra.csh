@@ -7,6 +7,7 @@
 # Only change is separating this from intf_tops.csh, and changing 
 # scl2amp range dec factor = 2, 
 # which matches the range dec factor I've found in dem2topo_ra.csh for sentinel images. 
+# Also changing swath directories
 
 # read parameters from config file
 #
@@ -31,6 +32,7 @@
   set region_cut = `grep region_cut $1 | awk '{print $3}'`
   set switch_land = `grep switch_land $1 | awk '{print $3}'`
   set defomax = `grep defomax $1 | awk '{print $3}'`
+  set swath = `grep swath $1 | awk '{print $3}'` 
 
 ##################################
 #  start from make topo_ra  #
@@ -47,6 +49,7 @@ if ($topo_phase == 1) then
   echo " "
   echo "DEM2TOPOPHASE.CSH - START"
   echo "USER SHOULD PROVIDE DEM FILE"
+  cd F$swath
   cd topo
   cp ../raw/$master.PRM ./master.PRM
   ln -s ../raw/$master.LED .
@@ -56,7 +59,7 @@ if ($topo_phase == 1) then
     echo "no DEM file found: " dem.grd
     exit 1
   endif
-  cd ..
+  cd ../../
   echo "DEM2TOPOPHASE.CSH - END"
 
 #
@@ -65,6 +68,7 @@ if ($topo_phase == 1) then
   if ($shift_topo == 1) then
     echo " "
     echo "OFFSET_TOPO - START"
+    cd F$swath
     cd topo
     ln -s ../raw/$master.SLC .
     slc2amp.csh master.PRM 2 amp-$master.grd

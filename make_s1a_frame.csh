@@ -22,6 +22,7 @@ while ($iframe <= $nframe)
    set i2 = `echo $iframe|awk '{print $1+1}'`
    awk 'NR== "'$i1'" {print $0}' $frm_ll > frame$iframe.ll
    awk 'NR== "'$i2'" {print $0}' $frm_ll >>frame$iframe.ll 
+   echo "calling frame_s1a.csh $1 frame$iframe.ll 2 FRAME_$iframe ..."
    frame_s1a.csh $1 frame$iframe.ll 2 FRAME_$iframe
    @ iframe = $iframe + 1
 end

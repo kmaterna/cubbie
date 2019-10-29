@@ -41,9 +41,12 @@
 import sentinel_main_functions
 
 if __name__=="__main__":
-
-	# Step 0
 	config_params = sentinel_main_functions.read_config();
+
+	# Step -1: make frames
+	sentinel_main_functions.compile_frame_from_bursts(config_params); 
+	
+	# Step 0: set up raw_orig
 	sentinel_main_functions.manifest2raw_orig_eof(config_params); 
 
 	# # Step 1: choose master and preprocess (Step 2 = aligning; combined for Sentinel)
