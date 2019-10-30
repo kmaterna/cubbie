@@ -11,8 +11,6 @@ import detrend_atm_topo
 import rose_baseline_plot
 import flattentopo_driver
 import phasefilt_plot
-import sbas
-import nsbas
 import gps_into_LOS
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
@@ -411,7 +409,7 @@ def make_interferograms(config_params):
     print("Ready to call README_proc.txt.")
     call("chmod +x README_proc.txt",shell=True);
     
-    call("./README_proc.txt",shell=True);
+    # call("./README_proc.txt",shell=True);
 
     # print("Summarizing correlation for all interferograms.")
     # analyze_coherence.analyze_coherence_function();
@@ -436,20 +434,19 @@ def unwrapping(config_params):
     # phasefilt_plot.top_level_driver('manual_remove.txt');
     # If you want to do this before and after flattentopo, you have to do it separately. 
 
-    # call("rm intf?.in",shell=True);
-    # unwrap_sh_file="README_unwrap.txt";
-    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+    unwrap_sh_file="README_unwrap.txt";
+    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    sentinel_utilities.write_long_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
 
-    # print("Ready to call "+unwrap_sh_file)
-    # call(['chmod','+x',unwrap_sh_file],shell=False);
-    # call("./"+unwrap_sh_file,shell=True);
+    print("Ready to call "+unwrap_sh_file)
+    call(['chmod','+x',unwrap_sh_file],shell=False);
+    call("./"+unwrap_sh_file,shell=True);
 
     # call from the processing directory to place all unwrap.grd into single directory. 
-    print("Putting all unwrap.grd into a separate directory...")
-    file_of_interest='unwrap.grd';
-    call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
-
-    sentinel_utilities.check_intf_all_sanity();
+    # print("Putting all unwrap.grd into a separate directory...")
+    # file_of_interest='unwrap.grd';
+    # call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
+    # sentinel_utilities.check_intf_all_sanity();
     return;
 
 
@@ -461,44 +458,6 @@ def do_timeseries(config_params):
         return;
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
-
-    # Making a few OPTIONAL image corrections before doing time series. 
-    # Step 1: Set reference pixel
-    # Step 2: Solve or exclude unwrapping errors
-    # Step 3A: Try GACOS atmospheric correction
-    # Step 3B: Try APS-based atmospheric correction
-    # Step 3C: Detrend topo-correlated atmosphere
-    # prior_staging_directory='intf_all/unwrap.grd'  # the direcotry where interferograms live. 
-    # post_staging_directory='intf_all/unwrap.grd'
-    # if config_params.choose_refpixel:
-    #     prior_staging_directory=prior_staging_directory;
-    #     post_staging_directory='intf_all/referenced_unwrap.grd';
-    #     rowref=237; colref=172;  # bypass these function calls for time reasons.
-    #     # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
-    #     # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
-    # if config_params.solve_unwrap_errors:
-    #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/unwrap_corrected.grd';
-    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-    # if config_params.gacos:
-    #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/gacos_corrected.grd';
-    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-    # if config_params.aps:
-    #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/aps_unwrap.grd';
-    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
-    # # if config_params.detrend_atm_topo:
-    # #     prior_staging_directory=post_staging_directory;
-    # #     post_staging_directory='intf_all/atm_topo_corrected.grd';
-    # #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-
-
-    # if config_params.ts_type=="SBAS":
-    #     sbas.do_sbas(config_params, post_staging_directory);
-    # if config_params.ts_type=="NSBAS":
-    #     nsbas.do_nsbas(config_params, post_staging_directory);
-    #     print("skipping NSBAS");
 
     # For later plotting, we want to project available GPS into LOS. 
     rowref=1524-621;

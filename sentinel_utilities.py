@@ -210,7 +210,7 @@ def write_super_master_batch_config(masterid):
     print("Writing master_image into batch.config");
     return;
 
-def write_ordered_unwrapping(numproc, sh_file, config_file):
+def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     [stem1, stem2, mean_corr] = read_corr_results("corr_results.txt");
 
     stem1_ordered = [x for y, x in sorted(zip(mean_corr,stem1),reverse=True)];
@@ -220,6 +220,7 @@ def write_ordered_unwrapping(numproc, sh_file, config_file):
     outfile=open(sh_file,'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("cd F"+swath+"\n");
     outfile.write("rm intf?.in\n");
     for i,item in enumerate(stem1_ordered):
         outfile.write('echo "' + stem1_ordered[i]+":"+stem2_ordered[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n');        
@@ -229,7 +230,27 @@ def write_ordered_unwrapping(numproc, sh_file, config_file):
 
     return;
 
-def write_unordered_unwrapping(numproc, sh_file, config_file):
+
+def write_long_unwrapping(numproc, swath, sh_file, config_file):
+    # A special function to unwrap only 1-year, 2-year, and 3-year interferograms. 
+    intfs = np.loadtxt("F"+swath+"/intf_long.in", dtype=str, unpack=True);   # created manually
+    
+    outfile=open(sh_file,'w');
+    outfile.write("#!/bin/bash\n");
+    outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("cd F"+swath+"\n");
+    outfile.write("rm intf?.in\n");
+    for i,item in enumerate(intfs):
+        outfile.write('echo "' + intfs[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n'); 
+    outfile.write("\n# Unwrap the interferograms.\n\n")
+    outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
+    outfile.close();
+
+    return;
+
+
+
+def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
     infile='intf_record.in';
     intfs=[];
     for line in open(infile):
@@ -237,6 +258,7 @@ def write_unordered_unwrapping(numproc, sh_file, config_file):
     outfile=open(sh_file,'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("cd F"+swath+"\n");
     outfile.write("rm intf?.in\n");
     for i,item in enumerate(intfs):
         outfile.write('echo "'+item+'" >> intf'+str(np.mod(i,numproc))+'.in\n'); 
@@ -407,41 +429,6 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
     plt.close();
     print("finished printing network plot");
     return;
-
-
-def make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory):
-    files = glob.glob(prior_staging_directory+"/*");
-    print("Imposing reference pixel on %d files in %s; saving output in %s" % (len(files), prior_staging_directory, post_staging_directory) );
-    out_dir=post_staging_directory+"/";
-    subprocess.call(['mkdir','-p',out_dir],shell=False);
-
-    for filename in files:
-        individual_name=filename.split('/')[-1];
-        print(individual_name);
-        [xdata,ydata,zdata] = netcdf_read_write.read_grd_xyz(filename);
-        # xdata is range/columns, ydata is azimuth/rows
-
-        # Here we subtract the value of zdata[rowref][colref] to fix the refernece pixel. 
-        # referenced_zdata[rowref][colref]=0 by definition. 
-        referenced_zdata=np.zeros(np.shape(zdata));
-        for i in range(len(ydata)):
-            for j in range(len(xdata)):
-                referenced_zdata[i][j]=zdata[i][j]-zdata[rowref][colref];
-        print(referenced_zdata[rowref][colref]);
-
-        outname=out_dir+individual_name;
-        netcdf_read_write.produce_output_netcdf(xdata, ydata, referenced_zdata, 'phase', outname);
-        netcdf_read_write.flip_if_necessary(outname);
-    return;
-
-def implement_reference_pixel(data_all, rowref, colref):
-    new_data_all=np.zeros(np.shape(data_all));
-    zdim,rowdim,coldim = np.shape(data_all);
-    for i in range(zdim):
-        for j in range(rowdim):
-            for k in range(coldim):
-                new_data_all[i][j][k]=data_all[i][j][k]-data_all[i][rowref][colref];
-    return new_data_all;
 
 
 #
