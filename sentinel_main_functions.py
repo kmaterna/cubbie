@@ -436,18 +436,18 @@ def unwrapping(config_params):
     # phasefilt_plot.top_level_driver('manual_remove.txt');
     # If you want to do this before and after flattentopo, you have to do it separately. 
 
-    call("rm intf?.in",shell=True);
-    unwrap_sh_file="README_unwrap.txt";
-    sentinel_utilities.write_unordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
+    # call("rm intf?.in",shell=True);
+    # unwrap_sh_file="README_unwrap.txt";
+    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, unwrap_sh_file, config_params.config_file);
 
-    print("Ready to call "+unwrap_sh_file)
-    call(['chmod','+x',unwrap_sh_file],shell=False);
-    call("./"+unwrap_sh_file,shell=True);
+    # print("Ready to call "+unwrap_sh_file)
+    # call(['chmod','+x',unwrap_sh_file],shell=False);
+    # call("./"+unwrap_sh_file,shell=True);
 
     # call from the processing directory to place all unwrap.grd into single directory. 
-    # print("Putting all unwrap.grd into a separate directory...")
-    # file_of_interest='unwrap.grd';
-    # call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
+    print("Putting all unwrap.grd into a separate directory...")
+    file_of_interest='unwrap.grd';
+    call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
 
     sentinel_utilities.check_intf_all_sanity();
     return;

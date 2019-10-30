@@ -34,6 +34,7 @@ def plot_grid_file(filename, figname):
 	plt.figure();
 	plt.imshow(zdata);
 	plt.colorbar();
+	plt.gca().invert_yaxis()
 	plt.savefig(figname+'.eps');
 	plt.close();
 	return;
@@ -219,6 +220,6 @@ def develop_median_phase(phase_array):
 
 
 
-in_topo="topo/topo_ra_subsampled_june.grd"
-out_topo="topo/topo_radar.hgt"
-[width, length]=readbin.write_gmtsar2roipac_topo(in_topo, out_topo);
+# in_topo="topo/topo_ra_subsampled_june.grd"
+# out_topo="topo/topo_radar.hgt"
+# [width, length]=readbin.write_gmtsar2roipac_topo(in_topo, out_topo);

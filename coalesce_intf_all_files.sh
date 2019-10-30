@@ -10,7 +10,7 @@ fi
 
 
 collect_files=$1
-destination=intf_all/$1
+destination=stacking/unwrapped
 mkdir -p $destination
 ls -d intf_all/???????_??????? > filelist.txt  # list all the directories we go inside. 
 while IFS= read -r var
