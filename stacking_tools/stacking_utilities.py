@@ -58,6 +58,7 @@ def get_list_of_intfs(config_params):
 
 def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
     # This works for both F1 and F2. You should run whichever swath has the reference point first. 
+    # This will break for F3, because we need the F3-F2 offset and the F2-F1 offset. 
     output_dir="F"+swath+"/"+ref_dir;
     print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_list), output_dir) );
 

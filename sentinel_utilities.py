@@ -227,7 +227,7 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     outfile.write("\n# Unwrap the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
     outfile.close();
-    
+
     return;
 
 
@@ -248,6 +248,24 @@ def write_long_unwrapping(numproc, swath, sh_file, config_file):
 
     return;
 
+def write_select_unwrapping(numproc, swath, sh_file, config_file):
+
+    intfs = ["S1_20190411_ALL_F"+swath+":S1_20190423_ALL_F"+swath,
+             "S1_20190330_ALL_F"+swath+":S1_20190411_ALL_F"+swath,
+             "S1_20190330_ALL_F"+swath+":S1_20190423_ALL_F"+swath];
+
+    outfile=open(sh_file,'w');
+    outfile.write("#!/bin/bash\n");
+    outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
+    outfile.write("cd F"+swath+"\n");
+    outfile.write("rm intf?.in\n");
+    for i,item in enumerate(intfs):
+        outfile.write('echo "' + intfs[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n'); 
+    outfile.write("\n# Unwrap the interferograms.\n\n")
+    outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
+    outfile.close();
+
+    return;
 
 
 def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
