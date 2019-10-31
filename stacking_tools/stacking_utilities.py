@@ -34,8 +34,9 @@ def get_list_of_intfs(config_params):
     # This is where some hand-picking takes place
     select_intf_list=[];
     total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
+    # total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/2015349_2017338/unwrap.grd");
 
-    select_criterion=3; # 3 years, 2 years, 1 year
+    select_criterion=0.8; # 3+ years, 2+ years, 1+ year
 
     for item in total_intf_list:
         dates = item.split("/")[-2];
@@ -49,42 +50,104 @@ def get_list_of_intfs(config_params):
         if deltat.days > select_criterion*0.9*365: # a year plus or minus a month
             select_intf_list.append(item);
 
-    print("Out of %d possible interferograms, we are using %d" % (len(total_intf_list), len(select_intf_list)) );
+    print("Out of %d possible interferograms, we are trying to use %d" % (len(total_intf_list), len(select_intf_list)) );
     return select_intf_list;
 
 
+
+
 def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
+    # This works for both F1 and F2. You should run whichever swath has the reference point first. 
     output_dir="F"+swath+"/"+ref_dir;
     print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_list), output_dir) );
-    if ref_swath != swath:
-        print("Issue we haven't touched yet: reference pixel is not within this swath. ");
-    else:
-        saving_file = open(output_dir+"/reference_pixels_orig.txt",'w');
-        for item in intf_list:
-            [xdata,ydata,zdata] = netcdf_read_write.read_grd_xyz(item);
+
+    for item in intf_list:
+        # Step 1: get reference offset
+        F1_name=item.replace('F'+swath,'F1');
+        F2_name=item.replace('F'+swath,'F2');
+        F3_name=item.replace('F'+swath,'F3');
+        is1 = (os.path.isfile(F1_name));
+        is2 = (os.path.isfile(F2_name));
+        is3 = (os.path.isfile(F3_name)); 
+
+        if swath==ref_swath:
+            # This is easy. We have no issues with 2*n*pi
+            zvalue = get_reference_value(swath, ref_swath, rowref, colref, item);
+        else:
+            if is1==1 and is2==1 and swath=='2':  # 2 case
+                zvalue_pixel = get_reference_value(ref_swath, ref_swath, rowref, colref, F1_name);  # the reference pixel in F1
+                zvalue_2npi = get_n_2pi(F1_name, F2_name);  # this is an integer
+                zvalue = zvalue_pixel+zvalue_2npi*-2*np.pi;
+
+            if is1==1 and is2==1 and is3==1 and swath=='3': # 3 case. will do this later. 
+                print("in swath 3. Will find n pi");
+            if is1==0:  # we don't have a reference. 
+                print("skipping making ref_unwrapped for %s " % item)
+                continue;                
+
+    # for item in intf_list:
+    #     # step 1: get reference offset
+    #     long_name = item[3:]
+    #     try:
+    #         output=subprocess.check_output(['grep',long_name,saving_file],shell=False)
+    #     except subprocess.CalledProcessError as e:
+    #         # if we didn't find a value in the cache, we either read it, or skip this image. 
+    #         zvalue = get_reference_value(swath, ref_swath, rowref, colref, item, saving_file);
+
+    #     zvalue = float(output.split()[3]);
+    #     print("reference_zvalue for %s is %f" % (item, zvalue) );
+
             individual_name=item.split('/')[-1];
             intf_name=item.split('/')[-2];  # ex: 2015178_2018180
-            referenced_zdata=np.zeros(np.shape(zdata));
-            for i in range(len(ydata)):
-                for j in range(len(xdata)):
-                    referenced_zdata[i][j]=zdata[i][j]-zdata[rowref][colref];
             outname=output_dir+"/"+intf_name+"_"+individual_name;
-            netcdf_read_write.produce_output_netcdf(xdata, ydata, referenced_zdata, 'phase', outname);
-            saving_file.write("%s %d %d %f %f\n" % (item, rowref, colref, zdata[rowref][colref], referenced_zdata[rowref][colref]) )
-        saving_file.close();
+            print("Making %s " % outname);
+            [xdata,ydata,zdata] = netcdf_read_write.read_grd_xyz(item);
+            referenced_zdata = apply_reference_value(xdata, ydata, zdata, zvalue);
+            netcdf_read_write.produce_output_netcdf(xdata, ydata, referenced_zdata, 'phase', outname); 
+    print("Done making reference unwrapped")
     return;
+
+def get_n_2pi(file1, file2):
+    # file1 must be the smaller number (F1)
+    [xdata_f1,ydata_f1,zdata_f1] = netcdf_read_write.read_grd_xyz(file1);
+    [xdata_f2,ydata_f2,zdata_f2] = netcdf_read_write.read_grd_xyz(file2);    
+    n = (np.nanmean(zdata_f1[:,-20])-np.nanmean(zdata_f2[:,20]))/(2*np.pi);
+    return np.round(n);
+
+
+def apply_reference_value(xdata, ydata, zdata, reference_value):
+    # The math component of applying a reference to a grid. 
+    referenced_zdata=np.zeros(np.shape(zdata));
+    for i in range(len(ydata)):
+        for j in range(len(xdata)):
+            referenced_zdata[i][j]=zdata[i][j]-reference_value;
+    return referenced_zdata;
+
+
+def get_reference_value(swath, ref_swath, rowref, colref, item):
+    # Reading a file and putting it in the cache, or ignoring this scene due to lack of reference value. 
+    if swath==ref_swath:
+        [xdata,ydata,zdata] = netcdf_read_write.read_grd_xyz(item);
+        reference_value = zdata[rowref][colref];
+        # ofile=open(saving_file,'a');
+        # ofile.write("%s %d %d %f %f\n" % (item, rowref, colref, reference_value, 0.0 ));
+        # ofile.close();
+    else:
+        reference_value=np.nan;
+        print("Skipping %s because we can't find it in F1" % item)
+    return reference_value;
 
 
 def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
-    if swath != ref_swath:
-        rowref, colref = -1, -1;  # this is a separate case. 
+    # if swath != ref_swath:
+    #     rowref, colref = 0, 0;  # this is a degenerate case, handled in make_referenced_unwrapped function. 
+    # else:
+    if ref_idx != []:  # if we already have an index location... 
+        rowref=int(ref_idx.split('/')[0])
+        colref=int(ref_idx.split('/')[1])
     else:
-        if ref_idx != []:  # if we already have an index location... 
-            rowref=int(ref_idx.split('/')[0])
-            colref=int(ref_idx.split('/')[1])
-        else:
-            rowref=0; colref=0;
-            # Here we will run ll2ra in the future. 
+        rowref=0; colref=0;
+        # Here we will run ll2ra in the future. 
     return rowref, colref;
 
 

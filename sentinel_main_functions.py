@@ -362,6 +362,7 @@ def make_interferograms(config_params):
         return;
 
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('F'+str(config_params.swath)+'/raw/baseline_table.dat')
+    intf_pairs=[];
     if config_params.ts_type=="SBAS" or config_params.ts_type=="NSBAS":
         intf_pairs_sbas = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
         intf_pairs_manual = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline); # ['20151118'] for mendocino
@@ -374,7 +375,6 @@ def make_interferograms(config_params):
     else:
         print("config_params.ts_type is not a valid ts_type");
         sys.exit(1);
-
 
     # intf_pairs is the list of interferogram pairs made from SBAS or NSBAS or manual or chain 
     # Now we want to add the longer interferograms. 

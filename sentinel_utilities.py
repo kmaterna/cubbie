@@ -227,14 +227,14 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     outfile.write("\n# Unwrap the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
     outfile.close();
-
+    
     return;
 
 
 def write_long_unwrapping(numproc, swath, sh_file, config_file):
     # A special function to unwrap only 1-year, 2-year, and 3-year interferograms. 
     intfs = np.loadtxt("F"+swath+"/intf_long.in", dtype=str, unpack=True);   # created manually
-    
+
     outfile=open(sh_file,'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");

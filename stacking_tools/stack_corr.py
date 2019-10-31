@@ -46,11 +46,13 @@ def stack_corr(mytuple, cutoff):
     return a
 
 def drive_unwrap_grd_calculation(swath, unwrap_ref_dir, output_dir):
+    print("Making stack_corr")
     myfiles = glob.glob("F"+swath+"/"+unwrap_ref_dir+"/*unwrap.grd");
     mytuple=rmd.reader(myfiles)
     a=stack_corr(mytuple, np.nan) 
-    rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', 'signalspread_please_test.nc')
-    rwr.produce_output_plot('signalspread_please_test.nc', 'Signal Spread', 'signalspread_please_test.png', 'Percentage of coherence (out of 288 images)' )
+    rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', 'F'+swath+'/'+output_dir+'/signalspread.nc')
+    rwr.produce_output_plot('F'+swath+'/'+output_dir+'/signalspread.nc', 'Signal Spread', 
+        'F'+swath+'/'+output_dir+'/signalspread.png', 'Percentage of coherence (out of '+str(len(myfiles))+' images)' )
     return;
 
 

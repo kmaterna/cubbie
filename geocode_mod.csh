@@ -27,7 +27,7 @@ set kmlfile = $3
 set directory = $4
 
 cd $directory
-ln -s ../topo/trans.dat .
+ln -s ../../topo/trans.dat .
 
 
 # Datestamp information
@@ -42,7 +42,13 @@ set Zmin = `gmt grdinfo $ifile -M -C | awk '{print $6}'`
 set Zmax = `gmt grdinfo $ifile -M -C | awk '{print $7}'`
 set Zinterval = `gmt grdinfo $ifile -M -C | awk '{print ($7-$6)/100}'`
 set Zlabel = `gmt grdinfo $ifile -M -C | awk '{print int(($7-$6)/6) }'`   # provide labels on the psscale
-gmt makecpt -T$Zmin/$Zmax/$Zinterval -Cjet -Z > defcolors.cpt
+
+# gmt makecpt -T$Zmin/$Zmax/$Zinterval -Cjet -Z > defcolors.cpt
+set Zmin = -5
+set Zmax = 26
+set Zinterval = 1
+gmt makecpt -T$Zmin/$Zmax/$Zinterval -Cpolar -Z -Ic > defcolors.cpt
+
 gmt grdimage $ifile -JX6.5i -Cdefcolors.cpt -B"$boundR":Range:/"$boundA":Azimuth:WSen -X1.3i -Y3i -P -K > $kmlfile.ps
 gmt psscale -D3.3/-1.5/7/0.3h -Cdefcolors.cpt -B"$Zlabel":"mm/yr": -O >> $kmlfile.ps
 

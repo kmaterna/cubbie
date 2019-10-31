@@ -32,7 +32,19 @@ def inputs(ramps, myfiles, myfiles_no_ramp, remove_ramp):
             myfiles_new.append(myfiles[i])
     return myfiles_new
 
-def velocity_simple_stack(filepathslist, wavelength, manual_exclude, signal_threshold):
+
+def drive_velocity_simple_stack(swath, ref_dir, wavelength, outdir):
+    filepathslist=glob.glob("F"+swath+"/"+ref_dir+"/*unwrap.grd");
+    # filepathslist=filepathslist[0:4]
+    signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc")  
+    velocities, x, y = velocity_simple_stack(filepathslist, wavelength, signal_spread_data, 0, 25);  # signal threshold < 100%.  lower signal threshold allows for more data into the stack.  
+    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_simple_stack.grd')
+    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_simple_stack.grd', 'Velocity Profile ',
+        'F'+swath+'/'+outdir+'/velo_simple_stack.png', 'velocity (mm/yr)');    
+    return; 
+
+
+def velocity_simple_stack(filepathslist, wavelength, signal_spread_data, manual_exclude, signal_threshold):
     """This function takes in a list of files that contain arrays of phases and times. It
     will compute the velocity of each pixel using the given wavelength of the satellite.
     Finally, it will return a 2D array of velocities, ready to be plotted. For the manual exclude
@@ -40,7 +52,6 @@ def velocity_simple_stack(filepathslist, wavelength, manual_exclude, signal_thre
     final argument should be a number between 0 and 100 inclusive that tells the function which pixels
     to exclude based on this signal percentage."""
 
-    print(signal_threshold)
     if manual_exclude != 0:
         f = open('Metadata/manual_remove.txt', 'r')
         if manual_exclude == 1:
@@ -57,7 +68,6 @@ def velocity_simple_stack(filepathslist, wavelength, manual_exclude, signal_thre
             if myfiles_new[i][16:31] not in x:
                 filesmodified.append(myfiles_new[i])
     print('Number of files being stacked: ' + str(len(filepathslist)))
-    signal_spread_data=rwr.read_grd("signalspread_please_test.nc")  # This will have to be refactored.... 
     mytuple = rmd.reader(filepathslist)
     phases, times = [], []
     velocities = np.zeros((len(mytuple.yvalues), len(mytuple.xvalues)))
@@ -65,18 +75,24 @@ def velocity_simple_stack(filepathslist, wavelength, manual_exclude, signal_thre
     for z in np.nditer(mytuple.zvalues, order='F'):
         if np.isnan(z) == False:
             if signal_spread_data[i,j] < signal_threshold:
+                phases.append(np.nan)
                 times.append(np.nan)
             else:
                 phases.append(mytuple.zvalues[f][i][j])
                 times.append(mytuple.date_deltas[f])
         if np.isnan(z) == True:
+            phases.append(np.nan)
             times.append(np.nan)
         f+=1
         if f == len(mytuple.zvalues):
-            velocities[i,j] = (wavelength/(4*(np.pi)))*((np.sum(phases))/(np.sum(times)))
+            if np.nansum(times)==0:
+                velocities[i,j] = np.nan
+            else:
+                velocities[i,j] = (wavelength/(4*(np.pi)))*((np.nansum(phases))/(np.nansum(times)))
             phases, times = [], []
             c+=1
-            print('Done with ' + str(c) + ' out of ' + str(len(mytuple.xvalues)*len(mytuple.yvalues)) + ' pixels')
+            if np.mod(c,200)==0:
+                print('Done with ' + str(c) + ' out of ' + str(len(mytuple.xvalues)*len(mytuple.yvalues)) + ' pixels')
             f=0
             j+=1
             if j==len(mytuple.xvalues):

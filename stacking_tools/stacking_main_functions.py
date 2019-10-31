@@ -11,7 +11,7 @@ import phasefilt_plot
 import sbas
 import nsbas
 import gps_into_LOS
-import Super_Simple_Stack as stacking
+import Super_Simple_Stack as sss
 import netcdf_read_write as rwr
 import stack_corr
 
@@ -101,8 +101,8 @@ def collect_unwrap_ref(config_params):
     rowref, colref = stacking_utilities.get_ref_index(config_params.ref_swath, config_params.swath, config_params.ref_loc, config_params.ref_idx);
 
     # Now we coalesce the files and reference them to the right value/pixel
-    # stacking_utilities.make_referenced_unwrapped(intfs, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
-
+    stacking_utilities.make_referenced_unwrapped(intfs, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
+    
     # We make signal_spread here. 
     stack_corr.drive_unwrap_grd_calculation(config_params.swath, config_params.ref_dir, config_params.ts_output_dir);
     return;
@@ -117,10 +117,7 @@ def velocities(config_params):
 
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        filepathslist=glob.glob("F"+config_params.swath+"/stacking/"+config_params.ref_dir+"/*.grd")
-        velocities, x, y = stacking.velocity_simple_stack(filepathslist, config_params.wavelength, 0, 50);  # signal threshold < 100% 
-        rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'velo_prof_reasonable50_remastered.grd')
-        rwr.produce_output_plot('velo_prof_reasonable50_remastered.grd', 'Velocity Profile ','velo_prof_reasonable50_remastered.png', 'velocity (mm/yr)');
+        sss.drive_velocity_simple_stack(config_params.swath, config_params.ref_dir, config_params.wavelength, config_params.ts_output_dir);
 
     return; 
 
@@ -132,7 +129,18 @@ def geocode_vels(config_params):
     if config_params.endstage<3:   # if we're ending at intf, we don't do this. 
         return; 
 
+    directory = config_params.ts_output_dir
+    vel_name = "velo_simple_stack"
 
+    outfile=open("geocoding.txt",'w');
+    outfile.write("#!/bin/bash\n");
+    outfile.write("# Script to geocode velocities.\n\n");
+    outfile.write("cd F"+str(config_params.swath)+"\n");
+    outfile.write("geocode_mod.csh "+vel_name+".grd "+vel_name+"_ll.grd "+vel_name+"_ll "+directory+"\n");
+    outfile.close();
+    print("Ready to call geocoding.txt.")
+    call("chmod +x geocoding.txt",shell=True);
+    call("./geocoding.txt",shell=True); 
     return; 
 
 
