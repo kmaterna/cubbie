@@ -102,7 +102,7 @@ def collect_unwrap_ref(config_params):
 
     # Now we coalesce the files and reference them to the right value/pixel
     stacking_utilities.make_referenced_unwrapped(intfs, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
-    
+
     # We make signal_spread here. 
     stack_corr.drive_unwrap_grd_calculation(config_params.swath, config_params.ref_dir, config_params.ts_output_dir);
     return;

@@ -381,9 +381,9 @@ def make_interferograms(config_params):
 
     # Here I will add the three pairs needed for the closure test manually. 
     intf_pairs=[];
-    intf_pairs = ["S1_20190411_ALL_F"+swath+":S1_20190423_ALL_F"+swath,
-             "S1_20190330_ALL_F"+swath+":S1_20190411_ALL_F"+swath,
-             "S1_20190330_ALL_F"+swath+":S1_20190423_ALL_F"+swath];
+    # intf_pairs = ["S1_20190411_ALL_F"+config_params.swath+":S1_20190423_ALL_F"+config_params.swath,
+    #          "S1_20190330_ALL_F"+config_params.swath+":S1_20190411_ALL_F"+config_params.swath,
+    #          "S1_20190330_ALL_F"+config_params.swath+":S1_20190423_ALL_F"+config_params.swath];
 
     # intf_pairs is the list of interferogram pairs made from SBAS or NSBAS or manual or chain 
     # Now we want to add the longer interferograms. 
@@ -418,7 +418,7 @@ def make_interferograms(config_params):
     print("Ready to call README_proc.txt.")
     call("chmod +x README_proc.txt",shell=True);
     
-    # call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
 
     # print("Summarizing correlation for all interferograms.")
     # analyze_coherence.analyze_coherence_function();
@@ -445,8 +445,8 @@ def unwrapping(config_params):
 
     unwrap_sh_file="README_unwrap.txt";
     # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
-    # sentinel_utilities.write_long_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
-    sentinel_utilities.write_select_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    sentinel_utilities.write_long_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    # sentinel_utilities.write_select_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
 
     print("Ready to call "+unwrap_sh_file)
     call(['chmod','+x',unwrap_sh_file],shell=False);
