@@ -94,6 +94,16 @@ def read_any_grd_variables(filename, var1, var2, var3):
 		[xdata, ydata, zdata] = read_netcdf4_variables(filename, var1, var2, var3);
 	return [xdata, ydata, zdata];
 
+def give_metrics_on_grd(filename):
+	grid_data = read_grd(filename);
+	nan_pixels = np.count_nonzero(np.isnan(grid_data));
+	total_pixels=np.shape(grid_data)[0]*np.shape(grid_data)[1];
+	print("Shape of %s is [%d, %d]" % (filename, np.shape(grid_data)[0], np.shape(grid_data)[1]) );
+	print("Min data is %f " % (np.nanmin(grid_data)) );
+	print("Max data is %f " % (np.nanmax(grid_data)) );
+	print("Nans: %d of %d pixels are nans (%.3f percent)" % (nan_pixels, total_pixels, nan_pixels/total_pixels*100) );
+	return; 
+
 
 # --------------- WRITING ------------------- # 
 
