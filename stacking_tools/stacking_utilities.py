@@ -37,6 +37,11 @@ def get_list_of_intfs(config_params):
     # total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/2015349_2017338/unwrap.grd");
     # total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/2019100_2019112/unwrap.grd");
 
+
+    # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
+    # THIS DEPENDS ON YOUR CONFIG SETTINGS
+    # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
+    # FEB 2020
     select_criterion=0.8; # 3+ years, 2+ years, 1+ year
 
     for item in total_intf_list:
@@ -83,7 +88,7 @@ def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_d
                 zvalue_2npi = get_n_2pi(F1_name, F2_name);  # this is an integer
                 zvalue = zvalue_pixel+zvalue_2npi*-2*np.pi;
 
-            elif is1==1 and is2==1 and is3==1 and swath=='3': # 3 case. will do this later. 
+            elif is1==1 and is2==1 and is3==1 and swath=='3': # 3 case. 
                 print("in swath 3. Will find n pi");
                 F2_referenced = "F2/stacking/ref_unwrapped/"+intf_name+"_unwrap.grd"
                 zvalue_pixel = get_reference_value(ref_swath, ref_swath, rowref, colref, F1_name);  # the reference pixel in F1

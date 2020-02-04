@@ -14,8 +14,8 @@ import phasefilt_plot
 import gps_into_LOS
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
-    'mode','swath','polarization','frame1','frame2','numproc','ts_type','bypass','sbas_smoothing','nsbas_min_intfs','choose_refpixel',
-    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','start_time','end_time','threshold_snaphu','gps_file','flight_angle','look_angle','skip_file','ts_output_dir']);
+    'mode','swath','polarization','frame1','frame2','numproc','ts_type','choose_refpixel',
+    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','threshold_snaphu','flight_angle','look_angle','skip_file']);
 
 def read_config():
     ################################################
@@ -59,16 +59,9 @@ def read_config():
     gacos = config.getint('timeseries-config','gacos');
     aps = config.getint('timeseries-config','aps');
     detrend_atm_topo = config.getint('timeseries-config','detrend_atm_topo');
-    bypass=config.get('timeseries-config','bypass')
-    nsbas_min_intfs=config.getint('timeseries-config','nsbas_min_intfs');
-    sbas_smoothing = config.getfloat('timeseries-config','sbas_smoothing');
-    start_time = config.getint('timeseries-config','start_time');
-    end_time = config.getint('timeseries-config','end_time');
-    gps_file = config.get('timeseries-config','gps_file');
     flight_angle = config.getfloat('timeseries-config','flight_angle');
     look_angle = config.getfloat('timeseries-config','look_angle');
     skip_file = config.get('timeseries-config','skip_file');
-    ts_output_dir = config.get('timeseries-config','ts_output_dir');
     threshold_snaphu=config.getfloat('csh-config','threshold_snaphu');
 
     
@@ -123,9 +116,8 @@ def read_config():
 
     config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,intf_file=intf_file,
         orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
-        numproc=numproc, ts_type=ts_type, bypass=bypass, sbas_smoothing=sbas_smoothing, nsbas_min_intfs=nsbas_min_intfs, choose_refpixel=choose_refpixel, 
-        solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, detrend_atm_topo=detrend_atm_topo, start_time=start_time, end_time=end_time, 
-        threshold_snaphu=threshold_snaphu, gps_file=gps_file, flight_angle=flight_angle, look_angle=look_angle, skip_file=skip_file, ts_output_dir=ts_output_dir);
+        numproc=numproc, ts_type=ts_type, choose_refpixel=choose_refpixel, solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, 
+        detrend_atm_topo=detrend_atm_topo, threshold_snaphu=threshold_snaphu, flight_angle=flight_angle, look_angle=look_angle, skip_file=skip_file);
 
     return config_params; 
 
@@ -380,12 +372,12 @@ def make_interferograms(config_params):
 
 
     # Here I will add the three pairs needed for the closure test manually. 
-    intf_pairs=[];
+    # intf_pairs=[];
     # intf_pairs = ["S1_20190411_ALL_F"+config_params.swath+":S1_20190423_ALL_F"+config_params.swath,
     #          "S1_20190330_ALL_F"+config_params.swath+":S1_20190411_ALL_F"+config_params.swath,
     #          "S1_20190330_ALL_F"+config_params.swath+":S1_20190423_ALL_F"+config_params.swath];
-
     # intf_pairs is the list of interferogram pairs made from SBAS or NSBAS or manual or chain 
+    
     # Now we want to add the longer interferograms. 
     crit_days=30; crit_baseline=20;  # days, meters
     long_intfs_1 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 1);  # 1 year
@@ -418,7 +410,8 @@ def make_interferograms(config_params):
     print("Ready to call README_proc.txt.")
     call("chmod +x README_proc.txt",shell=True);
     
-    call("./README_proc.txt",shell=True);
+    # The money line
+    # call("./README_proc.txt",shell=True);
 
     # print("Summarizing correlation for all interferograms.")
     # analyze_coherence.analyze_coherence_function();
@@ -469,14 +462,14 @@ def do_timeseries(config_params):
     if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
         return;
 
-    # For later plotting, we want to project available GPS into LOS. 
-    rowref=1524-621;
-    colref=32;
-    gps_into_LOS.top_level_driver(config_params, rowref, colref);
+    # # For later plotting, we want to project available GPS into LOS. 
+    # rowref=1524-621;
+    # colref=32;
+    # gps_into_LOS.top_level_driver(config_params, rowref, colref);
 
-    # NOTE: 
-    # Should copy batch.config into the nsbas directory
-    # Should implement reference pixel at end of GACOS and unwrapping_errors
+    # # NOTE: 
+    # # Should copy batch.config into the nsbas directory
+    # # Should implement reference pixel at end of GACOS and unwrapping_errors
 
     return;
 

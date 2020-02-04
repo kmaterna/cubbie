@@ -409,7 +409,6 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
 
 
     # If there's a format like "2017089:2018101"....
-    # WRITE THIS NEXT. 
     if len(intf_pairs[0])==15: 
         dtarray=[]; im1_dt=[]; im2_dt=[];
         for i in range(len(times)):
@@ -442,7 +441,7 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
     plt.xlabel("Date");
     plt.gca().xaxis.set_major_formatter(yrs_formatter);
     plt.ylabel("Baseline (m)");
-    plt.title("Network Geometry");
+    plt.title("Network Geometry with %d Interferograms" % (len(intf_pairs)) );
     plt.savefig(plotname);
     plt.close();
     print("finished printing network plot");
