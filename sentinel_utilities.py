@@ -147,7 +147,7 @@ def read_baseline_table(baselinefilename):
         new_stems = [];
         for item in stems:
             swath=int(item[-1]);
-            if swath>4:
+            if swath>=4:
                 swath=swath-3;
             new_stems.append("S1_"+item[15:23]+"_ALL_F"+str(swath));
         stems=new_stems;
@@ -283,7 +283,7 @@ def write_select_unwrapping(numproc, swath, sh_file, config_file):
 
 
 def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
-    infile='intf_record.in';
+    infile='F'+str(swath)+'/intf_record.in';
     intfs=[];
     for line in open(infile):
         intfs.append(line[0:-1]);
@@ -296,7 +296,8 @@ def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
         outfile.write('echo "'+item+'" >> intf'+str(np.mod(i,numproc))+'.in\n'); 
         # outfile.write("echo S1A20180106_ALL_F1:S1A20180118_ALL_F1 >> intf0.in\n"); break;   
     outfile.write("\n# Unwrap the interferograms.\n\n")
-    outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
+    outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n"); # if you have parallel
+    # outfile.write("unwrap_mod.csh intf_record.in "+config_file+"\n\n\n");  # if you don't have parallel 
     outfile.close();
 
     return;

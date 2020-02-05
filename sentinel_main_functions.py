@@ -4,7 +4,6 @@ import numpy as np
 from subprocess import call, check_output
 import sentinel_utilities
 import analyze_coherence
-import choose_reference_pixel
 import unwrapping_errors
 import aps 
 import detrend_atm_topo
@@ -14,7 +13,7 @@ import phasefilt_plot
 import gps_into_LOS
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
-    'mode','swath','polarization','frame1','frame2','numproc','ts_type','choose_refpixel',
+    'mode','swath','polarization','frame1','frame2','numproc','ts_type',
     'solve_unwrap_errors','detrend_atm_topo','gacos','aps','threshold_snaphu','flight_angle','look_angle','skip_file']);
 
 def read_config():
@@ -54,7 +53,6 @@ def read_config():
     frame_nearrange1=config.get('py-config','frame_nearrange1')
     frame_nearrange2=config.get('py-config','frame_nearrange2')
     ts_type=config.get('timeseries-config','ts_type')
-    choose_refpixel = config.getint('timeseries-config','choose_refpixel');
     solve_unwrap_errors = config.getint('timeseries-config','solve_unwrap_errors');
     gacos = config.getint('timeseries-config','gacos');
     aps = config.getint('timeseries-config','aps');
@@ -116,7 +114,7 @@ def read_config():
 
     config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,intf_file=intf_file,
         orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
-        numproc=numproc, ts_type=ts_type, choose_refpixel=choose_refpixel, solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, 
+        numproc=numproc, ts_type=ts_type, solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, 
         detrend_atm_topo=detrend_atm_topo, threshold_snaphu=threshold_snaphu, flight_angle=flight_angle, look_angle=look_angle, skip_file=skip_file);
 
     return config_params; 
@@ -384,7 +382,7 @@ def make_interferograms(config_params):
     long_intfs_2 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 2);  # 2 years
     long_intfs_3 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 3);  # 2 years
     # intf_all=intf_pairs + long_intfs_1 + long_intfs_2 + long_intfs_3;
-    intf_all=intf_pairs;
+    intf_all=intf_pairs;  # only short pairs
     print(intf_all);
 
     # Make the stick plot of baselines 
@@ -405,13 +403,17 @@ def make_interferograms(config_params):
         date1=item[3:11];
         date2=item[22:30];
         expected_folder = sentinel_utilities.ymd2yj(date1)+"_"+sentinel_utilities.ymd2yj(date2);
-        if os.path.isdir(outdir+expected_folder):
+        # if os.path.isdir(outdir+expected_folder):
+        #     continue;
+        if os.path.isfile(outdir+expected_folder+"/unwrap.grd"):
             continue;
         else:
             outfile.write('echo "' + item +'" >> intf_record.in\n');
-            outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');        
+            outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');    
+        # outfile.write('echo "' + item +'" >> intf_record.in\n');
+        # outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n'); # Write out in all cases. 
     outfile.write("\n# Process the interferograms.\n\n")
-    outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");  # If you have parallel on your box
+    # outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");  # If you have parallel on your box
     # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");  # if you don't have parallel 
     outfile.write("cd ../\n");
     outfile.close();
@@ -453,10 +455,6 @@ def unwrapping(config_params):
     call(['chmod','+x',unwrap_sh_file],shell=False);
     call("./"+unwrap_sh_file,shell=True);
 
-    # call from the processing directory to place all unwrap.grd into single directory. 
-    # print("Putting all unwrap.grd into a separate directory...")
-    # file_of_interest='unwrap.grd';
-    # call(['coalesce_intf_all_files.sh',file_of_interest],shell=False)  
     # sentinel_utilities.check_intf_all_sanity();
     return;
 
