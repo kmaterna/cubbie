@@ -383,7 +383,8 @@ def make_interferograms(config_params):
     long_intfs_1 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 1);  # 1 year
     long_intfs_2 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 2);  # 2 years
     long_intfs_3 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 3);  # 2 years
-    intf_all=intf_pairs + long_intfs_1 + long_intfs_2 + long_intfs_3;
+    # intf_all=intf_pairs + long_intfs_1 + long_intfs_2 + long_intfs_3;
+    intf_all=intf_pairs;
     print(intf_all);
 
     # Make the stick plot of baselines 
@@ -391,6 +392,7 @@ def make_interferograms(config_params):
     
     # Write the intf.in files
     # Writing to process interferograms. 
+    outdir = "F"+str(config_params.swath+"/intf_all/");
     outfile=open("README_proc.txt",'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch process Sentinel-1 TOPS mode data sets.\n\n");
@@ -399,9 +401,15 @@ def make_interferograms(config_params):
     outfile.write("ln -s ../batch.config .\n");
     outfile.write("rm intf*.in\n");
     for i,item in enumerate(intf_all):
-        outfile.write('echo "' + item +'" >> intf_record.in\n');
-    for i,item in enumerate(intf_all):
-        outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');        
+        # Will only create interferograms that don't already exist. This might need to be changed in the future. 
+        date1=item[3:11];
+        date2=item[22:30];
+        expected_folder = sentinel_utilities.ymd2yj(date1)+"_"+sentinel_utilities.ymd2yj(date2);
+        if os.path.isdir(outdir+expected_folder):
+            continue;
+        else:
+            outfile.write('echo "' + item +'" >> intf_record.in\n');
+            outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');        
     outfile.write("\n# Process the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");  # If you have parallel on your box
     # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");  # if you don't have parallel 
@@ -411,7 +419,7 @@ def make_interferograms(config_params):
     call("chmod +x README_proc.txt",shell=True);
     
     # The money line
-    # call("./README_proc.txt",shell=True);
+    call("./README_proc.txt",shell=True);
 
     # print("Summarizing correlation for all interferograms.")
     # analyze_coherence.analyze_coherence_function();
@@ -437,8 +445,8 @@ def unwrapping(config_params):
     # If you want to do this before and after flattentopo, you have to do it separately. 
 
     unwrap_sh_file="README_unwrap.txt";
-    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
-    sentinel_utilities.write_long_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    # sentinel_utilities.write_long_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
     # sentinel_utilities.write_select_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
 
     print("Ready to call "+unwrap_sh_file)

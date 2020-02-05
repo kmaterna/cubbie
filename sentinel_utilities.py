@@ -69,6 +69,20 @@ def pad_string_zeros(num):
         numstring=str(num);
     return numstring;
 
+
+def ymd2yj(ymd):
+    # Turn something like "20150524" into "2015100", useful for file naming conventions
+    tdate = dt.datetime.strptime(ymd,"%Y%m%d");
+    tdate = tdate - dt.timedelta(days=1);
+    return dt.datetime.strftime(tdate,"%Y%j");
+
+def yj2ymd(yj):
+    yj = int(yj)+1;
+    tdate = dt.datetime.strptime(str(yj),"%Y%j");
+    return dt.datetime.strftime(tdate,"%Y%m%d");
+
+
+
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
         It takes something like 20171204, s1a, eof_dir 
