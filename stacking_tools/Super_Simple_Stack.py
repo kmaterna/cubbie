@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 import sys
 
 
-def drive_velocity_simple_stack(swath, ref_dir, intfs, wavelength, outdir):
+def drive_velocity_simple_stack(swath, intfs, wavelength, outdir):
     signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
     intf_tuple = rmd.reader(intfs);
     velocities, x, y = velocity_simple_stack(intf_tuple, wavelength, signal_spread_data, 25);  # signal threshold < 100%.  lower signal threshold allows for more data into the stack.  
     rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_simple_stack.grd')
     rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_simple_stack.grd', 'Velocity Profile ',
-        'F'+swath+'/'+outdir+'/velo_simple_stack.png', 'velocity (mm/yr)');    
+        'F'+swath+'/'+outdir+'/velo_simple_stack.png', 'velocity (mm/yr)');
     return; 
 
 def get_velocity_by_stacking(phase_values, time_intervals, wavelength):
@@ -77,26 +77,6 @@ def inputs(ramps, myfiles, myfiles_no_ramp, remove_ramp, manual_exclude):
                 myfiles_new.append(myfiles[i])
         else:
             myfiles_new.append(myfiles[i])
-    
-    # Manual exclude should be implemented here. This is currently broken.
-    # For the manual exclude argument, enter either:
-    # 0 (no images excluded), 1 (15 images excluded), or 2 (40 images excluded).
-
-    # if manual_exclude != 0:
-    #     f = open('Metadata/manual_remove.txt', 'r')
-    #     if manual_exclude == 1:
-    #         content, x = f.readlines()[0:15], []
-    #         for i in range(len(content)):
-    #             x.append(content[i].strip('\n'))
-    #     if manual_exclude == 2:
-    #         content = f.read()
-    #         x = content.split('\n')
-    #     f.close()
-    #     filesmodified = []
-    #     filepathslist = filesmodified
-    #     for i in range(len(myfiles_new)):
-    #         if myfiles_new[i][16:31] not in x:
-    #             filesmodified.append(myfiles_new[i])
     return myfiles_new
 
 

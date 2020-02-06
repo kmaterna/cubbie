@@ -17,7 +17,8 @@ import stack_corr
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','swath','startstage','endstage','ref_swath','ref_loc','ref_idx',
     'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
-    'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_parent_dir','ts_output_dir']);
+    'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
+    'ts_parent_dir','ts_output_dir']);
 
 def read_config():
     ################################################
@@ -57,7 +58,8 @@ def read_config():
     gps_file = config.get('py-config','gps_file');
     flight_angle = config.getfloat('py-config','flight_angle');
     look_angle = config.getfloat('py-config','look_angle');
-    skip_file = config.get('py-config','skip_file');    
+    skip_file = config.get('py-config','skip_file');
+    ts_points_file = config.get('py-config','ts_points_file');
     ref_dir = config.get('py-config','ref_dir');
     ts_parent_dir = config.get('py-config','ts_parent_dir');
     ts_output_dir = config.get('py-config','ts_output_dir');
@@ -73,7 +75,7 @@ def read_config():
         ref_swath=ref_swath,ref_loc=ref_loc,ref_idx=ref_idx,ts_type=ts_type,solve_unwrap_errors=solve_unwrap_errors,
         detrend_atm_topo=detrend_atm_topo,gacos=gacos,aps=aps,sbas_smoothing=sbas_smoothing,nsbas_min_intfs=nsbas_min_intfs,
         start_time=start_time,end_time=end_time,intf_timespan=intf_timespan, gps_file=gps_file,flight_angle=flight_angle,look_angle=look_angle,
-        skip_file=skip_file,ref_dir=ref_dir,ts_parent_dir=ts_parent_dir,ts_output_dir=ts_output_dir);
+        skip_file=skip_file,ts_points_file=ts_points_file,ref_dir=ref_dir,ts_parent_dir=ts_parent_dir,ts_output_dir=ts_output_dir);
 
     return config_params; 
 
@@ -124,10 +126,10 @@ def vels_and_ts(config_params):
 
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(config_params.swath, config_params.ref_dir, intfs, config_params.wavelength, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(config_params.swath, intfs, config_params.wavelength, config_params.ts_output_dir);
     if config_params.ts_type=="NSBAS":
         print("Running velocities and time series by NSBAS");
-
+        nsbas.drive_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
 
     sys.exit(0);
 
@@ -192,13 +194,6 @@ def do_timeseries(config_params):
     # #     prior_staging_directory=post_staging_directory;
     # #     post_staging_directory='intf_all/atm_topo_corrected.grd';
     # #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-
-
-    # if config_params.ts_type=="SBAS":
-    #     sbas.do_sbas(config_params, post_staging_directory);
-    # if config_params.ts_type=="NSBAS":
-    #     nsbas.do_nsbas(config_params, post_staging_directory);
-    #     print("skipping NSBAS");
 
     # For later plotting, we want to project available GPS into LOS. 
     # gps_into_LOS.top_level_driver(config_params, rowref, colref);

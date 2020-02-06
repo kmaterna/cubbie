@@ -150,6 +150,7 @@ def make_selection_of_intfs(config_params):
     # THIS DEPENDS ON YOUR CONFIG SETTINGS
     # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
     # FEB 2020
+    # ANOTHER THING: USE START DATE AND STOP DATE
     # select_criterion=0.8; # 3+ years, 2+ years, 1+ year
 
     # for item in total_intf_list:
