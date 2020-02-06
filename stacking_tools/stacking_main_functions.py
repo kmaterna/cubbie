@@ -99,6 +99,7 @@ def collect_unwrap_ref(config_params):
     if config_params.endstage<1:   # if we're ending at intf, we don't do this. 
         return;
 
+    # Very general, takes all files and doesn't discriminate. 
     intfs=stacking_utilities.get_list_of_intfs(config_params);
 
     # Here we need to get ref_idx if we don't have it already
@@ -130,8 +131,6 @@ def vels_and_ts(config_params):
     if config_params.ts_type=="NSBAS":
         print("Running velocities and time series by NSBAS");
         nsbas.drive_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
-
-    sys.exit(0);
 
     return; 
 

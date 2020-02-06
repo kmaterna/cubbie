@@ -13,9 +13,9 @@ import netcdf_read_write as rwr
 def drive_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
     signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
     intf_tuple = rmd.reader(intfs); 
-    velocities = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
+    velocities, x, y = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
     rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_nsbas.grd')
-    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_nsbas.grd', 'Velocity Profile',
+    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_nsbas.grd', 'LOS Velocity',
         'F'+swath+'/'+outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
     return;
 
@@ -46,10 +46,8 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 		c=c+1;
 		if np.mod(c,10000)==0:
 			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
-		if i==748 and j==321:
-			break;
 		it.iternext();
-	return vel;
+	return vel, intf_tuple.xvalues, intf_tuple.yvalues;
 
 
 

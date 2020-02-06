@@ -13,7 +13,7 @@ def drive_velocity_simple_stack(swath, intfs, wavelength, outdir):
     intf_tuple = rmd.reader(intfs);
     velocities, x, y = velocity_simple_stack(intf_tuple, wavelength, signal_spread_data, 25);  # signal threshold < 100%.  lower signal threshold allows for more data into the stack.  
     rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_simple_stack.grd')
-    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_simple_stack.grd', 'Velocity Profile ',
+    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_simple_stack.grd', 'LOS Velocity ',
         'F'+swath+'/'+outdir+'/velo_simple_stack.png', 'velocity (mm/yr)');
     return; 
 

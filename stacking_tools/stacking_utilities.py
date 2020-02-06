@@ -167,7 +167,7 @@ def make_selection_of_intfs(config_params):
     #  print("Out of %d possible interferograms, we are trying to use %d" % (len(total_intf_list), len(select_intf_list)) );
 
     # THIS IS WHERE YOU WILL MAKE CHANGES
-    select_intf_list=total_intf_list[0:50];
+    select_intf_list=total_intf_list;
 
     # Writing the exact interferograms used in this run. 
     ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_list)) );
