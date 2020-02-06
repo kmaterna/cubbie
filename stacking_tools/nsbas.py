@@ -7,10 +7,11 @@ import glob, sys, math
 import datetime as dt 
 from subprocess import call
 import sentinel_utilities
+import stacking_utilities
 import readmytupledata as rmd
 import netcdf_read_write as rwr 
 
-def drive_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
+def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
     signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
     intf_tuple = rmd.reader(intfs); 
     velocities, x, y = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
@@ -18,6 +19,49 @@ def drive_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdi
     rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_nsbas.grd', 'LOS Velocity',
         'F'+swath+'/'+outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
     return;
+
+def drive_ts_nsbas(config_params):
+	swaths, rows, cols, names, lons, lats = stacking_utilities.get_rows_cols(config_params.ts_points_file);
+	# swaths = ['1', '1', '2', '1', '1', '1', '3', '1', '1', '2'];
+	# lons = [748, 843, 707, 345, 7, 1366, 2182, 1752, 2971, 1252];
+	# lats = [748, 843, 707, 345, 7, 1366, 2182, 1752, 2971, 1252];
+	# rows = [748, 843, 707, 345, 7, 1366, 2182, 1752, 2971, 1252];
+	# cols = [321, 643, 565, 666, 258, 603, 295, 121, 334, 685]; # testing purposes
+	# names=['Ref','Point0','Point1','Point2','Point3','Point4','Point5','Point6','Point7','Point8'];
+	if len(rows)==0:
+		return;
+	drive_ts_nsbas_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
+	# drive_ts_nsbas_swath(config_params, '2', rows, cols, swaths, names, config_params.sbas_smoothing, config_params.wavelength);
+	# drive_ts_nsbas_swath(config_params, '3', rows, cols, swaths, names, config_params.sbas_smoothing, config_params.wavelength);
+	return;
+
+
+
+# FOR A GIVEN SWATH, LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
+def drive_ts_nsbas_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
+	rows=np.array(rows);
+	cols=np.array(cols);
+	names=np.array(names);
+	lons=np.array(lons);
+	lats=np.array(lats);
+	select_rows = rows[np.array(swaths)==select_swath];
+	select_cols = cols[np.array(swaths)==select_swath];
+	select_names = names[np.array(swaths)==select_swath];
+	select_lons = lons[np.array(swaths)==select_swath];
+	select_lats = lats[np.array(swaths)==select_swath];
+	print("For Swath %s, extracting time series for:" % (select_swath) );
+	for i in range(len(select_rows)):
+		print(select_rows[i], select_cols[i]);
+	if len(select_rows)==0:
+		return;	
+	intfs = stacking_utilities.make_selection_of_intfs(config_params, swath=select_swath);
+	intf_tuple = rmd.reader(intfs);
+	for i in range(len(select_rows)):
+		pixel_value = intf_tuple.zvalues[:,select_rows[i],select_cols[i]];
+		vel, dts, m_cumulative = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, full_ts_return=True); 
+		m_cumulative=[i*-1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
+		nsbas_ts_outputs(dts, m_cumulative, select_swath, select_rows[i], select_cols[i], select_names[i], select_lons[i], select_lats[i], config_params.ts_output_dir);
+	return;
 
 
 # ------------ COMPUTE ------------ #
@@ -27,12 +71,6 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 	print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)) );
 	vel = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
 	c = 0;
-
-	# I can select a pixel and extract its time series. 
-	# Should create the function to send this time series out to a file. 
-	# Reference Pixel = 748, 321
-	# a = do_nsbas_pixel(intf_tuple.zvalues[:,1500,200], intf_tuple.dates_correct, smoothing, wavelength);
-
 	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
 	while not it.finished:
 		i=it.multi_index[0];
@@ -40,7 +78,10 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 		signal_spread = signal_spread_data[i,j];
 		pixel_value = intf_tuple.zvalues[:,i,j];
 		if signal_spread > nsbas_good_perc: # if we want a calculation for that day... 
-			vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
+			if np.mod(i,10) == 0:  # this is to speed up the calculation. 
+				vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
+			else:
+				vel[i][j] = np.nan;
 		else:
 			vel[i,j] = np.nan;
 		c=c+1;
@@ -51,7 +92,7 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 
 
 
-def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength):
+def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_return=False):
 	# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
 	# dates: if we have 35 images, this is the date of each image, in format 
 	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
@@ -127,6 +168,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength):
 	vel=model_slopes[0];  # in radians per day
 	vel=vel*wavelength*365.24/2.0/(2*np.pi);
 
+	disp_ts = [i*wavelength/(4*np.pi) for i in m_cumulative];
 	# plt.figure();
 	# plt.plot(x_axis_days[0:-1],m,'b.');
 	# plt.plot(x_axis_days,m_cumulative,'g.');
@@ -136,15 +178,34 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength):
 	# plt.text(0,0,str(vel)+"mm/yr slope");
 	# plt.savefig('m_model.eps');
 
-	return vel;
+	if full_ts_return:
+		return vel, x_axis_datetimes, disp_ts;
+	else:
+		return vel;
 
 
 
 # ------------ OUTPUT ------------ #
+
+def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir):
+
+	plt.figure();
+	plt.plot(dts,m_cumulative,'b.');
+	plt.xlabel("Time");
+	plt.ylabel("Displacement (mm)");
+	plt.title(str(swath)+' '+str(row)+' '+str(col)+' '+str(lon)+' '+str(lat)+' '+str(name));
+	plt.ylim([-40,50]);
+	plt.savefig('F'+swath+'/'+outdir+'/'+str(name)+'_'+str(lon)+'_'+str(lat)+'_disp.eps');
+
+	ofile=open('F'+swath+'/'+outdir+'/'+str(name)+'_'+str(row)+'_'+str(col)+'_record.txt','w');
+	for i in range(len(dts)):
+		ofile.write("%s %f %f %s %d %d " % (name, lon, lat, swath, row, col) );
+		ofile.write(dt.datetime.strftime(dts[i],"%Y-%m-%d"));
+		ofile.write(" %f\n" % (m_cumulative[i]) );
+	ofile.close();
+	return;
+
 def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
-	
-	netcdf_read_write.produce_output_netcdf(xdata,ydata, vel, 'mm/yr', out_dir+'/vel.grd');
-	geocode(out_dir+'/vel.grd',out_dir);
 
 	# Visualizing the velocity field in a few different ways. 
 	zdata2=np.reshape(vel, [len(xdata)*len(ydata), 1])
@@ -197,7 +258,6 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	cb.set_label("mm/yr", size=16);
 	plt.savefig(out_dir+"/vel.png");
 	plt.close();
-
 
 	return;
 

@@ -1,9 +1,7 @@
 # Sentinel Utilities
 
 import subprocess
-import os
-import sys
-import glob
+import os, sys, glob
 import datetime as dt
 import matplotlib
 matplotlib.use('Agg')
@@ -12,7 +10,7 @@ import matplotlib.dates as mdates
 import numpy as np
 import collections
 import netcdf_read_write
-
+import get_ra_rc_from_ll
 
 
 def write_super_master_batch_config(masterid):
@@ -29,8 +27,9 @@ def write_super_master_batch_config(masterid):
     print("Writing master_image into batch.config");
     return;
 
-def get_list_of_intfs(config_params):
+def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
+    # The selection takes place in a later step (make_selection_of_intfs). 
     total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
     return total_intf_list;
 
@@ -138,12 +137,84 @@ def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
 
 
 
-def make_selection_of_intfs(config_params):
+def get_rows_cols(ts_points_file):
+    lons, lats, names = read_ts_points_file(ts_points_file);
+    swaths=[]; rows=[]; cols=[]; names_new=[]; lons_new=[]; lats_new=[];
+    if len(lons)==0:
+        print("No points requested. Ending without doing any time series calculations.");
+        return swaths, rows, cols, names, lons, lats;
 
-    record_file="F"+config_params.swath+"/"+config_params.ts_output_dir+"/"+"intf_record.txt";
-    ofile=open(record_file,'w');
+    problem_cases=[];
+    for i in range(len(lons)):
+        if i==8:
+            continue;  # fix this problem after lunch. 
+        print("Computing swath/row/col for %f %f " % (lons[i], lats[i]) );
+        swath, row, col = get_swath_row_col(lons[i], lats[i]);
+        if row!=-1:
+            swaths.append(swath);
+            rows.append(row);
+            cols.append(col);
+            names_new.append(names[i]);
+            lons_new.append(lons[i]);
+            lats_new.append(lats[i]);
 
-    total_intf_list=glob.glob("F"+config_params.swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");
+    print(swaths);
+    print(rows);
+    print(cols);
+    print(names_new);
+    print(lons_new);
+    print(lats_new);
+    return swaths, rows, cols, names_new, lons_new, lats_new;
+
+
+def get_swath_row_col(lon, lat):
+    # For a single lat/lon point, what swath and row and column is nearest to it? 
+    try_swaths = ["1","2","3"];
+    swath=-1;
+    row=-1;
+    col=-1;
+    for try_swath in try_swaths:
+        print("Trying %f %f in swath %s " % (lon, lat, try_swath) );
+        trans_dat="F"+try_swath+"/topo/trans.dat";
+        example_grd=glob.glob("F"+try_swath+"/stacking/ref_unwrapped/*_unwrap.grd")[0];
+        try:
+            [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, lon, lat);
+        except ValueError:
+            print("WARNING: Cannot Find %f %f in swath %s." % (lon, lat, try_swath) );
+            continue;
+        [row, col] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az); 
+        swath=try_swath;
+        print("SUCCESS: Found %f %f in Swath %s, Row %d, Col %d" % (lon, lat, swath, row, col) );
+        break;
+    return swath, row, col;
+
+
+def read_ts_points_file(ts_points_file):
+    lons=[]; lats=[]; names=[];
+    if os.path.isfile(ts_points_file):
+        ifile=open(ts_points_file,'r');
+        for line in ifile:
+            temp=line.split();
+            lons.append(float(temp[0]));
+            lats.append(float(temp[1]));
+            if len(temp)==3:
+                names.append(temp[2]);
+            else:
+                names.append('');
+        print("Computing time series at %d geographic points " % (len(lons)) );
+    else:
+        print("No ts_points_file %s. Not computing time series at points. " % ts_points_file);    
+    return lons, lats, names;
+
+
+def make_selection_of_intfs(config_params, swath=0):
+    # If you want to pass in the swath, then use an explicit argument. 
+    # Otherwise we'll use the swath in the config file. 
+    swath=str(swath);
+    if swath=='0':
+        swath=config_params.swath;
+
+    total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");
 
     # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING. 
     # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
@@ -170,6 +241,8 @@ def make_selection_of_intfs(config_params):
     select_intf_list=total_intf_list;
 
     # Writing the exact interferograms used in this run. 
+    record_file="F"+swath+"/"+config_params.ts_output_dir+"/"+"intf_record.txt";
+    ofile=open(record_file,'w');
     ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_list)) );
     for item in select_intf_list:
         ofile.write("%s\n" % (item) );
