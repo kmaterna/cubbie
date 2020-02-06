@@ -29,43 +29,19 @@ def write_super_master_batch_config(masterid):
     print("Writing master_image into batch.config");
     return;
 
-
 def get_list_of_intfs(config_params):
-    # This is where some hand-picking takes place
-    select_intf_list=[];
+    # This is mechanical: just takes the list of interferograms in intf_all. 
     total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
-    # total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/2015349_2017338/unwrap.grd");
-    # total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/2019100_2019112/unwrap.grd");
-
-
-    # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
-    # THIS DEPENDS ON YOUR CONFIG SETTINGS
-    # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
-    # FEB 2020
-    select_criterion=0.8; # 3+ years, 2+ years, 1+ year
-
-    for item in total_intf_list:
-        dates = item.split("/")[-2];
-        year1 = dates[0:4];
-        year2 = dates[8:12];
-        day1  = str(int(dates[4:7])+1);
-        day2  = str(int(dates[12:15])+1);
-        date1 = dt.datetime.strptime(year1+day1,"%Y%j")
-        date2 = dt.datetime.strptime(year2+day2,"%Y%j")
-        deltat = date2-date1
-        if deltat.days > select_criterion*0.9*365: # a year plus or minus a month
-            select_intf_list.append(item);
-
-    print("Out of %d possible interferograms, we are trying to use %d" % (len(total_intf_list), len(select_intf_list)) );
-    return select_intf_list;
-
-
-
+    return total_intf_list;
 
 def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
     # This works for both F1 and F2. You should run whichever swath has the reference point first. 
     # This will break for F3, because we need the F3-F2 offset and the F2-F1 offset. 
+    # Should write an output file that shows which interferograms were unsuccessfully referenced. 
     output_dir="F"+swath+"/"+ref_dir;
+    errors_file="F"+swath+"/"+ref_dir+"/errors.txt"
+    ofile=open(errors_file,'w');
+    error_count=0;
     print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_list), output_dir) );
 
     for item in intf_list:
@@ -97,7 +73,9 @@ def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_d
                 print("n is %d and %d" % (zvalue_2npi_12, zvalue_2npi_23) );
                 zvalue = zvalue_pixel+zvalue_2npi_12*-2*np.pi+zvalue_2npi_23*-2*np.pi;
             else: # we don't have enough data to do the referencing.
-                print("skipping making ref_unwrapped for %s " % item)
+                print("skipping making ref_unwrapped for %s " % item);
+                ofile.write("%s\n" % (item) );
+                error_count=error_count+1; 
                 continue;
 
         outname=output_dir+"/"+intf_name+"_"+individual_name;
@@ -106,6 +84,10 @@ def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_d
         referenced_zdata = apply_reference_value(xdata, ydata, zdata, zvalue);
         netcdf_read_write.produce_output_netcdf(xdata, ydata, referenced_zdata, 'phase', outname); 
     print("Done making reference unwrapped")
+    total_intf_list=glob.glob("F"+swath+"/"+ref_dir+"/*unwrap.grd");
+    print("%s contains %d files " % (ref_dir, len(total_intf_list)) );
+    print("%s files were missed due to referencing errors" % (error_count) );
+    ofile.close();
     return;
 
 def get_n_2pi(file1, file2):
@@ -137,7 +119,7 @@ def get_reference_value(swath, ref_swath, rowref, colref, item):
         # ofile.close();
     else:
         reference_value=np.nan;
-        print("Skipping %s because we can't find it in F1" % item)
+        print("Skipping %s because we can't find it in F%s" % (item, str(ref_swath)) );
     return reference_value;
 
 
@@ -150,9 +132,48 @@ def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
         colref=int(ref_idx.split('/')[1])
     else:
         rowref=0; colref=0;
-        # Here we will run ll2ra in the future. 
+        # Here we will run ll2ra in the future. This is a later project. 
+    print("Reference pixel: swath = %s, index = [%d, %d] " % (ref_swath, rowref, colref) );
     return rowref, colref;
 
 
+
+def make_selection_of_intfs(config_params):
+
+    record_file="F"+config_params.swath+"/"+config_params.ts_output_dir+"/"+"intf_record.txt";
+    ofile=open(record_file,'w');
+
+    total_intf_list=glob.glob("F"+config_params.swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");
+
+    # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING. 
+    # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
+    # THIS DEPENDS ON YOUR CONFIG SETTINGS
+    # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
+    # FEB 2020
+    # select_criterion=0.8; # 3+ years, 2+ years, 1+ year
+
+    # for item in total_intf_list:
+    #     dates = item.split("/")[-2];
+    #     year1 = dates[0:4];
+    #     year2 = dates[8:12];
+    #     day1  = str(int(dates[4:7])+1);
+    #     day2  = str(int(dates[12:15])+1);
+    #     date1 = dt.datetime.strptime(year1+day1,"%Y%j")
+    #     date2 = dt.datetime.strptime(year2+day2,"%Y%j")
+    #     deltat = date2-date1
+    #     if deltat.days > select_criterion*0.9*365: # a year plus or minus a month
+    #         select_intf_list.append(item);  
+    #  print("Out of %d possible interferograms, we are trying to use %d" % (len(total_intf_list), len(select_intf_list)) );
+
+    # THIS IS WHERE YOU WILL MAKE CHANGES
+    select_intf_list=total_intf_list[0:50];
+
+    # Writing the exact interferograms used in this run. 
+    ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_list)) );
+    for item in select_intf_list:
+        ofile.write("%s\n" % (item) );
+    ofile.close();
+
+    return select_intf_list; 
 
 

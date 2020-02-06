@@ -17,7 +17,7 @@ import stack_corr
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','swath','startstage','endstage','ref_swath','ref_loc','ref_idx',
     'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
-    'start_time','end_time','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_output_dir']);
+    'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_parent_dir','ts_output_dir']);
 
 def read_config():
     ################################################
@@ -53,14 +53,16 @@ def read_config():
     sbas_smoothing = config.getfloat('py-config','sbas_smoothing');
     start_time = config.getint('py-config','start_time');
     end_time = config.getint('py-config','end_time');
+    intf_timespan = config.get('py-config','intf_timespan');
     gps_file = config.get('py-config','gps_file');
     flight_angle = config.getfloat('py-config','flight_angle');
     look_angle = config.getfloat('py-config','look_angle');
     skip_file = config.get('py-config','skip_file');    
     ref_dir = config.get('py-config','ref_dir');
+    ts_parent_dir = config.get('py-config','ts_parent_dir');
     ts_output_dir = config.get('py-config','ts_output_dir');
 
-    print("Running sentinel stacking processing, starting with stage %d" % startstage);
+    print("Running stack processing, starting with stage %d" % startstage);
             
     # enforce startstage <= endstage
     if endstage < startstage:
@@ -70,8 +72,8 @@ def read_config():
     config_params=Params(config_file=config_file_orig,SAT=SAT,wavelength=wavelength,swath=swath,startstage=startstage,endstage=endstage,
         ref_swath=ref_swath,ref_loc=ref_loc,ref_idx=ref_idx,ts_type=ts_type,solve_unwrap_errors=solve_unwrap_errors,
         detrend_atm_topo=detrend_atm_topo,gacos=gacos,aps=aps,sbas_smoothing=sbas_smoothing,nsbas_min_intfs=nsbas_min_intfs,
-        start_time=start_time,end_time=end_time,gps_file=gps_file,flight_angle=flight_angle,look_angle=look_angle,skip_file=skip_file,
-        ref_dir=ref_dir,ts_output_dir=ts_output_dir);
+        start_time=start_time,end_time=end_time,intf_timespan=intf_timespan, gps_file=gps_file,flight_angle=flight_angle,look_angle=look_angle,
+        skip_file=skip_file,ref_dir=ref_dir,ts_parent_dir=ts_parent_dir,ts_output_dir=ts_output_dir);
 
     return config_params; 
 
@@ -82,7 +84,7 @@ def set_up_output_directories(config_params):
         return;
     if config_params.endstage<0:   
         return;
-    call(['mkdir','-p','F'+config_params.swath+'/stacking'],shell=False);
+    call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ts_parent_dir],shell=False);
     call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ref_dir],shell=False);
     call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ts_output_dir],shell=False);
     return;
@@ -103,21 +105,31 @@ def collect_unwrap_ref(config_params):
     # Now we coalesce the files and reference them to the right value/pixel
     stacking_utilities.make_referenced_unwrapped(intfs, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
 
-    # We make signal_spread here. 
-    stack_corr.drive_unwrap_grd_calculation(config_params.swath, config_params.ref_dir, config_params.ts_output_dir);
     return;
 
 
 # --------------- STEP 2: Velocities! ------------ # 
-def velocities(config_params):
+def vels_and_ts(config_params):
     if config_params.startstage>2:  # if we're starting after, we don't do this. 
         return;
     if config_params.endstage<2:   # if we're ending at intf, we don't do this. 
         return;
 
+    # This is where the hand-picking takes place. 
+    # Ex: manual excludes, manual selects, long intfs only, ramp-removed, atm-removed, etc. 
+    intfs = stacking_utilities.make_selection_of_intfs(config_params);
+    
+    # We make signal_spread here. Can be commented if you already have it. 
+    # stack_corr.drive_signal_spread_calculation(config_params.swath, config_params.ref_dir, intfs, config_params.ts_output_dir);
+
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(config_params.swath, config_params.ref_dir, config_params.wavelength, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(config_params.swath, config_params.ref_dir, intfs, config_params.wavelength, config_params.ts_output_dir);
+    if config_params.ts_type=="NSBAS":
+        print("Running velocities and time series by NSBAS");
+
+
+    sys.exit(0);
 
     return; 
 
