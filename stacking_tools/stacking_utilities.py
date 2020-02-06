@@ -29,14 +29,14 @@ def write_super_master_batch_config(masterid):
 
 def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
-    # The selection takes place in a later step (make_selection_of_intfs). 
+    # The smarter selection takes place in make_selection_of_intfs. 
     total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
     return total_intf_list;
 
 def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
     # This works for both F1 and F2. You should run whichever swath has the reference point first. 
     # This will break for F3, because we need the F3-F2 offset and the F2-F1 offset. 
-    # Should write an output file that shows which interferograms were unsuccessfully referenced. 
+    # Writes an output file that shows which interferograms were unsuccessfully referenced. 
     output_dir="F"+swath+"/"+ref_dir;
     errors_file="F"+swath+"/"+ref_dir+"/errors.txt"
     ofile=open(errors_file,'w');
@@ -137,34 +137,25 @@ def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
 
 
 
-def get_rows_cols(ts_points_file):
-    lons, lats, names = read_ts_points_file(ts_points_file);
-    swaths=[]; rows=[]; cols=[]; names_new=[]; lons_new=[]; lats_new=[];
+def get_set_rows_cols(ts_points_file):
+    #Construct the swaths, rows, and columns for each TS point
+    lons, lats, names, swaths, rows, cols = read_ts_points_file(ts_points_file);
+
     if len(lons)==0:
         print("No points requested. Ending without doing any time series calculations.");
         return swaths, rows, cols, names, lons, lats;
 
-    problem_cases=[];
     for i in range(len(lons)):
-        if i==8:
-            continue;  # fix this problem after lunch. 
-        print("Computing swath/row/col for %f %f " % (lons[i], lats[i]) );
-        swath, row, col = get_swath_row_col(lons[i], lats[i]);
-        if row!=-1:
-            swaths.append(swath);
-            rows.append(row);
-            cols.append(col);
-            names_new.append(names[i]);
-            lons_new.append(lons[i]);
-            lats_new.append(lats[i]);
+        if swaths[i] != '':
+            print("Skipping %s: we already have its row/col"  % (names[i]) );
 
-    print(swaths);
-    print(rows);
-    print(cols);
-    print(names_new);
-    print(lons_new);
-    print(lats_new);
-    return swaths, rows, cols, names_new, lons_new, lats_new;
+        if swaths[i] == '': # If we don't have the existing swath/row/col of the point, then we compute it. 
+            print("Computing swath/row/col for %f %f " % (lons[i], lats[i]) );
+            swath, row, col = get_swath_row_col(lons[i], lats[i]);
+            replace_line_ts_points_file(ts_points_file, names[i], swath, row, col);
+
+    lons, lats, names, swaths, rows, cols = read_ts_points_file(ts_points_file);
+    return lons, lats, names, swaths, rows, cols;
 
 
 def get_swath_row_col(lon, lat):
@@ -177,6 +168,7 @@ def get_swath_row_col(lon, lat):
         print("Trying %f %f in swath %s " % (lon, lat, try_swath) );
         trans_dat="F"+try_swath+"/topo/trans.dat";
         example_grd=glob.glob("F"+try_swath+"/stacking/ref_unwrapped/*_unwrap.grd")[0];
+        # Assumes there are some unwrapped referenced grd files hanging around to be used. 
         try:
             [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, lon, lat);
         except ValueError:
@@ -190,21 +182,45 @@ def get_swath_row_col(lon, lat):
 
 
 def read_ts_points_file(ts_points_file):
-    lons=[]; lats=[]; names=[];
+    lons=[]; lats=[]; names=[]; swaths=[]; rows=[]; cols=[];
     if os.path.isfile(ts_points_file):
         ifile=open(ts_points_file,'r');
         for line in ifile:
             temp=line.split();
             lons.append(float(temp[0]));
             lats.append(float(temp[1]));
-            if len(temp)==3:
-                names.append(temp[2]);
+            names.append(temp[2]);
+            if len(temp)>3:
+                swaths.append(temp[3]);
+                rows.append(int(temp[4]));
+                cols.append(int(temp[5]));
             else:
-                names.append('');
+                swaths.append('');
+                rows.append('');
+                cols.append('');
         print("Computing time series at %d geographic points " % (len(lons)) );
     else:
         print("No ts_points_file %s. Not computing time series at points. " % ts_points_file);    
-    return lons, lats, names;
+    return lons, lats, names, swaths, rows, cols;
+
+
+
+def replace_line_ts_points_file(ts_points_file, name, swath, row, col):
+    # Careful: this function re-writes a certain line of the file. 
+    ifile=open(ts_points_file,'r');
+    ofile=open("temp.txt",'w');
+    for line in ifile:
+        if name in line:
+            temp=line.split();
+            ofile.write("%s %s %s %s %s %s\n" % (temp[0], temp[1], temp[2], swath, row, col) );
+        else:
+            ofile.write(line);
+    ifile.close();
+    ofile.close();
+    subprocess.call(['mv','temp.txt',ts_points_file],shell=False);
+    return;
+
+
 
 
 def make_selection_of_intfs(config_params, swath=0):

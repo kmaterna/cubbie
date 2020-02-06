@@ -21,13 +21,7 @@ def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, waveleng
     return;
 
 def drive_ts_nsbas(config_params):
-	swaths, rows, cols, names, lons, lats = stacking_utilities.get_rows_cols(config_params.ts_points_file);
-	# swaths = ['1', '1', '2', '1', '1', '1', '3', '1', '1', '2'];
-	# lons = [748, 843, 707, 345, 7, 1366, 2182, 1752, 2971, 1252];
-	# lats = [748, 843, 707, 345, 7, 1366, 2182, 1752, 2971, 1252];
-	# rows = [748, 843, 707, 345, 7, 1366, 2182, 1752, 2971, 1252];
-	# cols = [321, 643, 565, 666, 258, 603, 295, 121, 334, 685]; # testing purposes
-	# names=['Ref','Point0','Point1','Point2','Point3','Point4','Point5','Point6','Point7','Point8'];
+	lons, lats, names, swaths, rows, cols = stacking_utilities.get_set_rows_cols(config_params.ts_points_file);
 	if len(rows)==0:
 		return;
 	drive_ts_nsbas_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
@@ -189,8 +183,11 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 
 def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir):
 
+	mean_disp = np.nanmean(m_cumulative);
+	plotting_ts = [i-mean_disp for i in m_cumulative];
+
 	plt.figure();
-	plt.plot(dts,m_cumulative,'b.');
+	plt.plot(dts,plotting_ts,'b.');
 	plt.xlabel("Time");
 	plt.ylabel("Displacement (mm)");
 	plt.title(str(swath)+' '+str(row)+' '+str(col)+' '+str(lon)+' '+str(lat)+' '+str(name));
