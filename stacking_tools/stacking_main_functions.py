@@ -64,7 +64,7 @@ def read_config():
     ts_parent_dir = config.get('py-config','ts_parent_dir');
     ts_output_dir = config.get('py-config','ts_output_dir');
 
-    print("Running stack processing, starting with stage %d" % startstage);
+    print("Running velocity and time series processing, starting with stage %d" % startstage);
             
     # enforce startstage <= endstage
     if endstage < startstage:
@@ -89,33 +89,56 @@ def set_up_output_directories(config_params):
     call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ts_parent_dir],shell=False);
     call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ref_dir],shell=False);
     call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ts_output_dir],shell=False);
+    call(['cp','stacking.config','F'+config_params.swath+'/'+config_params.ts_output_dir],shell=False);
     return;
 
 
-# --------------- STEP 1: Moving unwrap_ref.grd ------------ # 
-def collect_unwrap_ref(config_params):
+# --------------- STEP 1: Make corrections ------------ # 
+def make_corrections(config_params):
     if config_params.startstage>1:  # if we're starting after, we don't do this. 
         return;
     if config_params.endstage<1:   # if we're ending at intf, we don't do this. 
+        return;    
+    # This is where we would implement GACOS, detrending, other atmospheric corrections, or unwrapping errors. 
+    # Step 3A: Solve or exclude unwrapping errors
+    # Step 3B: Try APS-based atmospheric correction
+    # Step 3C: Detrend topo-correlated atmosphere   
+    # if config_params.solve_unwrap_errors:
+    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    # if config_params.gacos:
+    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    # if config_params.aps:
+    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
+    # if config_params.detrend_atm_topo:
+    #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    return;
+
+
+# --------------- STEP 2: Make ref_unwrap.grd ------------ # 
+
+def collect_unwrap_ref(config_params):
+    if config_params.startstage>2:  # if we're starting after, we don't do this. 
+        return;
+    if config_params.endstage<2:   # if we're ending at intf, we don't do this. 
         return;
 
     # Very general, takes all files and doesn't discriminate. 
-    intfs=stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files=stacking_utilities.get_list_of_intf_all(config_params);
 
     # Here we need to get ref_idx if we don't have it already
     rowref, colref = stacking_utilities.get_ref_index(config_params.ref_swath, config_params.swath, config_params.ref_loc, config_params.ref_idx);
 
     # Now we coalesce the files and reference them to the right value/pixel
-    stacking_utilities.make_referenced_unwrapped(intfs, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
+    stacking_utilities.make_referenced_unwrapped(intf_files, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
 
     return;
 
 
-# --------------- STEP 2: Velocities! ------------ # 
+# --------------- STEP 3: Velocities and Time Series! ------------ # 
 def vels_and_ts(config_params):
-    if config_params.startstage>2:  # if we're starting after, we don't do this. 
+    if config_params.startstage>3:  # if we're starting after, we don't do this. 
         return;
-    if config_params.endstage<2:   # if we're ending at intf, we don't do this. 
+    if config_params.endstage<3:   # if we're ending at intf, we don't do this. 
         return;
 
     # This is where the hand-picking takes place. 
@@ -133,22 +156,22 @@ def vels_and_ts(config_params):
         # sbas.drive_velocity_sbas(config_params.swath, intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
         # sbas.drive_ts_sbas(config_params);
     if config_params.ts_type=="NSBAS":
-        print("Running velocities and time series by NSBAS");
-        # nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
-        nsbas.drive_ts_nsbas(config_params);
+        # print("Running velocities and time series by NSBAS");
+        nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+        # nsbas.drive_ts_nsbas(config_params);
 
     return; 
 
 
-# --------------- STEP 3: Geocoding ------------ # 
+# --------------- STEP 4: Geocoding Velocities ------------ # 
 def geocode_vels(config_params):
-    if config_params.startstage>3:  # if we're starting after, we don't do this. 
+    if config_params.startstage>4:  # if we're starting after, we don't do this. 
         return;
-    if config_params.endstage<3:   # if we're ending at intf, we don't do this. 
+    if config_params.endstage<4:   # if we're ending at intf, we don't do this. 
         return; 
 
     directory = config_params.ts_output_dir
-    vel_name = "velo_simple_stack"
+    vel_name = "velo_nsbas"
 
     outfile=open("geocoding.txt",'w');
     outfile.write("#!/bin/bash\n");
@@ -159,55 +182,12 @@ def geocode_vels(config_params):
     print("Ready to call geocoding.txt.")
     call("chmod +x geocoding.txt",shell=True);
     call("./geocoding.txt",shell=True); 
+    
     return; 
 
 
-# --------------- STEP 6: Make SBAS ------------ # 
-def do_timeseries(config_params):
-    if config_params.startstage>6:  # if we're starting after, we don't do this. 
-        return;
-    if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
-        return;
-
-    # Making a few OPTIONAL image corrections before doing time series. 
-    # Step 1: Set reference pixel
-    # Step 2: Solve or exclude unwrapping errors
-    # Step 3B: Try APS-based atmospheric correction
-    # Step 3C: Detrend topo-correlated atmosphere
-    # prior_staging_directory='intf_all/unwrap.grd'  # the direcotry where interferograms live. 
-    # post_staging_directory='intf_all/unwrap.grd'
-    # if config_params.choose_refpixel:
-    #     prior_staging_directory=prior_staging_directory;
-    #     post_staging_directory='intf_all/referenced_unwrap.grd';
-    #     rowref=237; colref=172;  # bypass these function calls for time reasons.
-    #     # [rowref, colref] = choose_reference_pixel.main_function(prior_staging_directory); # this takes a minute or two. 
-    #     # sentinel_utilities.make_referenced_unwrapped(rowref, colref, prior_staging_directory, post_staging_directory); # this takes <1 minute
-    # if config_params.solve_unwrap_errors:
-    #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/unwrap_corrected.grd';
-    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-    # if config_params.gacos:
-    #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/gacos_corrected.grd';
-    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-    # if config_params.aps:
-    #     prior_staging_directory=post_staging_directory;
-    #     post_staging_directory='intf_all/aps_unwrap.grd';
-    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
-    # # if config_params.detrend_atm_topo:
-    # #     prior_staging_directory=post_staging_directory;
-    # #     post_staging_directory='intf_all/atm_topo_corrected.grd';
-    # #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
-
     # For later plotting, we want to project available GPS into LOS. 
     # gps_into_LOS.top_level_driver(config_params, rowref, colref);
-
-    # NOTE: 
-    # Should copy batch.config into the nsbas directory
-    # Should implement reference pixel at end of GACOS and unwrapping_errors
-
-    return;
-
 
 
 

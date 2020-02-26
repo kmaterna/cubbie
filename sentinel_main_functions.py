@@ -461,25 +461,5 @@ def unwrapping(config_params):
 
 
 
-# --------------- STEP 6: Make SBAS ------------ # 
-def do_timeseries(config_params):
-    if config_params.startstage>6:  # if we're starting after, we don't do this. 
-        return;
-    if config_params.endstage<6:   # if we're ending at intf, we don't do this. 
-        return;
-
-    # # For later plotting, we want to project available GPS into LOS. 
-    # rowref=1524-621;
-    # colref=32;
-    # gps_into_LOS.top_level_driver(config_params, rowref, colref);
-
-    # # NOTE: 
-    # # Should copy batch.config into the nsbas directory
-    # # Should implement reference pixel at end of GACOS and unwrapping_errors
-
-    return;
-
-
-
 
 

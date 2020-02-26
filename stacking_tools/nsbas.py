@@ -72,10 +72,11 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 		signal_spread = signal_spread_data[i,j];
 		pixel_value = intf_tuple.zvalues[:,i,j];
 		if signal_spread > nsbas_good_perc: # if we want a calculation for that day... 
-			if np.mod(i,10) == 0:  # this is to speed up the calculation. 
-				vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
-			else:
-				vel[i][j] = np.nan;
+			vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
+			# if np.mod(i,10) == 0:  # this is to speed up the calculation. 
+			# 	vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
+			# else:
+			# 	vel[i][j] = np.nan;
 		else:
 			vel[i,j] = np.nan;
 		c=c+1;
