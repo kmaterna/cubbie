@@ -113,9 +113,6 @@ def get_reference_value(swath, ref_swath, rowref, colref, item):
     if swath==ref_swath:
         [xdata,ydata,zdata] = netcdf_read_write.read_grd_xyz(item);
         reference_value = zdata[rowref][colref];
-        # ofile=open(saving_file,'a');
-        # ofile.write("%s %d %d %f %f\n" % (item, rowref, colref, reference_value, 0.0 ));
-        # ofile.close();
     else:
         reference_value=np.nan;
         print("Skipping %s because we can't find it in F%s" % (item, str(ref_swath)) );
@@ -123,9 +120,10 @@ def get_reference_value(swath, ref_swath, rowref, colref, item):
 
 
 def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
-    # if swath != ref_swath:
-    #     rowref, colref = 0, 0;  # this is a degenerate case, handled in make_referenced_unwrapped function. 
-    # else:
+    # THIS IS A DEGENERATE FUNCTION. 
+    # IT DOESN'T DO ANYTHING RIGHT NOW. 
+    # IT WILL BE CODED LATER. 
+    # I have thus far been hard-coding the reference idx in the config file. 
     if ref_idx != []:  # if we already have an index location... 
         rowref=int(ref_idx.split('/')[0])
         colref=int(ref_idx.split('/')[1])
@@ -136,15 +134,49 @@ def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
     return rowref, colref;
 
 
+def test_geocoding(lon, lat):
+    # This tests whether the geocoding returns the same value as it started with. 
+    try_swaths = ["1","2","3"];
+    swath=-1;
+    row=-1;
+    col=-1;
+    for try_swath in try_swaths:
+        print("Trying %f %f in swath %s " % (lon, lat, try_swath) );
+        trans_dat="F"+try_swath+"/topo/trans.dat";
+        example_grd=glob.glob("F"+try_swath+"/stacking/ref_unwrapped/*_unwrap.grd")[0];
+        # Assumes there are some unwrapped referenced grd files hanging around to be used. 
+        [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, example_grd, lon, lat);
+        if np.isnan(ra) or np.isnan(az):
+            print("WARNING: Cannot Find %f %f in swath %s." % (lon, lat, try_swath) );
+            continue;
+        else:
+            [row, col] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az); 
+            swath=try_swath;
+            print("SUCCESS: Found %f %f in Swath %s, Row %d, Col %d" % (lon, lat, swath, row, col) ); 
+            break;
 
-def get_set_rows_cols(ts_points_file):
-    #Construct the swaths, rows, and columns for each TS point
+    [lon_return, lat_return] = get_ra_rc_from_ll.get_ll_from_ra(trans_dat, ra, az);  # this is a test. 
+
+    ofile=open("geocode_exp.txt",'a');
+    ofile.write("START: This point started as: %f %f \n" % (lon, lat) );
+    ofile.write("MIDDLE: This point converted to: %s %d %d \n" % (swath, row, col) );
+    ofile.write("FINISH: This point converted back to: %f %f \n\n" % (lon_return, lat_return) );
+    ofile.close();
+    
+    return;
+
+
+def get_rows_cols(ts_points_file):
+    # Get a group of swaths, rows, and columns, one for each TS point
+    # In the past, I had tried to make this write a cache to save time, but right now it's not necessary. 
+    # If I wanted, I could refactor this to make just three computations (F1, F2, F3) if I really wanted. 
+    # Since ra_from_ll works on arrays and returns nans in the right places. 
     lons, lats, names, swaths, rows, cols = read_ts_points_file(ts_points_file);
 
     if len(lons)==0:
         print("No points requested. Ending without doing any time series calculations.");
         return swaths, rows, cols, names, lons, lats;
-
+    
     for i in range(len(lons)):
         if swaths[i] != '':
             print("Skipping %s: we already have its row/col"  % (names[i]) );
@@ -152,9 +184,17 @@ def get_set_rows_cols(ts_points_file):
         if swaths[i] == '': # If we don't have the existing swath/row/col of the point, then we compute it. 
             print("Computing swath/row/col for %f %f " % (lons[i], lats[i]) );
             swath, row, col = get_swath_row_col(lons[i], lats[i]);
-            replace_line_ts_points_file(ts_points_file, names[i], swath, row, col);
+            swaths[i]=swath;
+            rows[i]=row;
+            cols[i]=col;
 
-    lons, lats, names, swaths, rows, cols = read_ts_points_file(ts_points_file);
+    print("Requesting time series for the following pixels:");
+    print(lons)
+    print(lats)
+    print(names)
+    print(swaths)
+    print(rows)
+    print(cols)
     return lons, lats, names, swaths, rows, cols;
 
 
@@ -169,35 +209,51 @@ def get_swath_row_col(lon, lat):
         trans_dat="F"+try_swath+"/topo/trans.dat";
         example_grd=glob.glob("F"+try_swath+"/stacking/ref_unwrapped/*_unwrap.grd")[0];
         # Assumes there are some unwrapped referenced grd files hanging around to be used. 
-        try:
-            [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, lon, lat);
-        except ValueError:
+        [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, example_grd, lon, lat);
+        if np.isnan(ra) or np.isnan(az):
             print("WARNING: Cannot Find %f %f in swath %s." % (lon, lat, try_swath) );
             continue;
-        [row, col] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az); 
-        swath=try_swath;
-        print("SUCCESS: Found %f %f in Swath %s, Row %d, Col %d" % (lon, lat, swath, row, col) );
-        break;
+        else:
+            [row, col] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az); 
+            swath=try_swath;
+            print("SUCCESS: Found %f %f in Swath %s, Row %d, Col %d" % (lon, lat, swath, row, col) ); 
+            break;
     return swath, row, col;
 
 
+
+
 def read_ts_points_file(ts_points_file):
+    # Here we can use several formats simultaneously. Point name is not required. 
+    #Format 1:  -117.76 35.88 2 313 654 coso1
+    #Format 2:  -117.76 35.90 coso2
+    #Format 3:  -117.76 35.92
     lons=[]; lats=[]; names=[]; swaths=[]; rows=[]; cols=[];
     if os.path.isfile(ts_points_file):
         ifile=open(ts_points_file,'r');
         for line in ifile:
             temp=line.split();
-            lons.append(float(temp[0]));
-            lats.append(float(temp[1]));
-            names.append(temp[2]);
-            if len(temp)>3:
-                swaths.append(temp[3]);
-                rows.append(int(temp[4]));
-                cols.append(int(temp[5]));
-            else:
+            if len(temp)==2:  # we have provided the lat/lon
+                lons.append(float(temp[0]));
+                lats.append(float(temp[1]));
+                names.append(temp[0]+'.'+temp[1]);  # giving a name based on the latlon
                 swaths.append('');
                 rows.append('');
-                cols.append('');
+                cols.append('');                
+            if len(temp)==3:  # we have provided the lat/lon/name
+                lons.append(float(temp[0]));
+                lats.append(float(temp[1]));
+                names.append(temp[2]);
+                swaths.append('');
+                rows.append('');
+                cols.append('');                
+            if len(temp)==6:  # we have provided the lat/lon/swath/row/col/name
+                lons.append(float(temp[0]));
+                lats.append(float(temp[1]));
+                swaths.append(temp[2]);
+                rows.append(int(temp[3]));
+                cols.append(int(temp[4]));
+                names.append(temp[5]);
         print("Computing time series at %d geographic points " % (len(lons)) );
     else:
         print("No ts_points_file %s. Not computing time series at points. " % ts_points_file);    
@@ -210,7 +266,7 @@ def replace_line_ts_points_file(ts_points_file, name, swath, row, col):
     ifile=open(ts_points_file,'r');
     ofile=open("temp.txt",'w');
     for line in ifile:
-        if name in line:
+        if ' '+name in line:
             temp=line.split();
             ofile.write("%s %s %s %s %s %s\n" % (temp[0], temp[1], temp[2], swath, row, col) );
         else:
@@ -232,12 +288,13 @@ def make_selection_of_intfs(config_params, swath=0):
 
     total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");
 
+    # ------------------------------ # 
     # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING. 
     # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
+    # WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT. 
     # THIS DEPENDS ON YOUR CONFIG SETTINGS
     # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
     # FEB 2020
-    # ANOTHER THING: USE START DATE AND STOP DATE
     # select_criterion=0.8; # 3+ years, 2+ years, 1+ year
 
     # for item in total_intf_list:
@@ -254,6 +311,8 @@ def make_selection_of_intfs(config_params, swath=0):
     #  print("Out of %d possible interferograms, we are trying to use %d" % (len(total_intf_list), len(select_intf_list)) );
 
     # THIS IS WHERE YOU WILL MAKE CHANGES
+    # ------------------------------ # 
+
     select_intf_list=total_intf_list;
 
     # Writing the exact interferograms used in this run. 

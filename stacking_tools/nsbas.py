@@ -21,18 +21,18 @@ def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, waveleng
     return;
 
 def drive_ts_nsbas(config_params):
-	lons, lats, names, swaths, rows, cols = stacking_utilities.get_set_rows_cols(config_params.ts_points_file);
+	lons, lats, names, swaths, rows, cols = stacking_utilities.get_rows_cols(config_params.ts_points_file);
 	if len(rows)==0:
 		return;
-	drive_ts_nsbas_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
-	# drive_ts_nsbas_swath(config_params, '2', rows, cols, swaths, names, config_params.sbas_smoothing, config_params.wavelength);
-	# drive_ts_nsbas_swath(config_params, '3', rows, cols, swaths, names, config_params.sbas_smoothing, config_params.wavelength);
+	# drive_ts_nsbas_one_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
+	drive_ts_nsbas_one_swath(config_params, '2', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
+	# drive_ts_nsbas_one_swath(config_params, '3', rows, cols, swaths, names, config_params.sbas_smoothing, config_params.wavelength);
 	return;
 
 
 
 # FOR A GIVEN SWATH, LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
-def drive_ts_nsbas_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
+def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
 	rows=np.array(rows);
 	cols=np.array(cols);
 	names=np.array(names);
