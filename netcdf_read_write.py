@@ -108,7 +108,8 @@ def give_metrics_on_grd(filename):
 # --------------- WRITING ------------------- # 
 
 def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
-	# # Write the netcdf velocity grid file.  
+	# # Write the netcdf velocity grid file. 
+	print("Writing output netcdf to file %s " % netcdfname); 
 	f=netcdf.netcdf_file(netcdfname,'w');
 	f.history = 'Created for a test';
 	f.createDimension('x',len(xdata));
@@ -157,14 +158,14 @@ def flip_if_necessary(filename):
 	return;
 
 
-def produce_output_plot(netcdfname, plottitle, plotname, cblabel):
+def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0):
 	# Read in the dataset
 	[xread, yread, zread] = read_grd_xyz(netcdfname);
 
 	# Make a plot
 	fig = plt.figure(figsize=(7,10));
 	ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
-	plt.imshow(zread,aspect=1.0);
+	plt.imshow(zread,aspect=aspect, cmap='rainbow');
 	plt.gca().invert_yaxis()  # for imshow, rows get labeled in the downward direction
 	# plt.gca().get_xaxis().set_ticks([]);
 	# plt.gca().get_yaxis().set_ticks([]);
