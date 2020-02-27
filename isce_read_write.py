@@ -75,9 +75,11 @@ def read_phase_data(GDALfilename):
 
 # ----------- WRITING FUNCTIONS ------------- # 
 
-def write_scalar_data(data, nx, ny, dtype, filename):
+def write_isce_data(data, nx, ny, dtype, filename):
     # This function writes ISCE data into a file with given filename
     # Plus creating an associated .vrt and .xml file
+    # If DTYPE=="FLOAT": you're writing scalar data
+    # IF DTYPE=="CFLOAT": you're writing complex data
     import isce
     import isceobj
     print("Writing data as file %s " % filename);
@@ -91,7 +93,6 @@ def write_scalar_data(data, nx, ny, dtype, filename):
     out.renderHdr()
     data.tofile(filename) # write file out
     return
-
 
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 
     datamin=None, datamax=None,draw_colorbar=True,colorbar_orientation="horizontal",background=None, outname=None):
