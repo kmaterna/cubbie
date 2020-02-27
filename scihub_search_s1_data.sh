@@ -162,7 +162,7 @@ echo "Input options:" $@ > $output_file
 echo "wget --no-check-certificate --user=kmaterna --password=access_data "$search_query0 >> $output_file
 
 # Execute the search using wget
-wget --no-check-certificate --user=kmaterna --password=access_data "$search_query0" -O ->> $output_file
+wget --no-check-certificate --auth-no-challenge --user=kmaterna --password=access_data "$search_query0" -O ->> $output_file
 num_results=`grep 'title>S1' $output_file | wc -l`
 
 
@@ -170,13 +170,13 @@ num_results=`grep 'title>S1' $output_file | wc -l`
 if [ $num_results -eq "100" ]; then
   echo "We have 100 results... automatically searching for results #100-200"
   search_query1=$search_query"&start=100&rows=100"
-  wget --no-check-certificate --user=kmaterna --password=access_data "$search_query1" -O ->> $output_file
+  wget --no-check-certificate --auth-no-challenge --user=kmaterna --password=access_data "$search_query1" -O ->> $output_file
 fi
 num_results=`grep 'title>S1' $output_file | wc -l`
 if [ $num_results -eq "200" ]; then
   echo "We have 100 results... automatically searching for results #200-300"
   search_query2=$search_query"&start=200&rows=100"
-  wget --no-check-certificate --user=kmaterna --password=access_data "$search_query2" -O ->> $output_file
+  wget --no-check-certificate --auth-no-challenge --user=kmaterna --password=access_data "$search_query2" -O ->> $output_file
 fi
 
 

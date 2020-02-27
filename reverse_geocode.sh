@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# NOTE: This only works on a single swath
+# The more general version is located in get_ra_rc_from_ll.py
+# 
 # Reverse-geocode some GPS LOS velocities into RA coordinates
 # Run from the processing directory
 # Set the other directories up top. 

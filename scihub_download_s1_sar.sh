@@ -67,11 +67,11 @@ while read p; do
       echo "Downloading DATA/"$title
       wget -c --http-user=kmaterna@berkeley.edu --http-password=Access_d4t4 -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
 
-      cd DATA
-      unzip $title.zip
-      rm $title.SAFE/measurement/*-slc-vh-*.tiff
-      rm $title.zip
-      cd ../
+      # cd DATA
+      # unzip $title.zip
+      # rm $title.SAFE/measurement/*-slc-vh-*.tiff
+      # rm $title.zip
+      # cd ../
     else
       echo "Already in the data directory: Skipping "$title
     fi

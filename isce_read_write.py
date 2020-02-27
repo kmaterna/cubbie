@@ -7,8 +7,10 @@ from osgeo import gdal            ## GDAL support for reading virtual files
 
 
 
+# ----------- READING FUNCTIONS ------------- # 
 
 def read_complex_data(GDALfilename):
+    # Reads data into a 2D array where each element is a complex number. 
     print("Reading file %s " % GDALfilename);
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(1).ReadAsArray()

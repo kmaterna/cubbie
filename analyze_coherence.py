@@ -1,5 +1,5 @@
-# The purpose of this script is to see how unwrapping has proceeded. 
-# 
+# The purpose of this script is to run some diagnostics on the mean coherence. 
+# How did the coherence vary with other things, like perpendicular baseline and season? 
 
 import numpy as np 
 import matplotlib.pyplot as plt 
@@ -30,6 +30,7 @@ def write_corr_results(filename):
 		corr = corr.split()[0];
 		SLCs=check_output("ls "+item+"/*.SLC",shell=True); # THIS WILL BREAK IF USING PYTHON3.  USE PYTHON2. PROBLEM WITH BYTES vs STRING. 
 		# IN CHECK OUTPUT, THE RETURN VALUE IS A BYTES OBJECT IN PYTHON3. OOPS. 
+                # CAN I FIX THIS NOW? 
 		slc1=SLCs.split('\n')[0];
 		slc1=slc1.split('/')[-1];
 		slc2=SLCs.split()[1];
