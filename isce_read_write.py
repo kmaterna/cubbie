@@ -1,5 +1,13 @@
+"""
 # A set of functions that read and write vrt gdal grid files
 # Compatible with ISCE. 
+    read_complex_data(GDALfilename)
+    read_scalar_data(GDALfilename)
+    read_phase_data(GDALfilename)
+    write_isce_data(data, nx, ny, dtype, filename)
+    plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1....) 
+    plot_complex_data(GDALfilename,title="",aspect=1,....)
+"""
 
 import numpy as np 
 import matplotlib.pyplot as plt 
