@@ -29,15 +29,19 @@ def drive_ts_nsbas(config_params):
 	lons, lats, names, swaths, rows, cols = stacking_utilities.get_rows_cols(config_params.ts_points_file);
 	if len(rows)==0:
 		return;
-	# drive_ts_nsbas_one_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
+	drive_ts_nsbas_one_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
 	drive_ts_nsbas_one_swath(config_params, '2', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
-	# drive_ts_nsbas_one_swath(config_params, '3', rows, cols, swaths, names, config_params.sbas_smoothing, config_params.wavelength);
+	drive_ts_nsbas_one_swath(config_params, '3', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
 	return;
 
 
 
 # FOR A GIVEN SWATH, LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
 def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
+	outdir = "F"+select_swath+"/"+config_params.ts_output_dir+"/ts";
+	print("TS OUTPUT DIR IS: " + outdir)
+	call(['mkdir','-p',outdir],shell=False);
+	
 	rows=np.array(rows);
 	cols=np.array(cols);
 	names=np.array(names);
@@ -59,7 +63,7 @@ def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, na
 		pixel_value = intf_tuple.zvalues[:,select_rows[i],select_cols[i]];
 		vel, dts, m_cumulative = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, full_ts_return=True); 
 		m_cumulative=[i*-1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
-		nsbas_ts_outputs(dts, m_cumulative, select_swath, select_rows[i], select_cols[i], select_names[i], select_lons[i], select_lats[i], config_params.ts_output_dir);
+		nsbas_ts_outputs(dts, m_cumulative, select_swath, select_rows[i], select_cols[i], select_names[i], select_lons[i], select_lats[i], outdir);
 	return;
 
 
@@ -194,6 +198,8 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 # ------------ OUTPUT ------------ #
 
 def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir):
+	# This outdir is expected to be something like "F2/stacking/nsbas/ts". 
+	# It must exist before the function is called. 
 
 	mean_disp = np.nanmean(m_cumulative);
 	plotting_ts = [i-mean_disp for i in m_cumulative];
@@ -204,9 +210,9 @@ def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir)
 	plt.ylabel("Displacement (mm)");
 	plt.title(str(swath)+' '+str(row)+' '+str(col)+' '+str(lon)+' '+str(lat)+' '+str(name));
 	plt.ylim([-40,50]);
-	plt.savefig('F'+swath+'/'+outdir+'/'+str(name)+'_'+str(lon)+'_'+str(lat)+'_disp.eps');
+	plt.savefig(outdir+'/'+str(name)+'_'+str(lon)+'_'+str(lat)+'_disp.eps');
 
-	ofile=open('F'+swath+'/'+outdir+'/'+str(name)+'_'+str(row)+'_'+str(col)+'_record.txt','w');
+	ofile=open(outdir+'/'+str(name)+'_'+str(row)+'_'+str(col)+'_record.txt','w');
 	for i in range(len(dts)):
 		ofile.write("%s %f %f %s %d %d " % (name, lon, lat, swath, row, col) );
 		ofile.write(dt.datetime.strftime(dts[i],"%Y-%m-%d"));

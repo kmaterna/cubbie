@@ -157,8 +157,8 @@ def vels_and_ts(config_params):
         # sbas.drive_ts_sbas(config_params);
     if config_params.ts_type=="NSBAS":
         # print("Running velocities and time series by NSBAS");
-        nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
-        # nsbas.drive_ts_nsbas(config_params);
+        # nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+        nsbas.drive_ts_nsbas(config_params);
 
     return; 
 
