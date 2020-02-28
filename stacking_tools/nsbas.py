@@ -15,7 +15,12 @@ def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, waveleng
     signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
     intf_tuple = rmd.reader(intfs); 
     velocities, x, y = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
-    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_nsbas.grd')
+    
+    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', '/Users/kmaterna/Documents/testvelo/F'+swath+'_'+'velo_nsbas.grd');  # just in case we screw up
+    rwr.produce_output_plot('/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.grd', 'LOS Velocity',
+        '/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.png', 'velocity (mm/yr)');
+
+    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_nsbas.grd');
     rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_nsbas.grd', 'LOS Velocity',
         'F'+swath+'/'+outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
     return;
@@ -63,6 +68,8 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an NSBAS matrix describing each image that's a real number (not nan). 	
 	print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)) );
+	print("Started at: ");
+	print(dt.datetime.now());
 	vel = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
 	c = 0;
 	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
@@ -82,7 +89,11 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 		c=c+1;
 		if np.mod(c,10000)==0:
 			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
+		# if c==30000:
+			# break;
 		it.iternext();
+	print("Finished at: ");
+	print(dt.datetime.now());
 	return vel, intf_tuple.xvalues, intf_tuple.yvalues;
 
 

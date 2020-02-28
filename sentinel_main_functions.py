@@ -388,6 +388,7 @@ def make_interferograms(config_params):
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_all,stems,times, baselines, "F"+str(config_params.swath)+"/Total_Network_Geometry.eps");
     
+    # sys.exit(0);
     # Write the intf.in files
     # Writing to process interferograms. 
     outdir = "F"+str(config_params.swath+"/intf_all/");

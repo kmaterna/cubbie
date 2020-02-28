@@ -15,20 +15,20 @@ import netcdf_read_write
 # ------------- DRIVERS ------------------ # 
 
 def analyze_coherence_function():
-    corr_file='corr_results.txt';
-    baseline_table = 'raw/baseline_table.dat';
+	corr_file='corr_results.txt';
+	baseline_table = 'raw/baseline_table.dat';
 
-    # Correlation vs. Other Things. 
-    write_corr_results(corr_file);
-    [stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results(corr_file);
-    [stems_blt,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table(baseline_table);
-    make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline);
+	# Correlation vs. Other Things. 
+	write_corr_results(corr_file);
+	[stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results(corr_file);
+	[stems_blt,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table(baseline_table);
+	make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline);
 
-    # Histograms
+	# Histograms
 	[file_names]=configure_histograms();
 	[xdata,ydata,corr_all,date_pairs]=inputs(file_names);
 	make_histograms(xdata,ydata,corr_all,date_pairs); 
-    return;
+	return;
 
 # ------------ CORR vs STUFF -------------- # 
 
@@ -43,7 +43,7 @@ def write_corr_results(filename):
 		corr = corr.split()[0];
 		SLCs=check_output("ls "+item+"/*.SLC",shell=True); # THIS WILL BREAK IF USING PYTHON3.  USE PYTHON2. PROBLEM WITH BYTES vs STRING. 
 		# IN CHECK OUTPUT, THE RETURN VALUE IS A BYTES OBJECT IN PYTHON3. OOPS. 
-                # CAN I FIX THIS NOW? 
+		# CAN I FIX THIS NOW? 
 		slc1=SLCs.split('\n')[0];
 		slc1=slc1.split('/')[-1];
 		slc2=SLCs.split()[1];
