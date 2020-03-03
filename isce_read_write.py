@@ -48,7 +48,7 @@ def read_complex_data(GDALfilename):
 def read_scalar_data(GDALfilename, band=1):
     # band = 1;  # this seems right for most applications 
     print("Reading file %s " % GDALfilename);
-    if ".unw" in GDALfilename and band==1:
+    if ".unw" in GDALfilename and ".unw." not in GDALfilename and band==1:
         print("WARNING: We usually read band=2 for snaphu unwrapped files. Are you sure you want band 1 ????");
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()

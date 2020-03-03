@@ -3,8 +3,38 @@ import scipy.interpolate
 
 
 
-def cut_grid(data, xmin, xmax, ymin, ymax):
-	return data[ymin:ymax, xmin:xmax];
+def cut_grid(data, xbounds, ybounds, fractional=True, buffer_rows=3):
+	# We express the desired bounds as either an index  or a fraction of the domain in that axis. 
+	# This is useful when we haven't decided on a resolution. 
+	xmin=xbounds[0]; xmax=xbounds[1];
+	ymin=ybounds[0]; ymax=ybounds[1];
+	xmax_orig=np.shape(data)[1];
+	ymax_orig=np.shape(data)[0];
+
+	if fractional==True:
+		xmin=int(xmin*xmax_orig)
+		xmax=int(xmax*xmax_orig);
+		ymin=int(ymin*ymax_orig);
+		ymax=int(ymax*ymax_orig);
+
+	# Defensive programming
+	if xmin<buffer_rows:
+		xmin=buffer_rows;
+	if ymin<buffer_rows:
+		ymin=buffer_rows;
+	if xmax>np.shape(data)[1]-buffer_rows:
+		xmax=np.shape(data)[1]-buffer_rows;
+	if ymax>np.shape(data)[0]-buffer_rows:
+		ymax=np.shape(data)[0]-buffer_rows;  #  I found a few columns of nans, so I'm protecting against them with buffer rows/cols.
+
+	data_cut = data[ymin:ymax, xmin:xmax];
+
+	print("Shape of the original data are: ", np.shape(data));
+	print("Boundaries of the cut data are: ", ymin, ymax, xmin, xmax);
+	print("Shape of the new data are: ", np.shape(data_cut));
+	return data_cut;
+
+
 
 def make_coherence_mask(cor, threshold):
 	print("Making coherence mask.")
