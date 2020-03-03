@@ -25,10 +25,11 @@ def stack_corr(mytuple, cutoff):
     return a;
 
 def get_signal_spread(data_vector, cutoff):
-    if np.isnan(cutoff):
+    # For a pixel, what is the percentage of good images? 
+    if np.isnan(cutoff):  # for GMTSAR, we usually use this criterion (cutoff has been imposed during unwrapping, and the bad pixels are already nans)
         a = 100 * np.sum(~np.isnan(data_vector))/len(data_vector);
     else:
-        a = 100 * np.sum(np.where(data_vector>cutoff))/len(data_vector);
+        a = 100 * len(np.where(data_vector>cutoff)[0])/len(data_vector);  # This has been tested. 
     return a;
 
 def drive_signal_spread_calculation(swath, unwrap_ref_dir, intfs, output_dir):

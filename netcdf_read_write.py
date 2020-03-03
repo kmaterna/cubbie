@@ -158,7 +158,7 @@ def flip_if_necessary(filename):
 	return;
 
 
-def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0):
+def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True):
 	# Read in the dataset
 	[xread, yread, zread] = read_grd_xyz(netcdfname);
 
@@ -166,7 +166,8 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0):
 	fig = plt.figure(figsize=(7,10));
 	ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
 	plt.imshow(zread,aspect=aspect, cmap='rainbow');
-	plt.gca().invert_yaxis()  # for imshow, rows get labeled in the downward direction
+	if invert_yaxis:
+		plt.gca().invert_yaxis()  # for imshow, rows get labeled in the downward direction
 	# plt.gca().get_xaxis().set_ticks([]);
 	# plt.gca().get_yaxis().set_ticks([]);
 	plt.title(plottitle);

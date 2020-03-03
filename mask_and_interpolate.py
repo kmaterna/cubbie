@@ -2,7 +2,6 @@ import numpy as np
 import scipy.interpolate
 
 
-
 def cut_grid(data, xbounds, ybounds, fractional=True, buffer_rows=3):
 	# We express the desired bounds as either an index  or a fraction of the domain in that axis. 
 	# This is useful when we haven't decided on a resolution. 
