@@ -199,3 +199,8 @@ def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
 	plt.close();
 	return;	
 
+
+def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname):
+	# Ultimately we will need a function that writes a large 3D array.  Each 2D slice is the displacement at a particular time, associated with a time series. 
+	# Haven't written this yet. 
+	return;
