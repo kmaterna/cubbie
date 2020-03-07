@@ -112,6 +112,9 @@ def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1,
     ds = None
     
     # getting the min max of the axes
+    # Note: this assumes that the transform is north-up
+    # There are transform[2] and transform[4] for other projections. 
+    # In general, I might need a more general visualizer. 
     firstx = transform[0]
     firsty = transform[3]
     deltay = transform[5]
