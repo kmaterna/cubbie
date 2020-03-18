@@ -184,6 +184,9 @@ def alt_isce_unwrapping_workflow(date_string):
 	re_masked = mask_and_interpolate.apply_coherence_mask(post_unwrapping, coherence_mask_liberal, is_complex=0);
 	axarr=add_plot(axarr, 9, re_masked, 'UnwrappedMasked', colormap='rainbow', aspect=plot_aspect, is_complex=0, vmin=0, vmax=unw_max);
 
+	# MUST WRITE THE FINAL MASKED UNWRAPPED PHASE BACK INTO A FILE. 
+	isce_read_write.write_isce_data(re_masked, nx, ny, dtype='FLOAT', filename=alt_filedir+filestem+"_fully_processed.uwrappedphase");
+
 
 	# Color bar for wrapped phase. 
 	cbarax = f.add_axes([0.2,0.35,0.25,0.8],visible=False);
@@ -218,7 +221,7 @@ if __name__=="__main__":
 	igrams = glob.glob("../Igrams/????????_????????"); # **** this may change depending on where you are
 	for i in igrams:
 		date_string = i.split('/')[-1];
-		alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
+		# alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
 		alt_isce_unwrapping_workflow(date_string);  # unwraps the igrams
 		# sys.exit(0);
 

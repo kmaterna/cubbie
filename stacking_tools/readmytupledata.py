@@ -4,7 +4,6 @@ import collections
 from datetime import datetime
 import re
 import netcdf_read_write as rwr
-import isce_read_write
 
 data = collections.namedtuple('data', ['filepaths', 'dates_correct', 'date_deltas',  'xvalues', 'yvalues', 'zvalues'])
 
@@ -40,6 +39,8 @@ def reader(filepathslist):
 
 
 def reader_isce(filepathslist, band=1):
+    import isce_read_write
+
     """This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
     in a cuboid of data. It splits and stores this data in a named tuple which is returned. This can then be used
     to extract key pieces of information. It reads in ISCE format. """

@@ -30,12 +30,17 @@ def write_super_master_batch_config(masterid):
 def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
     # The smarter selection takes place in make_selection_of_intfs. 
-    total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
+    if config_params.SAT=="S1":
+        total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
+    elif config_params.SAT=="UAVSAR":
+        # Specific to the case of UAVSAR stacks with alt-unwrapped taking place
+        total_intf_list=glob.glob("../Igrams/*/alt_unwrapped/filt*_manually_masked_snaphu.unw");
+
     return total_intf_list;
 
 def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
-    # This works for both F1 and F2. You should run whichever swath has the reference point first. 
-    # This will break for F3, because we need the F3-F2 offset and the F2-F1 offset. 
+    # This is a pretty specific function for Sentinel stacks. Most of the logic relates to swaths. 
+    # This works for F1, F2, and F3. You should run whichever swath has the reference point first. 
     # Writes an output file that shows which interferograms were unsuccessfully referenced. 
     output_dir="F"+swath+"/"+ref_dir;
     errors_file="F"+swath+"/"+ref_dir+"/errors.txt"
@@ -119,7 +124,9 @@ def get_reference_value(swath, ref_swath, rowref, colref, item):
     return reference_value;
 
 
-def get_ref_index(ref_swath, swath, ref_loc, ref_idx):
+def get_ref_index(ref_swath, swath, ref_loc, ref_idx, intf_files):
+    # For sentinel, we usually put some kind of lat/lon as the reference point
+    # Of we have already identified a ref_idx. 
     # THIS IS A DEGENERATE FUNCTION. 
     # IT DOESN'T DO ANYTHING RIGHT NOW. 
     # IT WILL BE CODED LATER. 
