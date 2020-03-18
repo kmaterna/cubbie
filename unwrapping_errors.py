@@ -1,12 +1,17 @@
-# Deal with unwrapping errors
-# Code to interpolate over masked areas
+# Deal with unwrapping errors in ISCE interferograms
+# This is a code to take interferograms, cut and mask them, interpolate over bad areas, 
+# unwrap them, and re-mask them again. 
+# The new unwrapped files live in an alt_unwrapped directory inside each Igram dir. 
+# Inspired by Jiang and Lohman, 2020, S1 Salton Sea project. 
+# It is able to re-make the interferogram stack with the right multilooks and filter. 
+# It is meant to be called from a directory parallel to the Igram and SLC directories
+# in the ISCE Stack processing workflow. 
 # February 26, 2020
 
 import numpy as np 
 import matplotlib.pyplot as plt 
 import matplotlib
 import matplotlib.cm as cm
-from mpl_toolkits.mplot3d import axes3d, Axes3D
 import subprocess, sys, glob
 import isce_read_write
 import netcdf_read_write
@@ -33,7 +38,8 @@ def add_rectangle(axarr, plotnumber, xbounds, ybounds):
 	ymax=1-ybounds[1]; # some of these axes coordinate systems increase downward
 	xmin=xbounds[0];
 	xmax=xbounds[1];
-	axarr[x][y].plot([xmin, xmin, xmax, xmax, xmin],[ymin, ymax, ymax, ymin, ymin], linewidth=2, color='blue', transform=axarr[x][y].transAxes);
+	axarr[x][y].plot([xmin, xmin, xmax, xmax, xmin],[ymin, ymax, ymax, ymin, ymin], linewidth=2, color='blue', 
+		transform=axarr[x][y].transAxes);
 	return axarr;
 
 def get_axarr_numbers(rows, cols, idx):
@@ -87,11 +93,12 @@ def write_local_iscestack_config(source_file, target_file, date_string, alt_unwr
 	return;
 
 def alt_rlks_alks_workflow(date_string, rlks, alks, filt):
-	filedir = "../Igrams/"+date_string+"/";
+	filedir = "../Igrams/"+date_string+"/";  # *** Might change based on where you're calling from
 	orig_config_file = "../configs/config_igram_"+date_string;
 	target_file = filedir+"config_igram_"+date_string+"_rlks";
 	write_local_iscestack_config(orig_config_file, target_file, date_string, rlks=rlks, alks=alks, filt=filt);
-	subprocess.call(['stripmapWrapper.py','-c',target_file,'-s','Function-1','-e','Function-3'],shell=False);  # for everything, we'll do 1 to 3
+	subprocess.call(['stripmapWrapper.py','-c',target_file,'-s','Function-1','-e','Function-3'],shell=False);  
+	# for doing everything in the interferogram stage, we'll do 1 to 3
 	return;
 
 def alt_isce_unwrapping_workflow(date_string):
@@ -100,18 +107,19 @@ def alt_isce_unwrapping_workflow(date_string):
 	# Step 2: Perform appropriate cut. Plot. 
 	# Step 3: Perform appropriate mask. Plot. 
 	# Step 4: Perform interpolation. Plot. 
-	# Step 5: Unwrap.
+	# Step 5: Unwrap. Plot.
+	# Step 6: Save a 10-panel plot with all stages of processing. 
 	""" 
 
 	# CONFIGURATION PARAMETERS
 	unw_max = 4*np.pi; # how high do we let the unwrapped colorscale go?
-	plot_aspect = 1/8;
+	plot_aspect = 1/5; # Based on multilooking, we may need an aspect ratio to make pretty plots
 	coherence_cutoff=0.6; # what value of coherence cutoff do we want? 
 	xbounds = [0.4, 1.0]; # These are fractional units
 	ybounds = [0.15, 0.7];
-	filedir = "../Igrams/"+date_string+"/";
+	filedir = "../Igrams/"+date_string+"/";  # *** This may change based on where you're calling from? 
 	filestem = "filt_"+date_string;
-	orig_config_file = "../configs/config_igram_"+date_string;
+	orig_config_file = "../configs/config_igram_"+date_string;  # *** this may change
 	alt_filedir = filedir+"alt_unwrapped/";
 	subprocess.call(["mkdir","-p",alt_filedir],shell=False);
 
@@ -121,7 +129,7 @@ def alt_isce_unwrapping_workflow(date_string):
 	# Step 1: Read the automatic data
 	slc = isce_read_write.read_complex_data(filedir+filestem+".int");
 	cor = isce_read_write.read_scalar_data(filedir+filestem+".cor");
-	orig_unw = isce_read_write.read_scalar_data(filedir+filestem+"_snaphu.unw",band=2);
+	orig_unw = isce_read_write.read_scalar_data(filedir+filestem+"_snaphu.unw",band=2); # for unwrapped files, band = 2
 	orig_comps = isce_read_write.read_scalar_data(filedir+filestem+"_snaphu.unw.conncomp");
 	axarr=add_plot(axarr, 0, slc, 'phasefilt', colormap='rainbow', is_complex=1);
 	axarr=add_rectangle(axarr, 0, xbounds, ybounds);
@@ -162,6 +170,7 @@ def alt_isce_unwrapping_workflow(date_string):
 
 	# Step 6: UNWRAP
 	# PUT THE LOCAL UNWRAP SCRIPT IN ALT-FILEDIR
+	# CALL UNWRAPPING (stripmapWrapper start = Function-3, end = Function-3). 
 	target_file = alt_filedir+"config_igram_"+date_string+"_local";
 	write_local_iscestack_config(orig_config_file, target_file, date_string, alt_unwrapping=1); 
 	subprocess.call(['stripmapWrapper.py','-c',target_file,'-s','Function-3','-e','Function-3'],shell=False);
@@ -200,27 +209,27 @@ def alt_isce_unwrapping_workflow(date_string):
 
 
 if __name__=="__main__":
-	date_string = "20090424_20090921"
-	rlks=35
-	alks=15
-	filt = 2.5
+	rlks=20
+	alks=18
+	filt = 1.5
 
 	# # For making all interferograms in their unwrapped form. 
-	# # Takes a little while (maybe an hour?)
-	igrams = glob.glob("../Igrams/????????_????????");
+	# # Takes a little while (maybe an hour for 50 images)
+	igrams = glob.glob("../Igrams/????????_????????"); # **** this may change depending on where you are
 	for i in igrams:
 		date_string = i.split('/')[-1];
-		alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);
-		alt_isce_unwrapping_workflow(date_string);
+		alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
+		alt_isce_unwrapping_workflow(date_string);  # unwraps the igrams
 		# sys.exit(0);
 
 
 	# THE SIGNAL SPREAD
 	cor_value=0.5;
-	filepathslist=glob.glob("../Igrams/????????_????????/filt*.cor");
-	cor_data = rdr.reader_isce(filepathslist); # For unwrapped files, band = 2
+	filepathslist=glob.glob("../Igrams/????????_????????/filt*.cor");  # *** This may change
+	cor_data = rdr.reader_isce(filepathslist);
 	a = stack_corr.stack_corr(cor_data, cor_value);
 	netcdf_read_write.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', 'signalspread.nc')
-	netcdf_read_write.produce_output_plot('signalspread.nc', 'Signal Spread above cor='+str(cor_value), 'signalspread.png', 'Percentage of coherence', aspect=1/3.5, invert_yaxis=False)
+	netcdf_read_write.produce_output_plot('signalspread.nc', 'Signal Spread above cor='+str(cor_value), 'signalspread.png', 
+		'Percentage of coherence', aspect=1/4, invert_yaxis=False)
 
 
