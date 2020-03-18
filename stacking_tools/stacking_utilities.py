@@ -34,7 +34,7 @@ def get_list_of_intf_all(config_params):
         total_intf_list=glob.glob("F"+config_params.swath+"/intf_all/???????_???????/unwrap.grd");
     elif config_params.SAT=="UAVSAR":
         # Specific to the case of UAVSAR stacks with alt-unwrapped taking place
-        total_intf_list=glob.glob("../Igrams/*/alt_unwrapped/filt*_manually_masked_snaphu.unw");
+        total_intf_list=glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.uwrappedphase");
 
     return total_intf_list;
 

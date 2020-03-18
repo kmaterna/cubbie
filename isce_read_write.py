@@ -148,10 +148,10 @@ def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1,
     return;
 
 
-def plot_complex_data(GDALfilename,title="",aspect=1,
+def plot_complex_data(GDALfilename,title="",aspect=1, band=1, colormap='rainbow',
     datamin=None, datamax=None,draw_colorbar=None,colorbar_orientation="horizontal", outname=None):
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
-    slc = ds.GetRasterBand(1).ReadAsArray()
+    slc = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
     ds = None
     
@@ -183,7 +183,7 @@ def plot_complex_data(GDALfilename,title="",aspect=1,
     ax.set_aspect(aspect)
 
     ax = fig.add_subplot(1,2,2)
-    cax2 =ax.imshow(np.angle(slc),cmap='rainbow',extent=[xmin,xmax,ymin,ymax])
+    cax2 =ax.imshow(np.angle(slc),cmap=colormap,extent=[xmin,xmax,ymin,ymax])
     ax.set_title(title + " (phase [rad])")
     if draw_colorbar is not None:
         cbar2 = fig.colorbar(cax2,orientation=colorbar_orientation)

@@ -45,11 +45,19 @@ def make_coherence_mask(cor, threshold):
 	return mask;
 
 
-def apply_coherence_mask(data, mask, is_complex=0):
-	if is_complex==1:
-		masked = np.complex64(np.multiply(data,mask));
+def apply_coherence_mask(data, mask, is_complex=0, is_float32=False):
+	# A future version of this function should probably check the type of the input data
+	# and return the same type that came in. 
+	if is_float32==False:
+		if is_complex==1:
+			masked = np.complex64(np.multiply(data,mask));
+		else:
+			masked = np.float64(np.multiply(data,mask));
 	else:
-		masked = np.float64(np.multiply(data,mask));
+		if is_complex==1:
+			masked = np.complex32(np.multiply(data,mask));
+		else:
+			masked = np.float32(np.multiply(data,mask));
 	return masked;
 
 def interpolate_2d(data_array, is_complex=0):

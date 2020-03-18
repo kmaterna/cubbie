@@ -165,8 +165,7 @@ def alt_isce_unwrapping_workflow(date_string):
 	axarr=add_plot(axarr, 6, manually_masked, 'Interpolated', colormap='rainbow', aspect=plot_aspect, is_complex=1, vmin=-np.pi, vmax=np.pi);
 
 	# Step 5a: Write the correlation out, which we use for unwrapping. 
-	isce_read_write.write_isce_data(cor_cut, nx, ny, dtype='CFLOAT', filename=alt_filedir+filestem+"_cut.cor");
-
+	isce_read_write.write_isce_data(cor_cut, nx, ny, dtype='FLOAT', filename=alt_filedir+filestem+"_cut.cor");
 
 	# Step 6: UNWRAP
 	# PUT THE LOCAL UNWRAP SCRIPT IN ALT-FILEDIR
@@ -181,12 +180,11 @@ def alt_isce_unwrapping_workflow(date_string):
 	axarr=add_plot(axarr, 8, comps, 'ConnectedComps', colormap='rainbow', aspect=plot_aspect, is_complex=0, vmin=0, vmax=8);
 
 	# Step 7: Re-apply the mask
-	re_masked = mask_and_interpolate.apply_coherence_mask(post_unwrapping, coherence_mask_liberal, is_complex=0);
+	re_masked = mask_and_interpolate.apply_coherence_mask(post_unwrapping, coherence_mask_liberal, is_complex=0, is_float32=True);
 	axarr=add_plot(axarr, 9, re_masked, 'UnwrappedMasked', colormap='rainbow', aspect=plot_aspect, is_complex=0, vmin=0, vmax=unw_max);
 
 	# MUST WRITE THE FINAL MASKED UNWRAPPED PHASE BACK INTO A FILE. 
 	isce_read_write.write_isce_data(re_masked, nx, ny, dtype='FLOAT', filename=alt_filedir+filestem+"_fully_processed.uwrappedphase");
-
 
 	# Color bar for wrapped phase. 
 	cbarax = f.add_axes([0.2,0.35,0.25,0.8],visible=False);
@@ -208,7 +206,7 @@ def alt_isce_unwrapping_workflow(date_string):
 
 	plt.savefig(filedir+date_string+'_image_development.png')
 
-	return;
+	return re_masked;
 
 
 if __name__=="__main__":
@@ -222,7 +220,7 @@ if __name__=="__main__":
 	for i in igrams:
 		date_string = i.split('/')[-1];
 		# alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
-		alt_isce_unwrapping_workflow(date_string);  # unwraps the igrams
+		re_masked = alt_isce_unwrapping_workflow(date_string);  # unwraps the igrams
 		# sys.exit(0);
 
 
