@@ -14,13 +14,15 @@ import netcdf_read_write as rwr
 def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
     signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
     intf_tuple = rmd.reader(intfs); 
-    velocities, x, y = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
+    velocities = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
     
-    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', '/Users/kmaterna/Documents/testvelo/F'+swath+'_'+'velo_nsbas.grd');  # just in case we screw up
+    # An issue with the lightswitch at Moffett turning off... 
+    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', '/Users/kmaterna/Documents/testvelo/F'+swath+'_'+'velo_nsbas.grd');  # just in case we screw up
     rwr.produce_output_plot('/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.grd', 'LOS Velocity',
         '/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.png', 'velocity (mm/yr)');
 
-    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_nsbas.grd');
+    # The more general case. 
+    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_nsbas.grd');
     rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_nsbas.grd', 'LOS Velocity',
         'F'+swath+'/'+outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
     return;
@@ -75,6 +77,11 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 	print("Started at: ");
 	print(dt.datetime.now());
 	vel = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
+	if np.shape(vel) != np.shape(signal_spread_data):
+		print("ERROR: signal spread does not match input data. Stopping immediately. ");
+		print("Shape of signal spread:", np.shape(signal_spread_data));
+		print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
+		sys.exit(0);
 	c = 0;
 	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
 	while not it.finished:
@@ -83,6 +90,7 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 		signal_spread = signal_spread_data[i,j];
 		pixel_value = intf_tuple.zvalues[:,i,j];
 		if signal_spread > nsbas_good_perc: # if we want a calculation for that day... 
+			# vel[i][j]=1;
 			vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
 			# if np.mod(i,10) == 0:  # this is to speed up the calculation. 
 			# 	vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
@@ -94,11 +102,51 @@ def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spr
 		if np.mod(c,10000)==0:
 			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
 		# if c==30000:
-			# break;
+		# 	break;
 		it.iternext();
 	print("Finished at: ");
 	print(dt.datetime.now());
-	return vel, intf_tuple.xvalues, intf_tuple.yvalues;
+	return vel;
+
+
+def compute_fullTS_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data):
+	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
+	# make an NSBAS matrix describing each image that's a real number (not nan). 	
+	print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)) );
+	print("Started at: ");
+	print(dt.datetime.now());
+	# Figure out how many dates there are. 
+	vel, xdates, vector = do_nsbas_pixel(intf_tuple.zvalues[:,0,0], intf_tuple.dates_correct, smoothing, wavelength,full_ts_return=True); 
+	TS = np.zeros([len(xdates),len(intf_tuple.yvalues), len(intf_tuple.xvalues)] );
+	# return TS, xdates;  # quit early. 
+
+	if np.shape(TS[0,:,:]) != np.shape(signal_spread_data):
+		print("ERROR: signal spread does not match input data. Stopping immediately. ");
+		print("Shape of signal spread:", np.shape(signal_spread_data));
+		print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
+		sys.exit(0);
+	c = 0;
+	empty_vector = np.empty(np.shape(vector));
+	empty_vector[:] = np.nan;   # in case we don't want to use that pixel. 
+	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
+	while not it.finished:
+		i=it.multi_index[0];
+		j=it.multi_index[1];
+		signal_spread = signal_spread_data[i,j];
+		pixel_value = intf_tuple.zvalues[:,i,j];
+		if signal_spread > nsbas_good_perc: # if we want a calculation for that day... 
+			vel, xdates, vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength,full_ts_return=True); 
+			TS[:,i,j] = vector;		
+		else:
+			TS[:,i,j] = empty_vector;
+		c=c+1;
+		if np.mod(c,10000)==0:
+			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
+		it.iternext();
+	print("Finished at: ");
+	print(dt.datetime.now());
+	return TS, xdates;
+
 
 
 
@@ -275,13 +323,3 @@ def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
 	plt.close();
 
 	return;
-
-
-def geocode(ifile, directory):
-	# geocode: needs vel.grd, vel_ll.grd, vel_ll, and directory 
-	stem = ifile.split('/')[-1]  # format: vel.grd
-	stem = stem.split('.')[0]   # format: vel
-	call(['geocode_mod.csh',stem+'.grd',stem+'_ll.grd',stem+"_ll",directory],shell=False);
-	return;
-
-

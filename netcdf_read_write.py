@@ -104,6 +104,17 @@ def give_metrics_on_grd(filename):
 	print("Nans: %d of %d pixels are nans (%.3f percent)" % (nan_pixels, total_pixels, nan_pixels/total_pixels*100) );
 	return; 
 
+def read_3D_netcdf(filename):
+	tdata0= netcdf.netcdf_file(filename,'r').variables['t'][:];
+	tdata=tdata0.copy();
+	xdata0= netcdf.netcdf_file(filename,'r').variables['x'][:];
+	xdata=xdata0.copy();
+	ydata0= netcdf.netcdf_file(filename,'r').variables['y'][:];
+	ydata=ydata0.copy();
+	zdata0= netcdf.netcdf_file(filename, 'r').variables['z'][:,:,:];
+	zdata=zdata0.copy();
+	return [tdata, xdata, ydata, zdata];
+
 
 # --------------- WRITING ------------------- # 
 
@@ -201,6 +212,32 @@ def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
 
 
 def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname):
-	# Ultimately we will need a function that writes a large 3D array.  Each 2D slice is the displacement at a particular time, associated with a time series. 
+	# Ultimately we will need a function that writes a large 3D array.  
+	# Each 2D slice is the displacement at a particular time, associated with a time series. 
 	# Haven't written this yet. 
+	print("Writing output netcdf to file %s " % netcdfname); 
+	days_array=[];
+	for i in range(len(timearray)):
+		delta = timearray[i]-timearray[0];
+		days_array.append(delta.days);
+	f=netcdf.netcdf_file(netcdfname,'w');
+	f.history = 'Created for a test';
+	f.createDimension('t',len(timearray));
+	f.createDimension('x',len(xdata));
+	f.createDimension('y',len(ydata));
+
+	t=f.createVariable('t','i4',('t',))
+	t[:]=days_array;
+	t.units = 'days';
+	x=f.createVariable('x',float,('x',))
+	x[:]=xdata;
+	x.units = 'range';
+	y=f.createVariable('y',float,('y',))
+	y[:]=ydata;
+	y.units = 'azimuth';
+
+	z=f.createVariable('z',float,('t','y','x'));
+	z[:,:,:]=zdata;
+	z.units = zunits;
+	f.close();
 	return;

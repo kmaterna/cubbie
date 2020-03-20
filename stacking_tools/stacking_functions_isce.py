@@ -6,6 +6,7 @@ import stacking_utilities
 import readmytupledata
 import stack_corr
 import netcdf_read_write as rwr
+import nsbas_isce
 import isce_read_write
 
 
@@ -116,6 +117,7 @@ def collect_unwrap_ref(config_params):
     # Very general, takes all files and doesn't discriminate. 
     intf_files=stacking_utilities.get_list_of_intf_all(config_params);
 
+    # This is an eaiser function, just one swath and one reference pixel. 
     rowref, colref = get_100p_pixels_get_ref(intf_files, config_params.ref_idx);
 
     # Now we coalesce the files and reference them to the right value/pixel
@@ -143,8 +145,8 @@ def vels_and_ts(config_params):
 		# sbas.drive_ts_sbas(config_params);
 	if config_params.ts_type=="NSBAS":
 		print("Running velocities and time series by NSBAS");
-		# nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
-		# nsbas.drive_ts_nsbas(config_params);
+		nsbas_isce.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+		# nsbas_isce.drive_ts_nsbas(config_params);
 
 	return; 
 
