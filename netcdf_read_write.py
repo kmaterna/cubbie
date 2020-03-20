@@ -169,7 +169,7 @@ def flip_if_necessary(filename):
 	return;
 
 
-def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True):
+def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True, dot_points=[]):
 	# Read in the dataset
 	[xread, yread, zread] = read_grd_xyz(netcdfname);
 
@@ -181,6 +181,8 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, in
 		plt.gca().invert_yaxis()  # for imshow, rows get labeled in the downward direction
 	# plt.gca().get_xaxis().set_ticks([]);
 	# plt.gca().get_yaxis().set_ticks([]);
+	if dot_points != []:
+		plt.plot(dot_points[0], dot_points[1], color='black',marker='*', markersize=10);
 	plt.title(plottitle);
 	plt.gca().set_xlabel("Range",fontsize=16);
 	plt.gca().set_ylabel("Azimuth",fontsize=16);

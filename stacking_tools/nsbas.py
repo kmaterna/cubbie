@@ -10,10 +10,13 @@ import sentinel_utilities
 import stacking_utilities
 import readmytupledata as rmd
 import netcdf_read_write as rwr 
+import stack_corr
 
 def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
-    signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
+    signal_spread_file='F'+swath+'/'+outdir+"/signalspread_cut.nc"
     intf_tuple = rmd.reader(intfs); 
+    make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
+    signal_spread_data=rwr.read_grd(signal_spread_file);
     velocities = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
     
     # An issue with the lightswitch at Moffett turning off... 
@@ -67,6 +70,16 @@ def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, na
 		m_cumulative=[i*-1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
 		nsbas_ts_outputs(dts, m_cumulative, select_swath, select_rows[i], select_cols[i], select_names[i], select_lons[i], select_lats[i], outdir);
 	return;
+
+# Before velocities, might want to make stack_corr_custom if you have excluded significant data. 
+def make_stack_corr_custom(mydata,signal_spread_file):
+    # Stack corr for this exact calculation (given right inputs and outputs). 
+    a=stack_corr.stack_corr(mydata, np.nan);
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, a, 'Percentage', signal_spread_file);
+    rwr.produce_output_plot(signal_spread_file, 'Signal Spread', signal_spread_file+'.png', 
+        'Percentage of coherence', aspect=1/4, invert_yaxis=False )
+    return;
+
 
 
 # ------------ COMPUTE ------------ #
@@ -205,9 +218,8 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 	# Adding up all the displacement. 
 	m_cumulative=[];
 	m_cumulative.append(0);
-	for i in range(len(m)):
+	for i in range(1,len(m)+1):
 		m_cumulative.append(np.sum(m[0:i]));  # The cumulative phase from start to finish! 
-
 
 	# Solving for linear velocity
 	x_axis_datetimes=[dt.datetime.strptime(x,"%Y%j") for x in dates];
@@ -244,6 +256,24 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 
 
 # ------------ OUTPUT ------------ #
+
+
+def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file):
+    # Plot a single pixel's time series. 
+    # Also plot the signal spread with the pixel as a dot. 
+    pixel_value = intf_tuple.zvalues[:,pixel_coords[0],pixel_coords[1]];
+    vel, xdates, ts = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, sbas_smoothing, wavelength, full_ts_return=True)
+    print("Random Pixel");
+    fig = plt.figure()
+    plt.plot(xdates, ts,'.-',markersize=10);
+    plt.title("Pixel "+str(pixel_coords[0])+", "+str(pixel_coords[1]));
+    plt.ylabel('Displacement (mm)');
+    plt.savefig('test_pixel.png');
+    rwr.produce_output_plot(signal_spread_file, 'Signal Spread', 'show_test_pixels.png', 
+        'Percentage of coherence', aspect=1/4, invert_yaxis=False, dot_points = [[pixel_coords[1]],[pixel_coords[0]]] );
+    return;
+
+
 
 def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir):
 	# This outdir is expected to be something like "F2/stacking/nsbas/ts". 

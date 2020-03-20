@@ -5,6 +5,7 @@ import os, sys, glob
 import datetime as dt
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mdates
 import numpy as np
@@ -37,6 +38,18 @@ def get_list_of_intf_all(config_params):
         total_intf_list=glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.uwrappedphase");
 
     return total_intf_list;
+
+def get_xdates_from_intf_tuple(intf_tuple):
+    total_dates=[];
+    for item in intf_tuple.dates_correct:
+        date1=dt.datetime.strptime(item[0:7],"%Y%j");
+        date2=dt.datetime.strptime(item[8:15],"%Y%j");
+        if date1 not in total_dates:
+            total_dates.append(date1);
+        if date2 not in total_dates:
+            total_dates.append(date2);
+    xdates = sorted(total_dates);
+    return xdates;
 
 def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
     # This is a pretty specific function for Sentinel stacks. Most of the logic relates to swaths. 
@@ -286,8 +299,8 @@ def replace_line_ts_points_file(ts_points_file, name, swath, row, col):
 
 def exclude_intfs_manually(total_intf_list, skip_file):
 
-    print("Started with %d total scenes. " % (len(total_intf_list)) );
-    print("Excluding the following scenes based on SkipFile %s: " % skip_file);
+    print("Started with %d total interferograms. " % (len(total_intf_list)) );
+    print("Excluding the following interferograms based on SkipFile %s: " % skip_file);
     ifile=open(skip_file,'r');
     manual_removes = [];
     for line in ifile:
@@ -365,5 +378,39 @@ def make_selection_of_intfs(config_params, swath=0):
     ofile.close();
 
     return select_intf_list; 
+
+
+def get_axarr_numbers(rows, cols, idx):
+    # Given an incrementally counting idx number and a subplot dimension, where is our plot? 
+    total_plots = rows*cols;
+    col_num = np.mod(idx, cols);
+    row_num = int(np.floor(idx/cols));
+    return row_num, col_num;
+
+
+def plot_full_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, aspect=1):
+    # Make a nice time series plot. 
+    tdata, xdata, ydata, TS_array = netcdf_read_write.read_3D_netcdf(TS_NC_file);
+    num_rows_plots=3;
+    num_cols_plots=4;
+
+    f, axarr = plt.subplots(num_rows_plots,num_cols_plots,figsize=(16,10),dpi=300);
+    for i in range(len(xdates)):
+        rownum, colnum = get_axarr_numbers(num_rows_plots,num_cols_plots,i);
+        axarr[rownum][colnum].imshow(TS_array[i,:,:],aspect=aspect,cmap='rainbow',vmin=vmin,vmax=vmax);
+        titlestr = dt.datetime.strftime(xdates[i],"%Y-%m-%d");
+        axarr[rownum][colnum].get_xaxis().set_visible(False);
+        axarr[rownum][colnum].set_title(titlestr,fontsize=20);
+
+    cbarax = f.add_axes([0.75,0.35,0.2,0.3],visible=False);
+    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
+    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
+    custom_cmap.set_array(np.arange(vmin, vmax));
+    cb = plt.colorbar(custom_cmap,aspect=12,fraction=0.2, orientation='vertical');
+    cb.set_label('Displacement (mm)', fontsize=18);
+    cb.ax.tick_params(labelsize=12);
+
+    plt.savefig(TS_image_file);
+    return;
 
 
