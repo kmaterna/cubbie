@@ -130,8 +130,6 @@ def vels_and_ts(config_params):
 	if config_params.endstage<3:   # if we're ending at intf, we don't do this. 
 		return;
 
-	sys.exit(0);
-
 	# This is where the hand-picking takes place. 
 	# Ex: manual excludes, manual selects, long intfs only, ramp-removed, atm-removed, etc. 
 	intfs = stacking_utilities.make_selection_of_intfs(config_params);

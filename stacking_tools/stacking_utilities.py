@@ -284,6 +284,32 @@ def replace_line_ts_points_file(ts_points_file, name, swath, row, col):
     return;
 
 
+def exclude_intfs_manually(total_intf_list, skip_file):
+
+    print("Started with %d total scenes. " % (len(total_intf_list)) );
+    print("Excluding the following scenes based on SkipFile %s: " % skip_file);
+    ifile=open(skip_file,'r');
+    manual_removes = [];
+    for line in ifile:
+        manual_removes.append(line.split()[0]);
+    ifile.close();
+    print(manual_removes);
+
+
+    if manual_removes==[]:
+        selected_intf_list = total_intf_list;
+    else:
+        # Checking to see if each interferogram should be included. 
+        selected_intf_list=[];
+        for igram in total_intf_list:
+            include_flag = 1;
+            for scene in manual_removes:
+                if scene in igram:
+                    include_flag=0;
+            if include_flag==1:
+                selected_intf_list.append(igram);
+
+    return selected_intf_list;
 
 
 def make_selection_of_intfs(config_params, swath=0):
@@ -293,7 +319,15 @@ def make_selection_of_intfs(config_params, swath=0):
     if swath=='0':
         swath=config_params.swath;
 
-    total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");
+    # Get all ref_unwrapped
+    if config_params.SAT=="S1":
+        total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");  # the GMTSAR workflow
+    elif config_params.SAT=="UAVSAR":
+        total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow
+
+
+    # Employing the Manual Removes
+    select_intf_list = exclude_intfs_manually(total_intf_list, config_params.skip_file)
 
     # ------------------------------ # 
     # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING. 
@@ -320,10 +354,10 @@ def make_selection_of_intfs(config_params, swath=0):
     # THIS IS WHERE YOU WILL MAKE CHANGES
     # ------------------------------ # 
 
-    select_intf_list=total_intf_list;
 
     # Writing the exact interferograms used in this run. 
     record_file="F"+swath+"/"+config_params.ts_output_dir+"/"+"intf_record.txt";
+    print("Writing out list of %d interferograms used in this run to %s" % (len(select_intf_list), record_file) );
     ofile=open(record_file,'w');
     ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_list)) );
     for item in select_intf_list:
