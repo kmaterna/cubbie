@@ -4,7 +4,7 @@ import subprocess
 import os, sys, glob
 import datetime as dt
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mdates
@@ -156,6 +156,7 @@ def get_ref_index(ref_swath, swath, ref_loc, ref_idx, intf_files):
 
 def test_geocoding(lon, lat):
     # This tests whether the geocoding returns the same value as it started with. 
+    # GMTSAR version
     try_swaths = ["1","2","3"];
     swath=-1;
     row=-1;
@@ -398,6 +399,43 @@ def plot_full_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, 
     for i in range(len(xdates)):
         rownum, colnum = get_axarr_numbers(num_rows_plots,num_cols_plots,i);
         axarr[rownum][colnum].imshow(TS_array[i,:,:],aspect=aspect,cmap='rainbow',vmin=vmin,vmax=vmax);
+        titlestr = dt.datetime.strftime(xdates[i],"%Y-%m-%d");
+        axarr[rownum][colnum].get_xaxis().set_visible(False);
+        axarr[rownum][colnum].set_title(titlestr,fontsize=20);
+
+    cbarax = f.add_axes([0.75,0.35,0.2,0.3],visible=False);
+    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
+    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
+    custom_cmap.set_array(np.arange(vmin, vmax));
+    cb = plt.colorbar(custom_cmap,aspect=12,fraction=0.2, orientation='vertical');
+    cb.set_label('Displacement (mm)', fontsize=18);
+    cb.ax.tick_params(labelsize=12);
+
+    plt.savefig(TS_image_file);
+    return;
+
+
+
+def plot_incremental_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, aspect=1):
+    # Make a nice time series plot. 
+    # With incremental displacement data. 
+    tdata, xdata, ydata, TS_array = netcdf_read_write.read_3D_netcdf(TS_NC_file);
+    num_rows_plots=3;
+    num_cols_plots=4;
+
+    # Combining the two shortest intervals into one. 
+    print(np.shape(TS_array));
+    selected = [0,1,3,4,5,6,7,8,9,10];
+    TS_array = TS_array[selected,:,:];
+    xdates = [xdates[i] for i in range(11) if i in selected];
+    print(np.shape(TS_array));
+    print(len(xdates));
+
+    f, axarr = plt.subplots(num_rows_plots,num_cols_plots,figsize=(16,10),dpi=300);
+    for i in range(1,len(xdates)):
+        rownum, colnum = get_axarr_numbers(num_rows_plots,num_cols_plots,i);
+        data = np.subtract(TS_array[i,:,:],TS_array[i-1,:,:]);
+        axarr[rownum][colnum].imshow(data,aspect=aspect,cmap='rainbow',vmin=vmin,vmax=vmax);
         titlestr = dt.datetime.strftime(xdates[i],"%Y-%m-%d");
         axarr[rownum][colnum].get_xaxis().set_visible(False);
         axarr[rownum][colnum].set_title(titlestr,fontsize=20);
