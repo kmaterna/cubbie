@@ -24,4 +24,4 @@ if __name__=="__main__":
 	stacking_functions_isce.vels_and_ts(config_params); 
 
 	# Step 4: geocoding
-	stacking_main_functions.geocode_vels(config_params);
+	stacking_functions_isce.geocode_vels(config_params);

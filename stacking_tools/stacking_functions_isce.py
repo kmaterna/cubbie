@@ -8,6 +8,7 @@ import stack_corr
 import netcdf_read_write as rwr
 import nsbas_isce
 import isce_read_write
+import mask_and_interpolate
 import unwrapping_errors
 
 # --------------- STEP 1: Make corrections and TS prep ------------ # 
@@ -182,3 +183,86 @@ def geocode_vels(config_params):
 	# Cut them appropriately
 	# Write them out in the output folder
 	# Turn some images (vel, ts steps, etc.) into KMLs
+	if config_params.SAT=="UAVSAR":
+		geocode_UAVSAR_stack(config_params);
+	return;
+
+
+def geocode_UAVSAR_stack(config_params):
+	# Collect initial information and set things up
+	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is not shaped like 2d. 
+	rlks_llh = 2;  # for the downloaded llh file, likely 2x8
+	alks_llh = 8;
+	lon=[]; lat=[]; hgt=[];
+	lat=llh_array[np.arange(0,len(llh_array),3)];
+	lon=llh_array[np.arange(1,len(llh_array),3)];
+	hgt=llh_array[np.arange(2,len(llh_array),3)];
+	example_igram=glob.glob("../Igrams/????????_????????/*.int")[0];  
+	phase_array = isce_read_write.read_phase_data(example_igram);
+	print("Shape of the interferogram: ", np.shape(phase_array));
+
+
+	# Determine the shape of the llh array. 
+	downlooked_pixels = np.shape(phase_array);
+	total_pixels_azimuth = downlooked_pixels[0]*config_params.alks;  # this corresponds to the 1x1 case. 
+	total_pixels_range = downlooked_pixels[1]*config_params.rlks;    # this corresponds to the 1x1 case. 
+	llh_pixels_range = int(np.ceil(total_pixels_range/rlks_llh));
+	llh_pixels_azimuth=int(len(lon)/llh_pixels_range);
+	# llh_pixels_azimuth = int(np.ceil(total_pixels_azimuth / alks_llh)); # this is how many we have in the downsampled array. 
+	# llh_pixels_range = int(len(lon)/llh_pixels_azimuth);
+
+	print("llh_pixels_azimuth: ", llh_pixels_azimuth);
+	print("llh_pixels_range: ",llh_pixels_range);
+
+	# We turn the llh data into 2D arrays.
+	lat_array = np.reshape(lat,(llh_pixels_azimuth,llh_pixels_range));
+	lon_array = np.reshape(lon,(llh_pixels_azimuth,llh_pixels_range));
+
+	# # write the data into a GDAL format. 
+	isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", config_params.ts_output_dir+"/lon_total.gdal");
+	isce_read_write.write_isce_data(lat_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", config_params.ts_output_dir+"/lat_total.gdal");
+	temp = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/lon_total.gdal");
+	print("Shape of the lon file: ",np.shape(temp));
+
+	# Resampling in GDAL
+	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+		'-to','DST_METHOD=NO_GEOTRANSFORM',config_params.ts_output_dir+'/lon_total.gdal',
+		config_params.ts_output_dir+'/lon_igram_res.tif'],shell=False);
+	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+		'-to','DST_METHOD=NO_GEOTRANSFORM',config_params.ts_output_dir+'/lat_total.gdal',
+		config_params.ts_output_dir+'/lat_igram_res.tif'],shell=False);
+
+
+	# Cut the data, and quality check. 
+	# Writing the cut lon/lat into new files. 
+	temp_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/lon_igram_res.tif");
+	print("Shape of the lon file: ",np.shape(temp_lon));
+	xbounds=[float(config_params.xbounds.split(',')[0]),float(config_params.xbounds.split(',')[1])];
+	ybounds=[float(config_params.ybounds.split(',')[0]),float(config_params.ybounds.split(',')[1])];
+	cut_lon = mask_and_interpolate.cut_grid(temp_lon, xbounds, ybounds, fractional=True, buffer_rows=3);
+	print("Shape of the cut lon file: ",np.shape(cut_lon));
+	nx = np.shape(cut_lon)[1];
+	ny = np.shape(cut_lon)[0];
+	isce_read_write.write_isce_data(cut_lon, nx, ny, "FLOAT", config_params.ts_output_dir+'/cut_lon.gdal');
+	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_lon, 
+		"degrees", config_params.ts_output_dir+'/cut_lon.nc');
+	temp_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/lat_igram_res.tif");
+	print("Shape of the lat file: ",np.shape(temp_lat));
+	cut_lat = mask_and_interpolate.cut_grid(temp_lat, xbounds, ybounds, fractional=True, buffer_rows=3);
+	print("Shape of the cut lat file: ",np.shape(cut_lat));
+	isce_read_write.write_isce_data(cut_lat, nx, ny, "FLOAT", config_params.ts_output_dir+'/cut_lat.gdal');
+	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_lat, 
+		"degrees", config_params.ts_output_dir+'/cut_lat.nc');
+
+	# Double checking the shape of the interferogram data (should match!)
+	signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
+	print("For comparison, shape of cut data is: ",np.shape(signalspread));
+
+	isce_read_write.plot_scalar_data(config_params.ts_output_dir+'/cut_lat.gdal',
+		colormap='rainbow',aspect=1/4,outname=config_params.ts_output_dir+'/cut_lat_geocoded.png');
+
+	return;
+
+
