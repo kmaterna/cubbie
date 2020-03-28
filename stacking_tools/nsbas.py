@@ -13,7 +13,7 @@ import netcdf_read_write as rwr
 import stack_corr
 
 def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
-    signal_spread_file='F'+swath+'/'+outdir+"/signalspread_cut.nc"
+    signal_spread_file=outdir+"/signalspread_cut.nc"
     intf_tuple = rmd.reader(intfs); 
     make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
@@ -25,9 +25,8 @@ def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, waveleng
         '/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.png', 'velocity (mm/yr)');
 
     # The more general case. 
-    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_nsbas.grd');
-    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_nsbas.grd', 'LOS Velocity',
-        'F'+swath+'/'+outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
+    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', outdir+'/velo_nsbas.grd');
+    rwr.produce_output_plot(outdir+'/velo_nsbas.grd', 'LOS Velocity', outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
     return;
 
 def drive_ts_nsbas(config_params):
@@ -43,7 +42,7 @@ def drive_ts_nsbas(config_params):
 
 # FOR A GIVEN SWATH, LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
 def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
-	outdir = "F"+select_swath+"/"+config_params.ts_output_dir+"/ts";
+	outdir = config_params.ts_output_dir+"/ts";
 	print("TS OUTPUT DIR IS: " + outdir)
 	call(['mkdir','-p',outdir],shell=False);
 	
@@ -258,7 +257,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 # ------------ OUTPUT ------------ #
 
 
-def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file):
+def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file,outdir):
     # Plot a single pixel's time series. 
     # Also plot the signal spread with the pixel as a dot. 
     pixel_value = intf_tuple.zvalues[:,pixel_coords[0],pixel_coords[1]];
@@ -268,8 +267,8 @@ def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal
     plt.plot(xdates, ts,'.-',markersize=10);
     plt.title("Pixel "+str(pixel_coords[0])+", "+str(pixel_coords[1]));
     plt.ylabel('Displacement (mm)');
-    plt.savefig('test_pixel.png');
-    rwr.produce_output_plot(signal_spread_file, 'Signal Spread', 'show_test_pixels.png', 
+    plt.savefig(outdir+'/test_pixel.png');
+    rwr.produce_output_plot(signal_spread_file, 'Signal Spread', outdir+'/show_test_pixels.png', 
         'Percentage of coherence', aspect=1/4, invert_yaxis=False, dot_points = [[pixel_coords[1]],[pixel_coords[0]]] );
     return;
 

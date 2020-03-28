@@ -101,7 +101,7 @@ def alt_rlks_alks_workflow(date_string, rlks, alks, filt):
 	# for doing everything in the interferogram stage, we'll do 1 to 3
 	return;
 
-def alt_isce_unwrapping_workflow(date_string):
+def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff):
 	"""
 	# Step 1: Read file, and read coherence. Plot. 
 	# Step 2: Perform appropriate cut. Plot. 
@@ -109,14 +109,12 @@ def alt_isce_unwrapping_workflow(date_string):
 	# Step 4: Perform interpolation. Plot. 
 	# Step 5: Unwrap. Plot.
 	# Step 6: Save a 10-panel plot with all stages of processing. 
+	# Meant to be called from the TimeSeries directory. 
 	""" 
 
 	# CONFIGURATION PARAMETERS
 	unw_max = 4*np.pi; # how high do we let the unwrapped colorscale go?
 	plot_aspect = 1/5; # Based on multilooking, we may need an aspect ratio to make pretty plots
-	coherence_cutoff=0.6; # what value of coherence cutoff do we want? 
-	xbounds = [0.4, 1.0]; # These are fractional units
-	ybounds = [0.15, 0.7];
 	filedir = "../Igrams/"+date_string+"/";  # *** This may change based on where you're calling from? 
 	filestem = "filt_"+date_string;
 	orig_config_file = "../configs/config_igram_"+date_string;  # *** this may change
@@ -209,28 +207,43 @@ def alt_isce_unwrapping_workflow(date_string):
 	return re_masked;
 
 
+def main_function(rlks, alks, filt, xbounds, ybounds, coherence_cutoff):
+	# # For making all interferograms in their unwrapped form. 
+	xbounds=[float(xbounds.split(',')[0]),float(xbounds.split(',')[1])];
+	ybounds=[float(ybounds.split(',')[0]),float(ybounds.split(',')[1])];
+	igrams = glob.glob("../Igrams/????????_????????"); # **** this may change depending on where you are
+	for i in igrams:
+		date_string = i.split('/')[-1];
+		alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
+		re_masked = alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff);  # unwraps the igrams
+	return;
+
+
+
 if __name__=="__main__":
 	rlks=20
 	alks=18
 	filt = 1.5
+	xbounds = [0.4, 1.0]; # These are fractional units
+	ybounds = [0.15, 0.7];
+	coherence_cutoff=0.6; # what value of coherence cutoff do we want for masks? 
 
 	# # For making all interferograms in their unwrapped form. 
 	# # Takes a little while (maybe an hour for 50 images)
 	igrams = glob.glob("../Igrams/????????_????????"); # **** this may change depending on where you are
 	for i in igrams:
 		date_string = i.split('/')[-1];
-		# alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
-		re_masked = alt_isce_unwrapping_workflow(date_string);  # unwraps the igrams
+		alt_rlks_alks_workflow(date_string, rlks=rlks, alks=alks, filt=filt);  # re-makes the igrams
+		re_masked = alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff);  # unwraps the igrams
 		# sys.exit(0);
 
-
-	# THE SIGNAL SPREAD
-	cor_value=0.5;
-	filepathslist=glob.glob("../Igrams/????????_????????/filt*.cor");  # *** This may change
-	cor_data = rdr.reader_isce(filepathslist);
-	a = stack_corr.stack_corr(cor_data, cor_value);
-	netcdf_read_write.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', 'signalspread.nc')
-	netcdf_read_write.produce_output_plot('signalspread.nc', 'Signal Spread above cor='+str(cor_value), 'signalspread.png', 
-		'Percentage of coherence', aspect=1/4, invert_yaxis=False)
+	# # THE SIGNAL SPREAD
+	# cor_value=0.5;
+	# filepathslist=glob.glob("../Igrams/????????_????????/filt*.cor");  # *** This may change
+	# cor_data = rdr.reader_isce(filepathslist);
+	# a = stack_corr.stack_corr(cor_data, cor_value);
+	# netcdf_read_write.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', 'signalspread.nc')
+	# netcdf_read_write.produce_output_plot('signalspread.nc', 'Signal Spread above cor='+str(cor_value), 'signalspread.png', 
+	# 	'Percentage of coherence', aspect=1/4, invert_yaxis=False)
 
 

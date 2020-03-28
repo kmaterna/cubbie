@@ -23,10 +23,11 @@ def set_up_output_directories(config_params):
     if config_params.endstage<0:   
         return;
     print("Stage 0 - Setting up output directories.");
-    call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ts_parent_dir],shell=False);
-    call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ref_dir],shell=False);
-    call(['mkdir','-p','F'+config_params.swath+'/'+config_params.ts_output_dir],shell=False);
-    call(['cp','stacking.config','F'+config_params.swath+'/'+config_params.ts_output_dir],shell=False);
+    call(['mkdir','-p',config_params.ts_parent_dir],shell=False);
+    call(['mkdir','-p',config_params.ref_dir],shell=False);
+    call(['mkdir','-p',config_params.ts_output_dir],shell=False);
+    call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
+    call(['cp',config_params.skip_file, config_params.ts_output_dir],shell=False);
     return;
 
 
@@ -90,7 +91,7 @@ def vels_and_ts(config_params):
 
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(config_params.swath, intfs, config_params.wavelength, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
     if config_params.ts_type=="SBAS":
         print("Running velocities and time series by SBAS");
         # sbas.drive_velocity_sbas(config_params.swath, intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);

@@ -51,12 +51,11 @@ def get_xdates_from_intf_tuple(intf_tuple):
     xdates = sorted(total_dates);
     return xdates;
 
-def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, ref_dir):
+def make_referenced_unwrapped(intf_list, swath, ref_swath, rowref, colref, output_dir):
     # This is a pretty specific function for Sentinel stacks. Most of the logic relates to swaths. 
     # This works for F1, F2, and F3. You should run whichever swath has the reference point first. 
     # Writes an output file that shows which interferograms were unsuccessfully referenced. 
-    output_dir="F"+swath+"/"+ref_dir;
-    errors_file="F"+swath+"/"+ref_dir+"/errors.txt"
+    errors_file=output_dir+"/errors.txt"
     ofile=open(errors_file,'w');
     error_count=0;
     print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_list), output_dir) );
@@ -327,18 +326,12 @@ def exclude_intfs_manually(total_intf_list, skip_file):
 
 
 def make_selection_of_intfs(config_params, swath=0):
-    # If you want to pass in the swath, then use an explicit argument. 
-    # Otherwise we'll use the swath in the config file. 
-    swath=str(swath);
-    if swath=='0':
-        swath=config_params.swath;
 
     # Get all ref_unwrapped
     if config_params.SAT=="S1":
-        total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/???????_???????_unwrap.grd");  # the GMTSAR workflow
+        total_intf_list=glob.glob(config_params.ref_dir+"/???????_???????_unwrap.grd");  # the GMTSAR workflow
     elif config_params.SAT=="UAVSAR":
-        total_intf_list=glob.glob("F"+swath+"/"+config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow
-
+        total_intf_list=glob.glob(config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow
 
     # Employing the Manual Removes
     select_intf_list = exclude_intfs_manually(total_intf_list, config_params.skip_file)
@@ -370,7 +363,7 @@ def make_selection_of_intfs(config_params, swath=0):
 
 
     # Writing the exact interferograms used in this run. 
-    record_file="F"+swath+"/"+config_params.ts_output_dir+"/"+"intf_record.txt";
+    record_file=config_params.ts_output_dir+"/"+"intf_record.txt";
     print("Writing out list of %d interferograms used in this run to %s" % (len(select_intf_list), record_file) );
     ofile=open(record_file,'w');
     ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_list)) );

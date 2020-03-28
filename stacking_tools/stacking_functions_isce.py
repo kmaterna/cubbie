@@ -8,10 +8,37 @@ import stack_corr
 import netcdf_read_write as rwr
 import nsbas_isce
 import isce_read_write
+import unwrapping_errors
+
+# --------------- STEP 1: Make corrections and TS prep ------------ # 
+def make_corrections_isce(config_params):
+	if config_params.startstage>1:  # if we're starting after, we don't do this. 
+		return;
+	if config_params.endstage<1:   # if we're ending before, we don't do this. 
+		return;  
+	print("Stage 1 - Doing optional corrections"); 
+
+	# For ISCE, we might want to re-make all the interferograms and unwrap them in custom fashion. 
+	# This operates on files in the Igram directory, no need to move directories yourself. 
+	if config_params.solve_unwrap_errors:
+		unwrapping_errors.main_function(config_params.rlks, config_params.alks, config_params.filt, 
+			config_params.xbounds, config_params.ybounds, config_params.cor_cutoff_mask);
+
+	# WE ALSO MAKE THE SIGNAL SPREAD FOR FULL IMAGES
+	cor_value=0.5;
+	filepathslist=glob.glob("../Igrams/????????_????????/filt*.cor");  # *** This may change
+	cor_data = readmytupledata.reader_isce(filepathslist);
+	a = stack_corr.stack_corr(cor_data, cor_value);
+	rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', config_params.ts_output_dir+'/signalspread_full.nc')
+	rwr.produce_output_plot(config_params.ts_output_dir+'/signalspread_full.nc', 
+		'Signal Spread above cor='+str(cor_value), config_params.ts_output_dir+'/signalspread_full.png', 
+		'Percentage of coherence', aspect=1/4, invert_yaxis=False);
+
+	return;
 
 
 # --------------- UTILITIES ------------ # 
-def get_100p_pixels_get_ref(filenameslist, ref_idx):
+def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
 	# If we have a reference idx in the file, just return that. 
 	# If not, then you might have to run through this function a number of times 
 	# To select your boxes and your eventual reference pixel. 
@@ -54,24 +81,18 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx):
 		xref = xpixels_options[idx_lucky];
 		yref = ypixels_options[idx_lucky];
 
-		# # Make stack-corr
-		# # The first time through, you might want to run stack-corr. 
-		# a=stack_corr.stack_corr(mydata, np.nan);
-		# rwr.produce_output_netcdf(xvalues, yvalues, a, 'Percentage', 'signalspread_cut.nc');
-		# rwr.produce_output_plot('signalspread_cut.nc', 'Signal Spread', 'signalspread_cut.png', 'Percentage of coherence', aspect=1/4, invert_yaxis=False )
-
 		print("%d of %d (%f percent) are totally coherent. " % (count, total_pixels, 100*(count/total_pixels)) );
 		print(np.shape(mydata.zvalues));
 		print("%d pixels are good options for the reference pixel. " % (len(xpixels_options)) );
 
 		# Make a plot that shows where those pixels are
-		a=rwr.read_grd('signalspread_cut.nc');
+		a=rwr.read_grd(outdir+'/signalspread_cut.nc');
 		fig = plt.figure();
 		plt.imshow(a,aspect=1/4, cmap='rainbow');
 		plt.plot(xpixels_good, ypixels_good, '.', color='k');
 		plt.plot(xpixels_options,ypixels_options, '.', color='g');
 		plt.plot(xref, yref, '.', color='r');
-		plt.savefig('best_pixels.png');
+		plt.savefig(outdir+'/best_pixels.png');
 		plt.close();
 
 		print("Selecting reference pixel at row/col %d, %d " % (yref, xref) );
@@ -84,7 +105,6 @@ def make_referenced_unwrapped_isce(intf_files, rowref, colref, output_dir):
 	# swath borders or solve for n pi. 
 	# We just return the values minus a single reference pixel, 
 	# and write them to a directory. 
-	output_dir="F/"+output_dir;
 	print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_files), output_dir) );
 	for item in intf_files:
 		datestr = item.split('/')[2];
@@ -118,7 +138,7 @@ def collect_unwrap_ref(config_params):
     intf_files=stacking_utilities.get_list_of_intf_all(config_params);
 
     # This is an eaiser function, just one swath and one reference pixel. 
-    rowref, colref = get_100p_pixels_get_ref(intf_files, config_params.ref_idx);
+    rowref, colref = get_100p_pixels_get_ref(intf_files, config_params.ref_idx, config_params.ts_output_dir);
 
     # Now we coalesce the files and reference them to the right value/pixel
     make_referenced_unwrapped_isce(intf_files, rowref, colref, config_params.ref_dir);
@@ -138,7 +158,7 @@ def vels_and_ts(config_params):
 	
 	if config_params.ts_type=="STACK":
 		print("Running velocities by simple stack.")
-		# sss.drive_velocity_simple_stack(config_params.swath, intfs, config_params.wavelength, config_params.ts_output_dir);
+		# sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
 	if config_params.ts_type=="SBAS":
 		print("Running velocities and time series by SBAS");
 		# sbas.drive_velocity_sbas(config_params.swath, intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
@@ -154,5 +174,11 @@ def vels_and_ts(config_params):
 def geocode_vels(config_params):
 	if config_params.startstage>4:  # if we're starting after, we don't do this. 
 		return;
-	if config_params.endstage<4:   # if we're ending at intf, we don't do this. 
+	if config_params.endstage<4:   # if we're ending before, we don't do this. 
 		return; 
+	# The goals here for UAVSAR:
+	# Find lon/lat grids
+	# Resample lon/lat grids
+	# Cut them appropriately
+	# Write them out in the output folder
+	# Turn some images (vel, ts steps, etc.) into KMLs

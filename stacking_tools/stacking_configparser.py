@@ -7,11 +7,64 @@ Params=collections.namedtuple('Params',['config_file','SAT','wavelength','swath'
     'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
     'ts_parent_dir','ts_output_dir']);
 
+Params_gmtsar=collections.namedtuple('Params_gmtsar',['config_file','SAT','wavelength','swath','startstage','endstage','ref_swath','ref_loc','ref_idx',
+    'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
+    'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
+    'ts_parent_dir','ts_output_dir']);
+
+Params_isce=collections.namedtuple('Params_isce',['config_file','SAT','wavelength','swath','startstage','endstage',
+    'ref_swath','ref_loc','ref_idx','rlks','alks','filt','cor_cutoff_mask','xbounds','ybounds',
+    'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
+    'start_time','end_time','intf_timespan','llh_file','lkv_file',
+    'gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
+    'ts_parent_dir','ts_output_dir']);
+
+# ----------------------------- # 
+
 def read_config():
+    # GMTSAR-specific parameters
+    config, C = read_config_general();
+    # Here we would read GMTSAR params if necessary
+    Params = Params_gmtsar(config_file=C.config_file, SAT=C.SAT, wavelength=C.wavelength, swath=C.swath, startstage=C.startstage,
+        endstage=C.endstage, ref_swath=C.ref_swath, ref_loc=C.ref_loc, ref_idx=C.ref_idx, ts_type=C.ts_type, 
+        solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo, gacos=C.gacos, aps=C.aps, sbas_smoothing=C.sbas_smoothing, 
+        nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time, intf_timespan=C.intf_timespan, 
+        gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle, skip_file=C.skip_file, 
+        ref_dir=C.ref_dir, ts_points_file=C.ts_points_file, ts_parent_dir=C.ts_parent_dir, ts_output_dir=C.ts_output_dir);
+    return Params;
+
+
+def read_config_isce():
+    # ISCE-specific parameters
+    config, C  = read_config_general();
+    rlks = config.getint('py-config','rlks')
+    alks = config.getint('py-config','alks')
+    filt = config.getfloat('py-config','filt')
+    cor_cutoff_mask = config.getfloat('py-config','cor_cutoff_mask');
+    xbounds = config.get('py-config','xbounds');
+    ybounds = config.get('py-config','ybounds');
+    llh_file = config.get('py-config','llh_file');
+    lkv_file = config.get('py-config','lkv_file');
+    ts_output_dir = C.ts_output_dir+"_"+str(rlks)+"_"+str(alks)+"_"+str(filt); # custom output dir
+    Params = Params_isce(config_file=C.config_file, SAT=C.SAT, wavelength=C.wavelength, swath=C.swath, startstage=C.startstage,
+        endstage=C.endstage, ref_swath=C.ref_swath, ref_loc=C.ref_loc, ref_idx=C.ref_idx, 
+        rlks=rlks, alks=alks, filt=filt, cor_cutoff_mask=cor_cutoff_mask, xbounds=xbounds, ybounds=ybounds, ts_type=C.ts_type, 
+        solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo, gacos=C.gacos, aps=C.aps, sbas_smoothing=C.sbas_smoothing, 
+        nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time, intf_timespan=C.intf_timespan, 
+        llh_file=llh_file, lkv_file=lkv_file, 
+        gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle, skip_file=C.skip_file, 
+        ref_dir=C.ref_dir, ts_points_file=C.ts_points_file, ts_parent_dir=C.ts_parent_dir, 
+        ts_output_dir=ts_output_dir);
+    return Params;
+
+
+
+def read_config_general():
     ################################################
     # Stage 0: Read and check config parameters
     #
     # read command line arguments and parse config file.
+    # Common to both GMTSAR and ISCE. 
     parser = argparse.ArgumentParser(description='Run stack processing. ')
     parser.add_argument('config',type=str,help='supply name of config file to setup processing options. Required.')
     parser.add_argument('--debug',action='store_true',help='Print extra debugging messages (default: false)')
@@ -51,6 +104,11 @@ def read_config():
     ts_parent_dir = config.get('py-config','ts_parent_dir');
     ts_output_dir = config.get('py-config','ts_output_dir');
 
+    # Sticking everything into the Fswath directory
+    ts_parent_dir='F'+swath+'/'+ts_parent_dir;
+    ref_dir = 'F'+swath+'/'+ref_dir;
+    ts_output_dir='F'+swath+'/'+ts_output_dir;
+
     print("Running velocity and time series processing, starting with stage %d" % startstage);
             
     # enforce startstage <= endstage
@@ -64,5 +122,5 @@ def read_config():
         start_time=start_time,end_time=end_time,intf_timespan=intf_timespan, gps_file=gps_file,flight_angle=flight_angle,look_angle=look_angle,
         skip_file=skip_file,ts_points_file=ts_points_file,ref_dir=ref_dir,ts_parent_dir=ts_parent_dir,ts_output_dir=ts_output_dir);
 
-    return config_params; 
+    return config, config_params; 
 

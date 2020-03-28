@@ -8,13 +8,12 @@ import matplotlib.pyplot as plt
 import sys
 
 
-def drive_velocity_simple_stack(swath, intfs, wavelength, outdir):
-    signal_spread_data=rwr.read_grd("F"+swath+"/"+outdir+"/signalspread.nc");
+def drive_velocity_simple_stack(intfs, wavelength, outdir):
+    signal_spread_data=rwr.read_grd(outdir+"/signalspread.nc");
     intf_tuple = rmd.reader(intfs);
     velocities, x, y = velocity_simple_stack(intf_tuple, wavelength, signal_spread_data, 25);  # signal threshold < 100%.  lower signal threshold allows for more data into the stack.  
-    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', 'F'+swath+'/'+outdir+'/velo_simple_stack.grd')
-    rwr.produce_output_plot('F'+swath+'/'+outdir+'/velo_simple_stack.grd', 'LOS Velocity ',
-        'F'+swath+'/'+outdir+'/velo_simple_stack.png', 'velocity (mm/yr)');
+    rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', outdir+'/velo_simple_stack.grd')
+    rwr.produce_output_plot(outdir+'/velo_simple_stack.grd', 'LOS Velocity ', outdir+'/velo_simple_stack.png', 'velocity (mm/yr)');
     return; 
 
 def get_velocity_by_stacking(phase_values, time_intervals, wavelength):
