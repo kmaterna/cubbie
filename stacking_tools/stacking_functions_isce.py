@@ -74,11 +74,11 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
 					xpixels_good.append(j);
 					ypixels_good.append(i);
 					# Here we will adjust parameters until we find a reference pixel that we like. 
-					if j>248 and j<262 and i>1970 and i<2000:
+					if j>320 and j<337 and i>3500 and i<3700:
 						xpixels_options.append(j);
 						ypixels_options.append(i);
 
-		idx_lucky = 120;
+		idx_lucky = 800;
 		xref = xpixels_options[idx_lucky];
 		yref = ypixels_options[idx_lucky];
 
@@ -87,9 +87,9 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
 		print("%d pixels are good options for the reference pixel. " % (len(xpixels_options)) );
 
 		# Make a plot that shows where those pixels are
-		a=rwr.read_grd(outdir+'/signalspread_cut.nc');
+		# a=rwr.read_grd(outdir+'/signalspread_cut.nc');
 		fig = plt.figure();
-		plt.imshow(a,aspect=1/4, cmap='rainbow');
+		# plt.imshow(a,aspect=1/4, cmap='rainbow');
 		plt.plot(xpixels_good, ypixels_good, '.', color='k');
 		plt.plot(xpixels_options,ypixels_options, '.', color='g');
 		plt.plot(xref, yref, '.', color='r');
@@ -134,6 +134,7 @@ def collect_unwrap_ref(config_params):
         return;
 
     print("Stage 2 - Collecting referenced unwrapped.");
+    call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
 
     # Very general, takes all files and doesn't discriminate. 
     intf_files=stacking_utilities.get_list_of_intf_all(config_params);
@@ -156,6 +157,7 @@ def vels_and_ts(config_params):
 	# This is where the hand-picking takes place. 
 	# Ex: manual excludes, manual selects, long intfs only, ramp-removed, atm-removed, etc. 
 	intfs = stacking_utilities.make_selection_of_intfs(config_params);
+	call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
 	
 	if config_params.ts_type=="STACK":
 		print("Running velocities by simple stack.")
@@ -178,7 +180,7 @@ def geocode_vels(config_params):
 	if config_params.endstage<4:   # if we're ending before, we don't do this. 
 		return; 
 	# The goals here for UAVSAR:
-	# Find lon/lat grids
+	# Load lon/lat grids
 	# Resample lon/lat grids
 	# Cut them appropriately
 	# Write them out in the output folder
@@ -262,6 +264,13 @@ def geocode_UAVSAR_stack(config_params):
 
 	isce_read_write.plot_scalar_data(config_params.ts_output_dir+'/cut_lat.gdal',
 		colormap='rainbow',aspect=1/4,outname=config_params.ts_output_dir+'/cut_lat_geocoded.png');
+
+	# NEXT: HERE WE WILL TURN THE GRID INTO A KML
+	# cut_lon, cut_lat, ts, or whatever we feel like. 
+	# We should have a function that turns individual images
+	# Or time series into KML. 
+
+
 
 	return;
 
