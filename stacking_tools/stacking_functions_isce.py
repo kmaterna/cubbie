@@ -168,7 +168,7 @@ def vels_and_ts(config_params):
 		# sbas.drive_ts_sbas(config_params);
 	if config_params.ts_type=="NSBAS":
 		print("Running velocities and time series by NSBAS");
-		nsbas_isce.drive_velocity_nsbas(config_params.swath, intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+		nsbas_isce.drive_nsbas(config_params.swath, intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
 	if config_params.ts_type=="WNSBAS":
 		print("Running velocities and time series by WNSBAS");
 		coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intf_files);

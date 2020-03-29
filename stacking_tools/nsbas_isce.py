@@ -14,13 +14,15 @@ def drive_nsbas(swath, intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, 
     intf_tuple = rmd.reader_isce(intf_files); 
     if coh_files != []:
         coh_tuple = rmd.reader_isce(coh_files);
+    else:
+        coh_tuple = [];
     xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
     # nsbas.make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # Select a single pixel and look at its time series. 
-    # pixel_coords = [550, 150];
-    # nsbas.single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file, outdir, coh_tuple);
+    pixel_coords = [550, 150];
+    nsbas.single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file, outdir, coh_tuple);
 
     # # TIME SERIES
     TS = nsbas.driver_Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data, coh_tuple);

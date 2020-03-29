@@ -77,7 +77,7 @@ def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal
 		coh_value=[];
 	else:
 		coh_value = coh_tuple.zvalues[:,pixel_coords[0], pixel_coords[1]];
-	ts = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, sbas_smoothing, wavelength, coh_value, 
+	ts = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, sbas_smoothing, wavelength, datestrs, xdates, coh_value, 
 		full_ts_return=True);
 	output_single_pixel_ts(pixel_coords, xdates, ts, signal_spread_file, outdir);
 	return;
@@ -202,18 +202,30 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 	# Need to implement WLS next. 
 
 	d = np.array([]);
-	
+	diagonals = [];
 	date_pairs_used=[];
+
 	for i in range(len(pixel_value)):
 		if not math.isnan(pixel_value[i]):
 			d = np.append(d, pixel_value[i]);  # removes the nans from the computation. 
 			date_pairs_used.append(date_pairs[i]);  # might be a slightly shorter array of which interferograms actually got used. 
+			if coh_value != []:
+				diagonals.append(np.power(coh_value[i],2));  # using coherence squared as the weighting. 
+			else:
+				diagonals.append(1);
 	model_num=len(datestrs)-1;
+
+	# Average weights at the end of the weigting vector
+	Wavg = np.nanmean(diagonals)
+	for i in range(model_num-1):
+		diagonals.append(Wavg)
+	W = np.diag(diagonals);
 
 	G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
 	# print(np.shape(G));
 	
-	for i in range(len(d)):  # building G matrix line by line. 
+	# building G matrix line by line. 
+	for i in range(len(d)):  
 		ith_intf = date_pairs_used[i];
 		first_image=ith_intf.split('_')[0]; # in format '2017082'
 		second_image=ith_intf.split('_')[1]; # in format '2017094'
@@ -228,9 +240,14 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 		G[i][position]=1*smoothing;
 		G[i][position+1]=-1*smoothing;
 		d = np.append(d,0);
-
-	# solving the SBAS linear least squares equation for displacement between each epoch. 
-	m = np.linalg.lstsq(G,d)[0];  
+  
+	# solving the SBAS linear least squares equation for displacement between each epoch.
+	if coh_value != []:
+		GTWG = np.dot(np.transpose(G), np.dot(W,G))
+		GTWd = np.dot(np.transpose(G), np.dot(W,d))
+		m = np.dot(np.linalg.inv(GTWG), GTWd )
+	else:
+		m = np.linalg.lstsq(G,d)[0];
 
 	# modeled_data=np.dot(G,m);
 	# plt.figure();
