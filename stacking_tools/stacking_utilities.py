@@ -373,6 +373,16 @@ def make_selection_of_intfs(config_params, swath=0):
 
     return select_intf_list; 
 
+def make_selection_of_coh_files(config_params, intf_files):
+    coh_files=[];
+    for i in range(len(intf_files)):
+        if config_params.SAT=="UAVSAR":
+            datestring = intf_files[i].split('/')[-1][0:17];
+            coh_file = "../Igrams/"+datestring+"/alt_unwrapped/filt_"+datestring+"_cut.cor";
+            coh_files.append(coh_file);
+    print("Returning %d files with coherence information " % (len(coh_files)) )
+    return coh_files;
+
 
 def get_axarr_numbers(rows, cols, idx):
     # Given an incrementally counting idx number and a subplot dimension, where is our plot? 

@@ -5,7 +5,7 @@ import numpy as np
 import scipy.io.netcdf as netcdf
 import matplotlib.pyplot as plt 
 import subprocess
-
+import copy
 
 # --------------- READING ------------------- # 
 
@@ -216,7 +216,19 @@ def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
 def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname):
 	# Ultimately we will need a function that writes a large 3D array.  
 	# Each 2D slice is the displacement at a particular time, associated with a time series. 
-	# Haven't written this yet. 
+	# zdata comes in as a 2D array where each element is a timeseries (1D array). 
+	# It must be re-packaged into a 3D array before we save it. 
+
+	print("Shape of zdata originally:", np.shape(zdata));
+	zdata_repacked = np.zeros([len(timearray),len(ydata), len(xdata)] );
+	print("Making repackaged zdata of shape: ", np.shape(zdata_repacked));
+	for i in range(len(zdata[0][0][0])): # for each time interval: 
+		print(i);
+		for k in range(len(xdata)):
+			for j in range(len(ydata)):
+				temp_array = zdata[j][k][0];
+				zdata_repacked[i][j][k] = temp_array[i];
+
 	print("Writing output netcdf to file %s " % netcdfname); 
 	days_array=[];
 	for i in range(len(timearray)):
@@ -239,7 +251,7 @@ def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname
 	y.units = 'azimuth';
 
 	z=f.createVariable('z',float,('t','y','x'));
-	z[:,:,:]=zdata;
+	z[:,:,:]=zdata_repacked;
 	z.units = zunits;
 	f.close();
 	return;

@@ -17,7 +17,7 @@ def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, waveleng
     intf_tuple = rmd.reader(intfs); 
     make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
-    velocities = compute_nsbas(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
+    velocities = driver_vels(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
     
     # An issue with the lightswitch at Moffett turning off... 
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', '/Users/kmaterna/Documents/testvelo/F'+swath+'_'+'velo_nsbas.grd');  # just in case we screw up
@@ -37,8 +37,6 @@ def drive_ts_nsbas(config_params):
 	drive_ts_nsbas_one_swath(config_params, '2', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
 	drive_ts_nsbas_one_swath(config_params, '3', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
 	return;
-
-
 
 # FOR A GIVEN SWATH, LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
 def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
@@ -70,6 +68,21 @@ def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, na
 		nsbas_ts_outputs(dts, m_cumulative, select_swath, select_rows[i], select_cols[i], select_names[i], select_lons[i], select_lats[i], outdir);
 	return;
 
+# This might be redundant, not sure. 
+def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file,outdir, coh_tuple=[]):
+	# Plot a single pixel's time series. 
+	datestrs, x_dts, xdates = get_TS_dates(intf_tuple.dates_correct);
+	pixel_value = intf_tuple.zvalues[:,pixel_coords[0],pixel_coords[1]];
+	if coh_tuple==[]:
+		coh_value=[];
+	else:
+		coh_value = coh_tuple.zvalues[:,pixel_coords[0], pixel_coords[1]];
+	ts = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, sbas_smoothing, wavelength, coh_value, 
+		full_ts_return=True);
+	output_single_pixel_ts(pixel_coords, xdates, ts, signal_spread_file, outdir);
+	return;
+
+
 # Before velocities, might want to make stack_corr_custom if you have excluded significant data. 
 def make_stack_corr_custom(mydata,signal_spread_file):
     # Stack corr for this exact calculation (given right inputs and outputs). 
@@ -82,107 +95,120 @@ def make_stack_corr_custom(mydata,signal_spread_file):
 
 
 # ------------ COMPUTE ------------ #
-def compute_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data):
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
-	# make an NSBAS matrix describing each image that's a real number (not nan). 	
+	# make an NSBAS matrix describing each image that's a real number (not nan). 
+
+def driver_vels(intf_tuple, nsbas_good_perc, smoothing, wavelegnth, signal_spread_data, coh_tuple = []):
+	retval = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
+	def packager_function(i, j, intf_tuple):
+		# Giving access to all these variables
+		return compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple);
+	retval = iterator_func(intf_tuple, nsbas_good_perc, smoothing, wavelength, 
+		signal_spread_data, packager_function, coh_tuple);  # how does it get compute_vels()?
+	return retval
+
+def driver_Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, coh_tuple = []):
+	datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct); 
+	# Establishing the return array
+	empty_vector=[np.empty(np.shape(x_axis_days))];
+	retval = [ [ empty_vector for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
+	def packager_function(i, j, intf_tuple):
+		# Giving access to all these variables. 
+		return compute_TS(i,j,intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple);
+	retval = iterator_func(intf_tuple, packager_function, retval);  
+	return retval;
+
+
+def iterator_func(intf_tuple, func, retval):
+	# This iterator performs a for loop. It assumes the return value can be stored in an array of ixj
+	# if np.shape(retval) != np.shape(signal_spread_data):
+	# 	print("ERROR: signal spread does not match input data. Stopping immediately. ");
+	# 	print("Shape of signal spread:", np.shape(signal_spread_data));
+	# 	print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
+	# 	sys.exit(0);
 	print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)) );
 	print("Started at: ");
 	print(dt.datetime.now());
-	vel = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
-	if np.shape(vel) != np.shape(signal_spread_data):
-		print("ERROR: signal spread does not match input data. Stopping immediately. ");
-		print("Shape of signal spread:", np.shape(signal_spread_data));
-		print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
-		sys.exit(0);
 	c = 0;
 	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
 	while not it.finished:
 		i=it.multi_index[0];
 		j=it.multi_index[1];
-		signal_spread = signal_spread_data[i,j];
-		pixel_value = intf_tuple.zvalues[:,i,j];
-		if signal_spread > nsbas_good_perc: # if we want a calculation for that day... 
-			# vel[i][j]=1;
-			vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
-			# if np.mod(i,10) == 0:  # this is to speed up the calculation. 
-			# 	vel[i][j] = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength); 
-			# else:
-			# 	vel[i][j] = np.nan;
-		else:
-			vel[i,j] = np.nan;
+		retval[i][j]=func(i,j,intf_tuple);
 		c=c+1;
 		if np.mod(c,10000)==0:
 			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
-		# if c==30000:
+		# if c==40000:
 		# 	break;
 		it.iternext();
 	print("Finished at: ");
 	print(dt.datetime.now());
+	return retval;
+
+
+def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
+	signal_spread = signal_spread_data[i,j];
+	pixel_value = intf_tuple.zvalues[:,i,j];
+	if coh_tuple==[]:
+		coh_value=[];
+	else:
+		coh_value = coh_tuple.zvalues[:,i,j];
+	if signal_spread > nsbas_good_perc: 
+		vel = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=False); 
+	else:
+		vel = np.nan;
 	return vel;
 
-
-def compute_fullTS_nsbas(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data):
-	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
-	# make an NSBAS matrix describing each image that's a real number (not nan). 	
-	print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)) );
-	print("Started at: ");
-	print(dt.datetime.now());
-	# Figure out how many dates there are. 
-	vel, xdates, vector = do_nsbas_pixel(intf_tuple.zvalues[:,0,0], intf_tuple.dates_correct, smoothing, wavelength,full_ts_return=True); 
-	TS = np.zeros([len(xdates),len(intf_tuple.yvalues), len(intf_tuple.xvalues)] );
-	# return TS, xdates;  # quit early. 
-
-	if np.shape(TS[0,:,:]) != np.shape(signal_spread_data):
-		print("ERROR: signal spread does not match input data. Stopping immediately. ");
-		print("Shape of signal spread:", np.shape(signal_spread_data));
-		print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
-		sys.exit(0);
-	c = 0;
-	empty_vector = np.empty(np.shape(vector));
-	empty_vector[:] = np.nan;   # in case we don't want to use that pixel. 
-	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
-	while not it.finished:
-		i=it.multi_index[0];
-		j=it.multi_index[1];
-		signal_spread = signal_spread_data[i,j];
-		pixel_value = intf_tuple.zvalues[:,i,j];
-		if signal_spread > nsbas_good_perc: # if we want a calculation for that day... 
-			vel, xdates, vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength,full_ts_return=True); 
-			TS[:,i,j] = vector;		
-		else:
-			TS[:,i,j] = empty_vector;
-		c=c+1;
-		if np.mod(c,10000)==0:
-			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
-		it.iternext();
-	print("Finished at: ");
-	print(dt.datetime.now());
-	return TS, xdates;
+def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
+	# For a given iteration, what's the right time series? 
+	empty_vector = np.empty(np.shape(x_axis_days));  # Length of the TS model
+	empty_vector[:] = np.nan;
+	signal_spread = signal_spread_data[i,j];
+	pixel_value = intf_tuple.zvalues[:,i,j];
+	if coh_tuple==[]:
+		coh_value=[];
+	else:
+		coh_value = coh_tuple.zvalues[:,i,j];
+	if signal_spread > nsbas_good_perc:
+		vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=True); 
+		TS = [vector];
+	else:
+		TS = [empty_vector];
+	return TS;
 
 
-
-
-def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_return=False):
-	# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
-	# dates: if we have 35 images, this is the date of each image, in format 
-	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
-	# This solves Gm = d for the movement of the pixel with smoothing. 
-
-	d = np.array([]);
+def get_TS_dates(date_pairs):
+	# Get me the x axis associated with a certain set of interferograms
+	# Returns a list of n strings for each satellite pass
+	# Also the dt objects
+	# Also the days since the start of the track. 
 	dates_total=[];
-
 	for i in range(len(date_pairs)):
 		dates_total.append(date_pairs[i][0:7])
 		dates_total.append(date_pairs[i][8:15])
 	dates_total = set(dates_total);
-	dates=sorted(dates_total);
+	datestrs=sorted(dates_total);
+	x_axis_datetimes=[dt.datetime.strptime(x,"%Y%j") for x in datestrs];
+	x_axis_days=[(x - x_axis_datetimes[0]).days for x in x_axis_datetimes];  # number of days since first acquisition. 
+	return datestrs, x_axis_datetimes, x_axis_days;
+
+
+def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=[], full_ts_return=False):
+	# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
+	# dates: if we have 35 images, this is the date of each image, in format 
+	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
+	# This solves Gm = d for the movement of the pixel with smoothing. 
+	# If coh_value is an array, we do weighted least squares. 
+	# Need to implement WLS next. 
+
+	d = np.array([]);
 	
 	date_pairs_used=[];
 	for i in range(len(pixel_value)):
 		if not math.isnan(pixel_value[i]):
 			d = np.append(d, pixel_value[i]);  # removes the nans from the computation. 
 			date_pairs_used.append(date_pairs[i]);  # might be a slightly shorter array of which interferograms actually got used. 
-	model_num=len(dates)-1;
+	model_num=len(datestrs)-1;
 
 	G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
 	# print(np.shape(G));
@@ -191,8 +217,8 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 		ith_intf = date_pairs_used[i];
 		first_image=ith_intf.split('_')[0]; # in format '2017082'
 		second_image=ith_intf.split('_')[1]; # in format '2017094'
-		first_index=dates.index(first_image);
-		second_index=dates.index(second_image);
+		first_index=datestrs.index(first_image);
+		second_index=datestrs.index(second_image);
 		for j in range(second_index-first_index):
 			G[i][first_index+j]=1;
 
@@ -221,9 +247,6 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 		m_cumulative.append(np.sum(m[0:i]));  # The cumulative phase from start to finish! 
 
 	# Solving for linear velocity
-	x_axis_datetimes=[dt.datetime.strptime(x,"%Y%j") for x in dates];
-	x_axis_days=[(x - x_axis_datetimes[0]).days for x in x_axis_datetimes];  # number of days since first acquisition. 
-
 	x=np.zeros([len(x_axis_days),2]);
 	y=np.array([]);
 	for i in range(len(x_axis_days)):
@@ -248,7 +271,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 	# plt.savefig('m_model.eps');
 
 	if full_ts_return:
-		return vel, x_axis_datetimes, disp_ts;
+		return disp_ts;
 	else:
 		return vel;
 
@@ -257,11 +280,9 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, full_ts_retur
 # ------------ OUTPUT ------------ #
 
 
-def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file,outdir):
-    # Plot a single pixel's time series. 
-    # Also plot the signal spread with the pixel as a dot. 
-    pixel_value = intf_tuple.zvalues[:,pixel_coords[0],pixel_coords[1]];
-    vel, xdates, ts = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, sbas_smoothing, wavelength, full_ts_return=True)
+
+
+def output_single_pixel_ts(pixel_coords, xdates, ts, signal_spread_file, outdir):
     print("Random Pixel");
     fig = plt.figure()
     plt.plot(xdates, ts,'.-',markersize=10);

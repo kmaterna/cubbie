@@ -156,7 +156,7 @@ def vels_and_ts(config_params):
 
 	# This is where the hand-picking takes place. 
 	# Ex: manual excludes, manual selects, long intfs only, ramp-removed, atm-removed, etc. 
-	intfs = stacking_utilities.make_selection_of_intfs(config_params);
+	intf_files = stacking_utilities.make_selection_of_intfs(config_params);
 	call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
 	
 	if config_params.ts_type=="STACK":
@@ -168,7 +168,11 @@ def vels_and_ts(config_params):
 		# sbas.drive_ts_sbas(config_params);
 	if config_params.ts_type=="NSBAS":
 		print("Running velocities and time series by NSBAS");
-		nsbas_isce.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+		nsbas_isce.drive_velocity_nsbas(config_params.swath, intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+	if config_params.ts_type=="WNSBAS":
+		print("Running velocities and time series by WNSBAS");
+		coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intf_files);
+		nsbas_isce.drive_nsbas(config_params.swath, intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir, coh_files);
 	return; 
 
 
@@ -192,27 +196,26 @@ def geocode_vels(config_params):
 
 def geocode_UAVSAR_stack(config_params):
 	# Collect initial information and set things up
-	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is not shaped like 2d. 
-	rlks_llh = 2;  # for the downloaded llh file, likely 2x8
-	alks_llh = 8;
+	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector. 
 	lon=[]; lat=[]; hgt=[];
-	lat=llh_array[np.arange(0,len(llh_array),3)];
+	lat=llh_array[np.arange(0,len(llh_array),3)];  # ordered array opened from the provided UAVSAR files
 	lon=llh_array[np.arange(1,len(llh_array),3)];
 	hgt=llh_array[np.arange(2,len(llh_array),3)];
 	example_igram=glob.glob("../Igrams/????????_????????/*.int")[0];  
 	phase_array = isce_read_write.read_phase_data(example_igram);
 	print("Shape of the interferogram: ", np.shape(phase_array));
 
-
-	# Determine the shape of the llh array. 
-	downlooked_pixels = np.shape(phase_array);
-	total_pixels_azimuth = downlooked_pixels[0]*config_params.alks;  # this corresponds to the 1x1 case. 
-	total_pixels_range = downlooked_pixels[1]*config_params.rlks;    # this corresponds to the 1x1 case. 
-	llh_pixels_range = int(np.ceil(total_pixels_range/rlks_llh));
-	llh_pixels_azimuth=int(len(lon)/llh_pixels_range);
-	# llh_pixels_azimuth = int(np.ceil(total_pixels_azimuth / alks_llh)); # this is how many we have in the downsampled array. 
-	# llh_pixels_range = int(len(lon)/llh_pixels_azimuth);
-
+	# Determine the shape of the llh array 
+	# assuming there's a giant gap somewhere in the lat array
+	# that can tell us how many elements are in the gridded array
+	typical_gap = abs(lat[1]-lat[0]);
+	for i in range(1,len(lat)):
+		if abs(lat[i]-lat[i-1]) > 100*typical_gap:
+			print(lat[i]-lat[i-1]);
+			print("There are %d columns in the lon/lat arrays" % i);
+			llh_pixels_range=i;
+			break;
+	llh_pixels_azimuth = int(len(lon)/llh_pixels_range);
 	print("llh_pixels_azimuth: ", llh_pixels_azimuth);
 	print("llh_pixels_range: ",llh_pixels_range);
 
@@ -269,8 +272,6 @@ def geocode_UAVSAR_stack(config_params):
 	# cut_lon, cut_lat, ts, or whatever we feel like. 
 	# We should have a function that turns individual images
 	# Or time series into KML. 
-
-
 
 	return;
 
