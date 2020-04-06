@@ -10,6 +10,7 @@ import nsbas_isce
 import isce_read_write
 import mask_and_interpolate
 import unwrapping_errors
+import haversine
 
 # --------------- STEP 1: Make corrections and TS prep ------------ # 
 def make_corrections_isce(config_params):
@@ -74,11 +75,11 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
 					xpixels_good.append(j);
 					ypixels_good.append(i);
 					# Here we will adjust parameters until we find a reference pixel that we like. 
-					if j>320 and j<337 and i>3500 and i<3700:
+					if j>280 and j<300 and i>2500 and i<2700:
 						xpixels_options.append(j);
 						ypixels_options.append(i);
 
-		idx_lucky = 800;
+		idx_lucky = 710;
 		xref = xpixels_options[idx_lucky];
 		yref = ypixels_options[idx_lucky];
 
@@ -96,9 +97,49 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
 		plt.savefig(outdir+'/best_pixels.png');
 		plt.close();
 
-		print("Selecting reference pixel at row/col %d, %d " % (yref, xref) );
+		print("Based on 100p pixels, selecting reference pixel at row/col %d, %d " % (yref, xref) );
+		print("Please write it in your config file.");
 
 		return yref, xref;
+
+
+def from_lonlat_get_rowcol(config_params):
+	# Given a ref loc, get the geocoded grids and find the nearest point. 
+	# Return its row and column. 
+	# Step 1: Geocode properly based on a sample interferogram grid (done)
+	# Step 2: extract nearest pixel (code in Brawley repo)
+	geocode_UAVSAR_stack(config_params);
+
+	reflon = float(config_params.ref_loc.split(',')[0]);
+	reflat = float(config_params.ref_loc.split(',')[1]);
+	# Next we get the nearest pixel from the rasters
+	raster_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/cut_lon.gdal");
+	raster_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/cut_lat.gdal");
+	i_found, j_found = get_nearest_pixel_in_raster(raster_lon, raster_lat, reflon, reflat);
+	print("From lon/lat, found Row and Column at %d, %d " % (i_found, j_found) );
+	print("Please write it in your config file.");
+	return i_found,j_found;
+
+
+def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
+	# Take a raster and find the grid location closest to the target location
+	dist = np.zeros(np.shape(raster_lon));
+	lon_shape = np.shape(raster_lon);
+	for i in range(lon_shape[0]):
+		for j in range(lon_shape[1]):
+			mypt = [raster_lat[i][j], raster_lon[i][j]];
+			dist[i][j]=haversine.distance((target_lat, target_lon), mypt);
+	minimum_distance = np.nanmin(dist);	
+	if minimum_distance<0.25:  # if we're inside the domain.
+		idx = np.where(dist==np.nanmin(dist));
+		i_found = idx[0][0];
+		j_found = idx[1][0];
+		print(raster_lon[i_found][j_found], raster_lat[i_found][j_found]);
+	else:
+		i_found = -1;
+		j_found = -1;  # error codes
+	return i_found, j_found;
+
 
 
 def make_referenced_unwrapped_isce(intf_files, rowref, colref, output_dir):
@@ -139,8 +180,31 @@ def collect_unwrap_ref(config_params):
     # Very general, takes all files and doesn't discriminate. 
     intf_files=stacking_utilities.get_list_of_intf_all(config_params);
 
-    # This is an eaiser function, just one swath and one reference pixel. 
-    rowref, colref = get_100p_pixels_get_ref(intf_files, config_params.ref_idx, config_params.ts_output_dir);
+
+    # Now we should have two features, for finding reference pixel by using 100% pixels
+    # or by using lon/lat information. 
+    # If we are going blind, we start doing manual tests in the reference location area by 100% pixels
+    if config_params.ref_idx =="" and config_params.ref_loc=="":
+        rowref, colref = get_100p_pixels_get_ref(intf_files, config_params.ref_idx, config_params.ts_output_dir);
+        sys.exit(0);
+
+    # if we're using a lon/lat to get the reference pixel
+    if config_params.ref_idx=="" and config_params.ref_loc!="":  
+        rowref, colref = from_lonlat_get_rowcol(config_params);
+        sys.exit(0);
+
+    if config_params.ref_idx!="":
+        rowref = int(config_params.ref_idx.split(",")[0]);
+        colref = int(config_params.ref_idx.split(",")[1]);
+        print("From the config file, the Rowref and Colref are %d, %d" % (rowref, colref) );
+
+
+    # NEXT FOR LON LAT Reference pixels: 
+    # Figure out the signal spread of the reference pixel.
+    # Report the signal spread of the reference pixel. 
+    # Make a plot of signal spread with the reference pixel plotted. 
+    # Throw an error if the reference pixel has a very low coherence. 
+
 
     # Now we coalesce the files and reference them to the right value/pixel
     make_referenced_unwrapped_isce(intf_files, rowref, colref, config_params.ref_dir);
@@ -261,18 +325,16 @@ def geocode_UAVSAR_stack(config_params):
 	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_lat, 
 		"degrees", config_params.ts_output_dir+'/cut_lat.nc');
 
-	# Double checking the shape of the interferogram data (should match!)
-	signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
-	print("For comparison, shape of cut data is: ",np.shape(signalspread));
-
 	isce_read_write.plot_scalar_data(config_params.ts_output_dir+'/cut_lat.gdal',
 		colormap='rainbow',aspect=1/4,outname=config_params.ts_output_dir+'/cut_lat_geocoded.png');
 
-	# NEXT: HERE WE WILL TURN THE GRID INTO A KML
-	# cut_lon, cut_lat, ts, or whatever we feel like. 
-	# We should have a function that turns individual images
-	# Or time series into KML. 
+	# This last thing may not work when finding the reference pixel, only when geocoding at the very last. 
+	# Might have to re-arrange. 
+	# Double checking the shape of the interferogram data (should match!)
+	# signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
+	# print("For comparison, shape of cut data is: ",np.shape(signalspread));
 
+	# NEXT: HERE WE WILL TURN THE GRID INTO A KML
 	return;
 
 
