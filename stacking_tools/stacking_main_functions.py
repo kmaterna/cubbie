@@ -28,6 +28,7 @@ def set_up_output_directories(config_params):
     call(['mkdir','-p',config_params.ts_output_dir],shell=False);
     call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
     call(['cp',config_params.skip_file, config_params.ts_output_dir],shell=False);
+    print("Setting up output directory at %s " % config_params.ts_output_dir);
     return;
 
 
@@ -43,13 +44,13 @@ def make_corrections(config_params):
     # Step 3B: Try APS-based atmospheric correction
     # Step 3C: Detrend topo-correlated atmosphere   
     # if config_params.solve_unwrap_errors:
-    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     # if config_params.gacos:
-    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     # if config_params.aps:
-    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time,'');
+    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref,'');
     # if config_params.detrend_atm_topo:
-    #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref, config_params.start_time, config_params.end_time);
+    #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     return;
 
 

@@ -1,5 +1,6 @@
 # Stacking config parser
 import os,sys,shutil,argparse,time,configparser, glob
+import datetime as dt 
 import collections
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','swath','startstage','endstage','ref_swath','ref_loc','ref_idx',
@@ -92,8 +93,8 @@ def read_config_general():
     detrend_atm_topo = config.getint('py-config','detrend_atm_topo');
     nsbas_min_intfs=config.getint('py-config','nsbas_min_intfs');
     sbas_smoothing = config.getfloat('py-config','sbas_smoothing');
-    start_time = config.getint('py-config','start_time');
-    end_time = config.getint('py-config','end_time');
+    start_time = config.get('py-config','start_time');
+    end_time = config.get('py-config','end_time');
     intf_timespan = config.get('py-config','intf_timespan');
     gps_file = config.get('py-config','gps_file');
     flight_angle = config.getfloat('py-config','flight_angle');
@@ -103,6 +104,10 @@ def read_config_general():
     ref_dir = config.get('py-config','ref_dir');
     ts_parent_dir = config.get('py-config','ts_parent_dir');
     ts_output_dir = config.get('py-config','ts_output_dir');
+
+    # Start time and end times in datetime format. 
+    start_time = dt.datetime.strptime(start_time, "%Y%m%d");
+    end_time = dt.datetime.strptime(end_time, "%Y%m%d");
 
     # Sticking everything into the Fswath directory
     ts_parent_dir='F'+swath+'/'+ts_parent_dir;

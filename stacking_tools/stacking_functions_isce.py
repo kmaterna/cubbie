@@ -224,7 +224,9 @@ def collect_unwrap_ref(config_params):
     stack_corr_for_ref_unwrapped(config_params.ref_dir, rowref, colref, config_params.ts_output_dir);
     return;
 
+
 # --------------- STEP 3: Velocities and Time Series! ------------ # 
+
 def vels_and_ts(config_params):
 	if config_params.startstage>3:  # if we're starting after, we don't do this. 
 		return;
@@ -232,10 +234,10 @@ def vels_and_ts(config_params):
 		return;
 
 	# This is where the hand-picking takes place. 
-	# Ex: manual excludes, manual selects, long intfs only, ramp-removed, atm-removed, etc. 
+	# Ex: manual excludes, manual selects, long intfs only, ramp-removed, etc. 
 	intf_files = stacking_utilities.make_selection_of_intfs(config_params);
 	call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
-	
+
 	if config_params.ts_type=="STACK":
 		print("Running velocities by simple stack.")
 		# sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
@@ -260,18 +262,18 @@ def geocode_vels(config_params):
 		return;
 	if config_params.endstage<4:   # if we're ending before, we don't do this. 
 		return; 
-	# The goals here for UAVSAR:
-	# Load lon/lat grids
-	# Resample lon/lat grids
-	# Cut them appropriately
-	# Write them out in the output folder
-	# Turn some images (vel, ts steps, etc.) into KMLs
 	if config_params.SAT=="UAVSAR":
 		geocode_UAVSAR_stack(config_params);
 	return;
 
 
 def geocode_UAVSAR_stack(config_params):
+	# The goals here for UAVSAR:
+	# Load lon/lat grids
+	# Resample lon/lat grids
+	# Cut them appropriately
+	# Write them out in the output folder
+	# Turn some images (vel, ts steps, etc.) into KMLs
 	# Collect initial information and set things up
 	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector. 
 	lon=[]; lat=[]; hgt=[];

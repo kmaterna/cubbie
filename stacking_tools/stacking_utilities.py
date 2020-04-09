@@ -9,6 +9,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt 
 import matplotlib.dates as mdates
 import numpy as np
+import re 
 import collections
 import netcdf_read_write
 import get_ra_rc_from_ll
@@ -298,7 +299,7 @@ def replace_line_ts_points_file(ts_points_file, name, swath, row, col):
 
 
 def exclude_intfs_manually(total_intf_list, skip_file):
-
+    print("Excluding intfs based on manual_exclude.");
     print("Started with %d total interferograms. " % (len(total_intf_list)) );
     print("Excluding the following interferograms based on SkipFile %s: " % skip_file);
     ifile=open(skip_file,'r');
@@ -307,7 +308,6 @@ def exclude_intfs_manually(total_intf_list, skip_file):
         manual_removes.append(line.split()[0]);
     ifile.close();
     print(manual_removes);
-
 
     if manual_removes==[]:
         selected_intf_list = total_intf_list;
@@ -321,8 +321,44 @@ def exclude_intfs_manually(total_intf_list, skip_file):
                     include_flag=0;
             if include_flag==1:
                 selected_intf_list.append(igram);
-
+    print("Returning %d interferograms " % len(selected_intf_list) );
     return selected_intf_list;
+
+def get_intf_dates_gmtsar(total_intf_list):
+    d1 = []; d2 = [];
+    for item in total_intf_list:
+        datesplit = item.split('/')[-1];  # example: 2015157_2018177_unwrap.grd
+        date1 = str(int(datesplit[0:7]) + 1);
+        date2 = str(int(date_new[8:15]) + 1);  # adding 1 to the date because 000 = January 1
+        d1.append(dt.datetime.strptime(date1,"%Y%j"));
+        d2.append(dt.datetime.strptime(date2,"%Y%j"));
+    return d1, d2;
+
+def get_intf_dates_isce(total_intf_list):
+    d1 = []; d2 = [];
+    for item in total_intf_list:
+        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", item)[0]; #  example: 20100402_20140304
+        date1 = dt.datetime.strptime(datesplit[0:8],"%Y%m%d");
+        date2 = dt.datetime.strptime(datesplit[9:17],"%Y%m%d");
+        d1.append(date1);
+        d2.append(date2);
+    return d1, d2;
+
+
+def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time):
+    # Here, we look for each interferogram that falls totally within the time range 
+    # given in the config file.
+    print("Including only interferograms in time range %s to %s ." % (dt.datetime.strftime(start_time,"%Y-%m-%d"),
+        dt.datetime.strftime(end_time, "%Y-%m-%d"))); 
+    print("Starting with %d interferograms " % len(intf_list) )
+    select_intf_list=[];
+    for i in range(len(intf_list)):
+        if d1[i]>=start_time and d1[i]<=end_time:
+            if d2[i]>=start_time and d2[i]<=end_time:
+                select_intf_list.append(intf_list[i]);
+    print("Returning %d interferograms " % len(select_intf_list));
+    return select_intf_list;
+
 
 
 def make_selection_of_intfs(config_params, swath=0):
@@ -330,11 +366,21 @@ def make_selection_of_intfs(config_params, swath=0):
     # Get all ref_unwrapped
     if config_params.SAT=="S1":
         total_intf_list=glob.glob(config_params.ref_dir+"/???????_???????_unwrap.grd");  # the GMTSAR workflow
+        d1, d2 = get_intf_dates_gmtsar(total_intf_list);
     elif config_params.SAT=="UAVSAR":
         total_intf_list=glob.glob(config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow
+        d1, d2 = get_intf_dates_isce(total_intf_list);
+
+    # Use the config file to excluse certain time ranges
+    select_intf_list = include_intfs_by_time_range(total_intf_list, d1, d2, config_params.start_time, config_params.end_time);
+
+    # Use the config file to impose MUST COVER COSEISMIC
+    # This would be for making an average coseismic interferogram however. 
+    # Slightly different workflow. 
 
     # Employing the Manual Removes
-    select_intf_list = exclude_intfs_manually(total_intf_list, config_params.skip_file)
+    select_intf_list = exclude_intfs_manually(select_intf_list, config_params.skip_file);
+
 
     # ------------------------------ # 
     # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING. 
@@ -344,20 +390,6 @@ def make_selection_of_intfs(config_params, swath=0):
     # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
     # FEB 2020
     # select_criterion=0.8; # 3+ years, 2+ years, 1+ year
-
-    # for item in total_intf_list:
-    #     dates = item.split("/")[-2];
-    #     year1 = dates[0:4];
-    #     year2 = dates[8:12];
-    #     day1  = str(int(dates[4:7])+1);
-    #     day2  = str(int(dates[12:15])+1);
-    #     date1 = dt.datetime.strptime(year1+day1,"%Y%j")
-    #     date2 = dt.datetime.strptime(year2+day2,"%Y%j")
-    #     deltat = date2-date1
-    #     if deltat.days > select_criterion*0.9*365: # a year plus or minus a month
-    #         select_intf_list.append(item);  
-    #  print("Out of %d possible interferograms, we are trying to use %d" % (len(total_intf_list), len(select_intf_list)) );
-
     # THIS IS WHERE YOU WILL MAKE CHANGES
     # ------------------------------ # 
 

@@ -87,8 +87,9 @@ def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal
 def make_stack_corr_custom(mydata,signal_spread_file):
     # Stack corr for this exact calculation (given right inputs and outputs). 
     a=stack_corr.stack_corr(mydata, np.nan);
+    titlestr="Signal Spread of "+str(len(mydata.date_deltas))+" files";
     rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, a, 'Percentage', signal_spread_file);
-    rwr.produce_output_plot(signal_spread_file, 'Signal Spread', signal_spread_file+'.png', 
+    rwr.produce_output_plot(signal_spread_file, titlestr, signal_spread_file+'.png', 
         'Percentage of coherence', aspect=1/4, invert_yaxis=False )
     return;
 
