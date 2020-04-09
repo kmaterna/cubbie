@@ -142,6 +142,10 @@ def make_referenced_unwrapped_isce(intf_files, rowref, colref, output_dir):
 	# We just return the values minus a single reference pixel, 
 	# and write them to a directory. 
 	print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_files), output_dir) );
+	print("Removing existing files");
+	existing_files = glob.glob(output_dir+"/*.refunwrapped");
+	for item in existing_files:
+		call(["rm",item],shell=False);
 	num_warnings = 0;
 	for item in intf_files:
 		datestr = item.split('/')[2];
@@ -151,7 +155,9 @@ def make_referenced_unwrapped_isce(intf_files, rowref, colref, output_dir):
 		refvalue = zdata[rowref, colref];
 		if np.isnan(refvalue):
 			print("WARNING: Intererogram %s has nan as reference pixel" % item);
+			print("SKIPPING THIS INTERFEROGRAM");
 			num_warnings = num_warnings+1; 
+			continue;
 		xdata = range(0,np.shape(zdata)[1]);
 		ydata = range(0,np.shape(zdata)[0]);
 		referenced_zdata = stacking_utilities.apply_reference_value(xdata, ydata, zdata, refvalue);
@@ -216,7 +222,6 @@ def collect_unwrap_ref(config_params):
     # Now we coalesce the files and reference them to the right value/pixel, and visualize the new stack. 
     make_referenced_unwrapped_isce(intf_files, rowref, colref, config_params.ref_dir);
     stack_corr_for_ref_unwrapped(config_params.ref_dir, rowref, colref, config_params.ts_output_dir);
-
     return;
 
 # --------------- STEP 3: Velocities and Time Series! ------------ # 
