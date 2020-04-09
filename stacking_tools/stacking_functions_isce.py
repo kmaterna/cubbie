@@ -41,66 +41,60 @@ def make_corrections_isce(config_params):
 
 # --------------- UTILITIES ------------ # 
 def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
-	# If we have a reference idx in the file, just return that. 
-	# If not, then you might have to run through this function a number of times 
+	# This function helps you manually choose a reference pixel. 
+	# You might have to run through this function a number of times 
 	# To select your boxes and your eventual reference pixel. 
 	# I pick one in a stable area, outside of the deformation, ideally in a desert. 
-	if ref_idx != "":
-		print("Returning reference row,col from the config file: %s " % ref_idx);
-		return int(ref_idx.split(',')[0]), int(ref_idx.split(',')[1])
-	else:
-		# We don't have a reference index chosen, so we go looking. 
-		# This step needs some manual adjustment. 
 
-		print("Finding the pixels that are 100 percent coherent");
-		# Finding pixels that are completely non-nan
-		mydata = readmytupledata.reader_isce(filenameslist,band=1); 
-		# if it's straight from SNAPHU, band = 2
-		# if it's manually processed first, band = 1
-		total_pixels = np.shape(mydata.zvalues)[1]*np.shape(mydata.zvalues)[2];
-		total_images = np.shape(mydata.zvalues)[0];
-		xvalues = range(np.shape(mydata.zvalues)[2]);
-		yvalues = range(np.shape(mydata.zvalues)[1]);
-		count = 0;
-		ypixels_good=[];
-		xpixels_good=[];
-		ypixels_options=[];
-		xpixels_options=[];
+	print("Finding the pixels that are 100 percent coherent");
+	# Finding pixels that are completely non-nan
+	mydata = readmytupledata.reader_isce(filenameslist,band=1); 
+	# if it's straight from SNAPHU, band = 2
+	# if it's manually processed first, band = 1
+	total_pixels = np.shape(mydata.zvalues)[1]*np.shape(mydata.zvalues)[2];
+	total_images = np.shape(mydata.zvalues)[0];
+	xvalues = range(np.shape(mydata.zvalues)[2]);
+	yvalues = range(np.shape(mydata.zvalues)[1]);
+	count = 0;
+	ypixels_good=[];
+	xpixels_good=[];
+	ypixels_options=[];
+	xpixels_options=[];
 
-		for i in range(np.shape(mydata.zvalues)[1]):
-			for j in range(np.shape(mydata.zvalues)[2]):
-				oneslice = mydata.zvalues[:,i,j];
-				if np.sum(~np.isnan(oneslice))==total_images:  # if we have perfect coherence
-					count=count+1;
-					xpixels_good.append(j);
-					ypixels_good.append(i);
-					# Here we will adjust parameters until we find a reference pixel that we like. 
-					if j>280 and j<300 and i>2500 and i<2700:
-						xpixels_options.append(j);
-						ypixels_options.append(i);
+	for i in range(np.shape(mydata.zvalues)[1]):
+		for j in range(np.shape(mydata.zvalues)[2]):
+			oneslice = mydata.zvalues[:,i,j];
+			if np.sum(~np.isnan(oneslice))==total_images:  # if we have perfect coherence
+				count=count+1;
+				xpixels_good.append(j);
+				ypixels_good.append(i);
+				# Here we will adjust parameters until we find a reference pixel that we like. 
+				if j>280 and j<300 and i>2500 and i<2700:
+					xpixels_options.append(j);
+					ypixels_options.append(i);
 
-		idx_lucky = 710;
-		xref = xpixels_options[idx_lucky];
-		yref = ypixels_options[idx_lucky];
+	idx_lucky = 710;
+	xref = xpixels_options[idx_lucky];
+	yref = ypixels_options[idx_lucky];
 
-		print("%d of %d (%f percent) are totally coherent. " % (count, total_pixels, 100*(count/total_pixels)) );
-		print(np.shape(mydata.zvalues));
-		print("%d pixels are good options for the reference pixel. " % (len(xpixels_options)) );
+	print("%d of %d (%f percent) are totally coherent. " % (count, total_pixels, 100*(count/total_pixels)) );
+	print(np.shape(mydata.zvalues));
+	print("%d pixels are good options for the reference pixel. " % (len(xpixels_options)) );
 
-		# Make a plot that shows where those pixels are
-		# a=rwr.read_grd(outdir+'/signalspread_cut.nc');
-		fig = plt.figure();
-		# plt.imshow(a,aspect=1/4, cmap='rainbow');
-		plt.plot(xpixels_good, ypixels_good, '.', color='k');
-		plt.plot(xpixels_options,ypixels_options, '.', color='g');
-		plt.plot(xref, yref, '.', color='r');
-		plt.savefig(outdir+'/best_pixels.png');
-		plt.close();
+	# Make a plot that shows where those pixels are
+	# a=rwr.read_grd(outdir+'/signalspread_cut.nc');
+	fig = plt.figure();
+	# plt.imshow(a,aspect=1/4, cmap='rainbow');
+	plt.plot(xpixels_good, ypixels_good, '.', color='k');
+	plt.plot(xpixels_options,ypixels_options, '.', color='g');
+	plt.plot(xref, yref, '.', color='r');
+	plt.savefig(outdir+'/best_pixels.png');
+	plt.close();
 
-		print("Based on 100p pixels, selecting reference pixel at row/col %d, %d " % (yref, xref) );
-		print("Please write it in your config file.");
+	print("Based on 100p pixels, selecting reference pixel at row/col %d, %d " % (yref, xref) );
+	print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");
 
-		return yref, xref;
+	return yref, xref;
 
 
 def from_lonlat_get_rowcol(config_params):
@@ -117,7 +111,7 @@ def from_lonlat_get_rowcol(config_params):
 	raster_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/cut_lat.gdal");
 	i_found, j_found = get_nearest_pixel_in_raster(raster_lon, raster_lat, reflon, reflat);
 	print("From lon/lat, found Row and Column at %d, %d " % (i_found, j_found) );
-	print("Please write it in your config file.");
+	print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");
 	return i_found,j_found;
 
 
@@ -148,21 +142,46 @@ def make_referenced_unwrapped_isce(intf_files, rowref, colref, output_dir):
 	# We just return the values minus a single reference pixel, 
 	# and write them to a directory. 
 	print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_files), output_dir) );
+	num_warnings = 0;
 	for item in intf_files:
 		datestr = item.split('/')[2];
 		outname=output_dir+"/"+datestr+".refunwrapped";
 		print("Making %s " % outname);
 		zdata = isce_read_write.read_scalar_data(item);
 		refvalue = zdata[rowref, colref];
+		if np.isnan(refvalue):
+			print("WARNING: Intererogram %s has nan as reference pixel" % item);
+			num_warnings = num_warnings+1; 
 		xdata = range(0,np.shape(zdata)[1]);
 		ydata = range(0,np.shape(zdata)[0]);
 		referenced_zdata = stacking_utilities.apply_reference_value(xdata, ydata, zdata, refvalue);
 		referenced_zdata = np.float32(referenced_zdata);
 		isce_read_write.write_isce_data(referenced_zdata, len(xdata), len(ydata), dtype="FLOAT",filename=outname);
 	print("Done making reference unwrapped");
+	print("There were %d warnings of reference pixels == np.nan" % num_warnings);
 	total_intf_list=glob.glob(output_dir+"/*.refunwrapped");
 	print("%s contains %d files " % (output_dir, len(total_intf_list)) );
 	return;
+
+
+def stack_corr_for_ref_unwrapped(ref_dir, rowref, colref, ts_output_dir):
+	# WE MAKE THE SIGNAL SPREAD FOR THE CUT IMAGES
+	total_refunw_list=glob.glob(ref_dir+"/*.refunwrapped");
+	netcdfname = ts_output_dir+'/signalspread_cut_ref.nc'
+	cor_value=np.nan;
+	cor_data = readmytupledata.reader_isce(total_refunw_list);
+	a = stack_corr.stack_corr(cor_data, cor_value);
+	rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', netcdfname)
+	rwr.produce_output_plot(netcdfname, 'Signal Spread above cor='+str(cor_value), ts_output_dir+'/signalspread_cut_ref.png', 
+		'Percentage of coherence', aspect=1/4, invert_yaxis=False, dot_points=[[colref], [rowref]]);
+	signal_spread_ref = a[rowref, colref];
+	print("Signal Spread of the reference pixel = %.2f " % (signal_spread_ref) );
+	if signal_spread_ref<50:
+		print("WARNING: Your reference pixel has very low coherence. Consider picking a different one.");
+		print("STOPPING ON PURPOSE.");
+		sys.exit(0);
+	return;
+
 
 
 
@@ -180,34 +199,23 @@ def collect_unwrap_ref(config_params):
     # Very general, takes all files and doesn't discriminate. 
     intf_files=stacking_utilities.get_list_of_intf_all(config_params);
 
-
-    # Now we should have two features, for finding reference pixel by using 100% pixels
-    # or by using lon/lat information. 
-    # If we are going blind, we start doing manual tests in the reference location area by 100% pixels
+    # If we are starting manually, we find reference pixel by using 100% pixels...
     if config_params.ref_idx =="" and config_params.ref_loc=="":
         rowref, colref = get_100p_pixels_get_ref(intf_files, config_params.ref_idx, config_params.ts_output_dir);
         sys.exit(0);
-
-    # if we're using a lon/lat to get the reference pixel
+    # .... or by using a lon/lat to get the reference pixel
     if config_params.ref_idx=="" and config_params.ref_loc!="":  
         rowref, colref = from_lonlat_get_rowcol(config_params);
         sys.exit(0);
-
-    if config_params.ref_idx!="":
+    # .... or we already know the reference indices:
+    if config_params.ref_idx!="":  
         rowref = int(config_params.ref_idx.split(",")[0]);
         colref = int(config_params.ref_idx.split(",")[1]);
-        print("From the config file, the Rowref and Colref are %d, %d" % (rowref, colref) );
+        print("From the config file, the Rowref and Colref are %d, %d\n" % (rowref, colref) );
 
-
-    # NEXT FOR LON LAT Reference pixels: 
-    # Figure out the signal spread of the reference pixel.
-    # Report the signal spread of the reference pixel. 
-    # Make a plot of signal spread with the reference pixel plotted. 
-    # Throw an error if the reference pixel has a very low coherence. 
-
-
-    # Now we coalesce the files and reference them to the right value/pixel
+    # Now we coalesce the files and reference them to the right value/pixel, and visualize the new stack. 
     make_referenced_unwrapped_isce(intf_files, rowref, colref, config_params.ref_dir);
+    stack_corr_for_ref_unwrapped(config_params.ref_dir, rowref, colref, config_params.ts_output_dir);
 
     return;
 

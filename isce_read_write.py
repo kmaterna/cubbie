@@ -45,7 +45,7 @@ def read_complex_data(GDALfilename):
 
     return slc;
 
-def read_scalar_data(GDALfilename, band=1):
+def read_scalar_data(GDALfilename, band=1,flush_zeros=True):
     # band = 1;  # this seems right for most applications 
     # For unwrapped files, band = 2
     print("Reading file %s " % GDALfilename);
@@ -69,10 +69,11 @@ def read_scalar_data(GDALfilename, band=1):
     xmax = np.max([lastx,firstx])
 
     # put all zero values to nan
-    try:
-        data[data==0]=np.nan
-    except:
-        pass
+    if flush_zeros:
+        try:
+            data[data==0]=np.nan
+        except:
+            pass
 
     return data;
 
