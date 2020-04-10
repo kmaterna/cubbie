@@ -19,7 +19,7 @@ def drive_coseismic_stack_isce(intf_files, wavelength, outdir):
 	average_coseismic = get_avg_coseismic(intf_tuple, wavelength);
 	rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, average_coseismic, 'mm', outdir+'/coseismic.grd');
 	rwr.produce_output_plot(outdir+'/coseismic.grd', 'LOS Displacement', outdir+'/coseismic.png', 'displacement (mm)', 
-		aspect=1/5, invert_yaxis=False);
+		aspect=1/8, invert_yaxis=False, vmin=-50, vmax=200);
 	return;
 
 def get_avg_coseismic(intf_tuple, wavelength):

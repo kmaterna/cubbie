@@ -169,14 +169,18 @@ def flip_if_necessary(filename):
 	return;
 
 
-def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True, dot_points=[]):
+def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True, 
+	dot_points=[], vmin=[], vmax=[], cmap='rainbow'):
 	# Read in the dataset
 	[xread, yread, zread] = read_grd_xyz(netcdfname);
 
 	# Make a plot
 	fig = plt.figure(figsize=(7,10));
 	ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
-	plt.imshow(zread,aspect=aspect, cmap='rainbow');
+	if vmin!=[]:
+		plt.imshow(zread,aspect=aspect, cmap=cmap, vmin=vmin, vmax=vmax);
+	else:
+		plt.imshow(zread,aspect=aspect, cmap=cmap);
 	if invert_yaxis:
 		plt.gca().invert_yaxis()  # for imshow, rows get labeled in the downward direction
 	# plt.gca().get_xaxis().set_ticks([]);
