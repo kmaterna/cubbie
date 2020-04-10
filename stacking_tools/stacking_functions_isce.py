@@ -5,6 +5,7 @@ from subprocess import call, check_output
 import stacking_utilities
 import readmytupledata
 import stack_corr
+import coseismic_stack
 import netcdf_read_write as rwr
 import nsbas_isce
 import isce_read_write
@@ -241,6 +242,9 @@ def vels_and_ts(config_params):
 	if config_params.ts_type=="STACK":
 		print("Running velocities by simple stack.")
 		# sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
+	if config_params.ts_type=="COSEISMIC":
+		print("Making a simple coseismic stack");
+		coseismic_stack.drive_coseismic_stack_isce(intf_files, config_params.wavelength, config_params.ts_output_dir);
 	if config_params.ts_type=="SBAS":
 		print("Running velocities and time series by SBAS");
 		# sbas.drive_velocity_sbas(config_params.swath, intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);

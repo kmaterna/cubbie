@@ -5,18 +5,18 @@ import collections
 
 Params=collections.namedtuple('Params',['config_file','SAT','wavelength','swath','startstage','endstage','ref_swath','ref_loc','ref_idx',
     'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
-    'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
+    'start_time','end_time','coseismic','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
     'ts_parent_dir','ts_output_dir']);
 
 Params_gmtsar=collections.namedtuple('Params_gmtsar',['config_file','SAT','wavelength','swath','startstage','endstage','ref_swath','ref_loc','ref_idx',
     'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
-    'start_time','end_time','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
-    'ts_parent_dir','ts_output_dir']);
+    'start_time','end_time','coseismic','intf_timespan','gps_file','flight_angle','look_angle','skip_file','ref_dir',
+    'ts_points_file','ts_parent_dir','ts_output_dir']);
 
 Params_isce=collections.namedtuple('Params_isce',['config_file','SAT','wavelength','swath','startstage','endstage',
     'ref_swath','ref_loc','ref_idx','rlks','alks','filt','cor_cutoff_mask','xbounds','ybounds',
     'ts_type','solve_unwrap_errors','detrend_atm_topo','gacos','aps','sbas_smoothing','nsbas_min_intfs',
-    'start_time','end_time','intf_timespan','llh_file','lkv_file',
+    'start_time','end_time','coseismic','intf_timespan','llh_file','lkv_file',
     'gps_file','flight_angle','look_angle','skip_file','ref_dir','ts_points_file',
     'ts_parent_dir','ts_output_dir']);
 
@@ -29,8 +29,8 @@ def read_config():
     Params = Params_gmtsar(config_file=C.config_file, SAT=C.SAT, wavelength=C.wavelength, swath=C.swath, startstage=C.startstage,
         endstage=C.endstage, ref_swath=C.ref_swath, ref_loc=C.ref_loc, ref_idx=C.ref_idx, ts_type=C.ts_type, 
         solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo, gacos=C.gacos, aps=C.aps, sbas_smoothing=C.sbas_smoothing, 
-        nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time, intf_timespan=C.intf_timespan, 
-        gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle, skip_file=C.skip_file, 
+        nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time, coseismic=C.coseismic, 
+        intf_timespan=C.intf_timespan, gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle, skip_file=C.skip_file, 
         ref_dir=C.ref_dir, ts_points_file=C.ts_points_file, ts_parent_dir=C.ts_parent_dir, ts_output_dir=C.ts_output_dir);
     return Params;
 
@@ -51,8 +51,8 @@ def read_config_isce():
         endstage=C.endstage, ref_swath=C.ref_swath, ref_loc=C.ref_loc, ref_idx=C.ref_idx, 
         rlks=rlks, alks=alks, filt=filt, cor_cutoff_mask=cor_cutoff_mask, xbounds=xbounds, ybounds=ybounds, ts_type=C.ts_type, 
         solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo, gacos=C.gacos, aps=C.aps, sbas_smoothing=C.sbas_smoothing, 
-        nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time, intf_timespan=C.intf_timespan, 
-        llh_file=llh_file, lkv_file=lkv_file, 
+        nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time, coseismic=C.coseismic, 
+        intf_timespan=C.intf_timespan, llh_file=llh_file, lkv_file=lkv_file, 
         gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle, skip_file=C.skip_file, 
         ref_dir=C.ref_dir, ts_points_file=C.ts_points_file, ts_parent_dir=C.ts_parent_dir, 
         ts_output_dir=ts_output_dir);
@@ -95,6 +95,7 @@ def read_config_general():
     sbas_smoothing = config.getfloat('py-config','sbas_smoothing');
     start_time = config.get('py-config','start_time');
     end_time = config.get('py-config','end_time');
+    coseismic = config.get('py-config','coseismic');
     intf_timespan = config.get('py-config','intf_timespan');
     gps_file = config.get('py-config','gps_file');
     flight_angle = config.getfloat('py-config','flight_angle');
@@ -108,6 +109,8 @@ def read_config_general():
     # Start time and end times in datetime format. 
     start_time = dt.datetime.strptime(start_time, "%Y%m%d");
     end_time = dt.datetime.strptime(end_time, "%Y%m%d");
+    if coseismic != "":
+        coseismic = dt.datetime.strptime(coseismic,"%Y%m%d");
 
     # Sticking everything into the Fswath directory
     ts_parent_dir='F'+swath+'/'+ts_parent_dir;
@@ -124,7 +127,8 @@ def read_config_general():
     config_params=Params(config_file=config_file_orig,SAT=SAT,wavelength=wavelength,swath=swath,startstage=startstage,endstage=endstage,
         ref_swath=ref_swath,ref_loc=ref_loc,ref_idx=ref_idx,ts_type=ts_type,solve_unwrap_errors=solve_unwrap_errors,
         detrend_atm_topo=detrend_atm_topo,gacos=gacos,aps=aps,sbas_smoothing=sbas_smoothing,nsbas_min_intfs=nsbas_min_intfs,
-        start_time=start_time,end_time=end_time,intf_timespan=intf_timespan, gps_file=gps_file,flight_angle=flight_angle,look_angle=look_angle,
+        start_time=start_time,end_time=end_time,coseismic=coseismic,intf_timespan=intf_timespan, 
+        gps_file=gps_file,flight_angle=flight_angle,look_angle=look_angle,
         skip_file=skip_file,ts_points_file=ts_points_file,ref_dir=ref_dir,ts_parent_dir=ts_parent_dir,ts_output_dir=ts_output_dir);
 
     return config, config_params; 

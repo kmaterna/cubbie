@@ -345,9 +345,10 @@ def get_intf_dates_isce(total_intf_list):
     return d1, d2;
 
 
-def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time):
+def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time, coseismic):
     # Here, we look for each interferogram that falls totally within the time range 
     # given in the config file.
+    # It also implements a filter for spanning a coseismic interval, if you include one. 
     print("Including only interferograms in time range %s to %s ." % (dt.datetime.strftime(start_time,"%Y-%m-%d"),
         dt.datetime.strftime(end_time, "%Y-%m-%d"))); 
     print("Starting with %d interferograms " % len(intf_list) )
@@ -355,7 +356,11 @@ def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time):
     for i in range(len(intf_list)):
         if d1[i]>=start_time and d1[i]<=end_time:
             if d2[i]>=start_time and d2[i]<=end_time:
-                select_intf_list.append(intf_list[i]);
+                if coseismic=="":
+                    select_intf_list.append(intf_list[i]);  # in the case of no coseismic constraint
+                else:
+                    if d1[i]<coseismic and d2[i]>coseismic:
+                        select_intf_list.append(intf_list[i]);  # in the case of a coseismic constraint
     print("Returning %d interferograms " % len(select_intf_list));
     return select_intf_list;
 
@@ -371,19 +376,16 @@ def make_selection_of_intfs(config_params, swath=0):
         total_intf_list=glob.glob(config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow
         d1, d2 = get_intf_dates_isce(total_intf_list);
 
-    # Use the config file to excluse certain time ranges
-    select_intf_list = include_intfs_by_time_range(total_intf_list, d1, d2, config_params.start_time, config_params.end_time);
-
-    # Use the config file to impose MUST COVER COSEISMIC
-    # This would be for making an average coseismic interferogram however. 
-    # Slightly different workflow. 
+    # Use the config file to excluse certain time ranges and implement coseismic constraints
+    select_intf_list = include_intfs_by_time_range(total_intf_list, d1, d2, 
+        config_params.start_time, config_params.end_time, config_params.coseismic);
 
     # Employing the Manual Removes
     select_intf_list = exclude_intfs_manually(select_intf_list, config_params.skip_file);
 
-
     # ------------------------------ # 
-    # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING. 
+    # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
+    # THIS GETS CREATIVE.  
     # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
     # WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT. 
     # THIS DEPENDS ON YOUR CONFIG SETTINGS
@@ -393,7 +395,6 @@ def make_selection_of_intfs(config_params, swath=0):
     # THIS IS WHERE YOU WILL MAKE CHANGES
     # ------------------------------ # 
 
-
     # Writing the exact interferograms used in this run. 
     record_file=config_params.ts_output_dir+"/"+"intf_record.txt";
     print("Writing out list of %d interferograms used in this run to %s" % (len(select_intf_list), record_file) );
@@ -402,7 +403,6 @@ def make_selection_of_intfs(config_params, swath=0):
     for item in select_intf_list:
         ofile.write("%s\n" % (item) );
     ofile.close();
-
     return select_intf_list; 
 
 def make_selection_of_coh_files(config_params, intf_files):
