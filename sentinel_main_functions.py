@@ -2,9 +2,9 @@ import collections
 import os,sys,shutil,argparse,time,configparser, glob
 import numpy as np
 from subprocess import call, check_output
+import datetime as dt 
 import sentinel_utilities
 import analyze_coherence
-import unwrapping_errors
 import aps 
 import detrend_atm_topo
 import rose_baseline_plot
@@ -12,9 +12,10 @@ import flattentopo_driver
 import phasefilt_plot
 import gps_into_LOS
 
-Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','intf_file','orbit_dir','tbaseline','xbaseline','restart',
-    'mode','swath','polarization','frame1','frame2','numproc','ts_type',
-    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','threshold_snaphu','flight_angle','look_angle','skip_file']);
+Params=collections.namedtuple('Params',['config_file','SAT','wavelength','startstage','endstage','master','orbit_dir',
+    'tbaseline','xbaseline','annual_crit_days','annual_crit_baseline','restart',
+    'mode','swath','polarization','frame1','frame2','numproc','intf_type','start_time', 'end_time',
+    'solve_unwrap_errors','detrend_atm_topo','gacos','aps','threshold_snaphu','flight_angle','look_angle']);
 
 def read_config():
     ################################################
@@ -42,24 +43,26 @@ def read_config():
     startstage=config.getint('py-config','startstage')
     endstage=config.getint('py-config','endstage')    
     master=config.get('csh-config','master_image')
-    intf_file=config.get('py-config','intf_file')
     orbit_dir=config.get('py-config','orbit_dir')
     tbaseline=config.getint('py-config','max_timespan')
     xbaseline=config.getint('py-config','max_baseline') 
+    annual_crit_days=config.getint('py-config','annual_crit_days')
+    annual_crit_baseline=config.getint('py-config','annual_crit_baseline') 
     restart=config.getboolean('py-config','restart')
     mode=config.get('py-config','mode') 
     swath=config.get('py-config','swath') 
     polarization=config.get('py-config','polarization') 
     frame_nearrange1=config.get('py-config','frame_nearrange1')
     frame_nearrange2=config.get('py-config','frame_nearrange2')
-    ts_type=config.get('timeseries-config','ts_type')
+    intf_type=config.get('timeseries-config','intf_type')
+    start_time=config.get('timeseries-config','start_time')
+    end_time=config.get('timeseries-config','end_time')
     solve_unwrap_errors = config.getint('timeseries-config','solve_unwrap_errors');
     gacos = config.getint('timeseries-config','gacos');
     aps = config.getint('timeseries-config','aps');
     detrend_atm_topo = config.getint('timeseries-config','detrend_atm_topo');
     flight_angle = config.getfloat('timeseries-config','flight_angle');
     look_angle = config.getfloat('timeseries-config','look_angle');
-    skip_file = config.get('timeseries-config','skip_file');
     threshold_snaphu=config.getfloat('csh-config','threshold_snaphu');
 
     
@@ -75,14 +78,13 @@ def read_config():
 
     print("Running sentinel batch processing, starting with stage %d" % startstage);
     
-    # check config options
-    if intf_file == '':
-        intf_file = 'intf_batch.in'
-    
     # only valid option for mode is 'scan'    
     if mode != '' and mode != 'scan':
         print('warning: invalid option mode = %s in config file, using blank'%mode)
         mode = ''
+
+    start_time = dt.datetime.strptime(start_time,"%Y%m%d");
+    end_time = dt.datetime.strptime(end_time, "%Y%m%d");
 
     # if master specified in the config file disagrees with existing data.in, we must re-do the pre-processing.
     if master and startstage > 1 and os.path.isfile('F'+str(swath)+'/raw/data.in'):
@@ -112,10 +114,12 @@ def read_config():
         config.write(configfilehandle)
 
 
-    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,intf_file=intf_file,
-        orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
-        numproc=numproc, ts_type=ts_type, solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, 
-        detrend_atm_topo=detrend_atm_topo, threshold_snaphu=threshold_snaphu, flight_angle=flight_angle, look_angle=look_angle, skip_file=skip_file);
+    config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,
+        orbit_dir=orbit_dir,tbaseline=tbaseline, xbaseline=xbaseline,annual_crit_days=annual_crit_days, annual_crit_baseline=annual_crit_baseline,
+        restart=restart,mode=mode,swath=swath,polarization=polarization,frame1=frame_nearrange1, frame2=frame_nearrange2, 
+        numproc=numproc, intf_type=intf_type, start_time=start_time, end_time=end_time,
+        solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, aps=aps, 
+        detrend_atm_topo=detrend_atm_topo, threshold_snaphu=threshold_snaphu, flight_angle=flight_angle, look_angle=look_angle);
 
     return config_params; 
 
@@ -351,46 +355,31 @@ def make_interferograms(config_params):
     if config_params.endstage<4:   # if we're ending at topo, we don't do this. 
         return;
 
-    [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table('F'+str(config_params.swath)+'/raw/baseline_table.dat')
+    [stems, times, baselines,_] = sentinel_utilities.read_baseline_table('F1'+'/raw/baseline_table.dat');  # hard coding for consistency. 
+
+    # Retrieving interferogram pairs based on settings in config_files. 
     intf_pairs=[];
-    if config_params.ts_type=="SBAS" or config_params.ts_type=="NSBAS":
-        intf_pairs_sbas = sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline, '', '');
-        intf_pairs_manual = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline); # ['20151118'] for mendocino
-        intf_pairs = intf_pairs_sbas+intf_pairs_manual;
-        print("README_proc.txt will be printed with tbaseline_max = "+str(config_params.tbaseline)+" days and xbaseline_max = "+str(config_params.xbaseline)+"m. ")
-    elif config_params.ts_type=="CHAIN":
-        intf_pairs = sentinel_utilities.get_chain_subsets(stems, times, baselines, config_params.bypass);
-    elif config_params.ts_type=="MANUAL":
-        intf_pairs = sentinel_utilities.get_manual_chain(stems, times, config_params.tbaseline, ['20151118']);
-    else:
-        print("config_params.ts_type is not a valid ts_type");
+    if "SBAS" in config_params.intf_type:
+        intf_pairs = intf_pairs + sentinel_utilities.get_small_baseline_subsets(stems, times, baselines, config_params.tbaseline, config_params.xbaseline);
+    if "CHAIN" in config_params.intf_type:
+        intf_pairs = intf_pairs + sentinel_utilities.get_chain_subsets(stems, times);
+    if "1YR" in config_params.intf_type:
+        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(stems, times, baselines, config_params.annual_crit_days, config_params.annual_crit_baseline, 1);  # 1 year
+    if "2YR" in config_params.intf_type:
+        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(stems, times, baselines, config_params.annual_crit_days, config_params.annual_crit_baseline, 2);  # 2 years
+    if "3YR" in config_params.intf_type:
+        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(stems, times, baselines, config_params.annual_crit_days, config_params.annual_crit_baseline, 3);  # 3 years
+    if intf_pairs==[]:
+        print("config_params.intf_type is probably not a valid intf_type [combinations of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
         sys.exit(1);
-
-
-
-
-    # Here I will add the three pairs needed for the closure test manually. 
-    # intf_pairs=[];
-    # intf_pairs = ["S1_20190411_ALL_F"+config_params.swath+":S1_20190423_ALL_F"+config_params.swath,
-    #          "S1_20190330_ALL_F"+config_params.swath+":S1_20190411_ALL_F"+config_params.swath,
-    #          "S1_20190330_ALL_F"+config_params.swath+":S1_20190423_ALL_F"+config_params.swath];
-    # intf_pairs is the list of interferogram pairs made from SBAS or NSBAS or manual or chain 
-    
-    # Now we want to add the longer interferograms. 
-    crit_days=30; crit_baseline=20;  # days, meters
-    long_intfs_1 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 1);  # 1 year
-    long_intfs_2 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 2);  # 2 years
-    long_intfs_3 = rose_baseline_plot.compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, 3);  # 2 years
-    # intf_all=intf_pairs + long_intfs_1 + long_intfs_2 + long_intfs_3;
-    intf_all=intf_pairs;  # only short pairs
-    print(intf_all);
+    intf_pairs = sentinel_utilities.reduce_by_start_end_time(intf_pairs, config_params.start_time, config_params.end_time);
+    intf_all = list(set(intf_pairs));  # removing duplicates. 
+    print("Finding %d unique interferograms. " % len(intf_all));
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_all,stems,times, baselines, "F"+str(config_params.swath)+"/Total_Network_Geometry.eps");
     
-    # sys.exit(0);
     # Write the intf.in files
-    # Writing to process interferograms. 
     outdir = "F"+str(config_params.swath+"/intf_all/");
     outfile=open("README_proc.txt",'w');
     outfile.write("#!/bin/bash\n");
@@ -404,17 +393,16 @@ def make_interferograms(config_params):
         date1=item[3:11];
         date2=item[22:30];
         expected_folder = sentinel_utilities.ymd2yj(date1)+"_"+sentinel_utilities.ymd2yj(date2);
-        # if os.path.isdir(outdir+expected_folder):
-        #     continue;
-        if os.path.isfile(outdir+expected_folder+"/unwrap.grd"):
+        if os.path.isfile(outdir+expected_folder+"/phasefilt.grd"):
             continue;
         else:
-            outfile.write('echo "' + item +'" >> intf_record.in\n');
-            outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');    
+            new_item = item.replace("_F1","_F"+config_params.swath);  # in case we're using one swath to generate intf_all for other swaths
+            outfile.write('echo "' + new_item +'" >> intf_record.in\n');
+            outfile.write('echo "' + new_item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');  
         # outfile.write('echo "' + item +'" >> intf_record.in\n');
         # outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n'); # Write out in all cases. 
     outfile.write("\n# Process the interferograms.\n\n")
-    # outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");  # If you have parallel on your box
+    outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");  # If you have parallel on your box
     # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");  # if you don't have parallel 
     outfile.write("cd ../\n");
     outfile.close();

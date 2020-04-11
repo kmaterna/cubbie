@@ -69,7 +69,6 @@ def pad_string_zeros(num):
         numstring=str(num);
     return numstring;
 
-
 def ymd2yj(ymd):
     # Turn something like "20150524" into "2015100", useful for file naming conventions
     tdate = dt.datetime.strptime(ymd,"%Y%m%d");
@@ -80,8 +79,6 @@ def yj2ymd(yj):
     yj = int(yj)+1;
     tdate = dt.datetime.strptime(str(yj),"%Y%j");
     return dt.datetime.strftime(tdate,"%Y%m%d");
-
-
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
@@ -323,86 +320,66 @@ def remove_nans_array(myarray):
     return numarray;
 
 
-def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max, startdate='', enddate=''):
+def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max):
     """ Grab all the pairs that are below the critical baselines in space and time. 
     Return format is a list of strings like 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'. 
     You can adjust this if you have specific processing needs. 
     """
+    print("SBAS: Getting small baseline subsets with bperp_max = %f m and t_max = %f days" % (xbaseline_max, tbaseline_max) );
     nacq=len(stems);
-    if len(startdate)>1:
-        startdate_dt=dt.datetime.strptime(startdate,"%Y%j");
-    else:
-        startdate_dt=dt.datetime.strptime("2000001","%Y%j");  # if there's no startdate, take everything. 
-    if len(enddate)>1:
-        enddate_dt  =dt.datetime.strptime(enddate,"%Y%j");
-    else:
-        enddate_dt  =dt.datetime.strptime("2100321","%Y%j");  # if there's no enddate, take everything. 
     intf_pairs=[];
     datetimearray=[];
     for k in tbaseline:
         datetimearray.append(dt.datetime.strptime(str(int(k)+1),"%Y%j"));  # convert to datetime arrays. 
     # print(datetimearray);
-    for i in range(0,nacq):
+    for i in range(0,nacq-1):
         for j in range(i+1,nacq):
             dtdelta=datetimearray[i]-datetimearray[j];
             dtdeltadays=dtdelta.days;  # how many days exist between the two acquisitions? 
-            if datetimearray[i]>startdate_dt and datetimearray[j]>startdate_dt:
-                if datetimearray[i]<enddate_dt and datetimearray[j]<enddate_dt:
-                    if abs(dtdeltadays) < tbaseline_max:
-                        if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
-                            img1_stem=stems[i];
-                            img2_stem=stems[j];
-                            img1_time=int(img1_stem[3:11]);
-                            img2_time=int(img2_stem[3:11]);
-                            if img1_time<img2_time:  # if the images are listed in chronological order 
-                                intf_pairs.append(stems[i]+":"+stems[j]);
-                            else:                    # if the images are in reverse chronological order
-                                intf_pairs.append(stems[j]+":"+stems[i]);
-                        else:
-                            print("WARNING: %s:%s rejected due to large perpendicular baseline of %f m." % (stems[i], stems[j], abs(xbaseline[i]-xbaseline[j])) );
-    print("SBAS Pairs: Returning "+str(len(intf_pairs))+" of "+str(nacq*(nacq-1)/2)+" possible interferograms to compute. ")
+            if abs(dtdeltadays) < tbaseline_max:
+                if abs(xbaseline[i]-xbaseline[j]) < xbaseline_max:
+                    img1_stem=stems[i];
+                    img2_stem=stems[j];
+                    img1_time=int(img1_stem[3:11]);
+                    img2_time=int(img2_stem[3:11]);
+                    if img1_time<img2_time:  # if the images are listed in chronological order 
+                        intf_pairs.append(stems[i]+":"+stems[j]);
+                    else:                    # if the images are in reverse chronological order
+                        intf_pairs.append(stems[j]+":"+stems[i]);
+                else:
+                    print("WARNING: %s:%s rejected due to large perpendicular baseline of %f m." % (stems[i], stems[j], abs(xbaseline[i]-xbaseline[j])) );
     # The total number of pairs is (n*n-1)/2.  How many of them fit our small baseline criterion?
+    total_possible_pairs = nacq*(nacq-1)/2; 
+    print("SBAS Pairs: Returning %d of %d possible interferograms to compute. " % (len(intf_pairs), total_possible_pairs) );
     return intf_pairs;
 
 
-def get_chain_subsets(stems, tbaseline, xbaseline, bypass):
+def get_chain_subsets(stems, tbaseline, bypass=[]):
     # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs. 
+    print("CHAIN Pairs: Getting chain connections. ");
     intf_pairs=[];
-    bypass_items=bypass.split("/");    
     sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value
+    # Here I would remove the bypass items if we implement that. 
     for i in range(len(sorted_stems)-1):
         intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
-        if i>1 and sorted_stems[i][3:11] in bypass_items:
-            intf_pairs.append(sorted_stems[i-1]+':'+sorted_stems[i+1])
-    print("Connected Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
+    print("CHAIN Pairs: Returning %d interferograms to compute from %d images. " % (len(intf_pairs), len(stems)) );
     return intf_pairs;
 
-
-def get_manual_chain(stems, tbaseline, tbaseline_max, force_chain_images=[]):
-    # The point of this is to manually force the SBAS algorithm to connect adjacent scenes, 
-    # even if they're technically over the time limit used in the SBAS algorithm. 
-    # Force_chain_images is an array of images (first images) that were rejected in SBAS due to large perpendicular baseline
-    # But we want to force the interferograms to be made anyway, regardless of perpendicular baseline. 
-    intf_pairs=[];
-    if force_chain_images==[]:
-        print("Manual Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
-        return intf_pairs;
-    sorted_stems = [x for _,x in sorted(zip(tbaseline,stems))];  # sort by increasing t value 
-    sorted_tbaseline=sorted(tbaseline);
-    sorted_datetimes=[dt.datetime.strptime(str(int(k)+1),"%Y%j") for k in sorted_tbaseline];
-    for i in range(len(sorted_stems)-1):
-        deltadays=sorted_datetimes[i+1]-sorted_datetimes[i];
-        if deltadays.days >= tbaseline_max:
-            intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
-        for k in force_chain_images:  # if we have images that were rejected in SBAS due to large perpendicular baseline
-            if k in sorted_stems[i]:
-                intf_pairs.append(sorted_stems[i]+':'+sorted_stems[i+1]);
-    print("Manual Chain: Returning "+str(len(intf_pairs))+" interferograms to compute. ")
-    return intf_pairs;
+def reduce_by_start_end_time(intf_pairs, startdate, enddate):
+    # Take a list of interferograms and return the ones that fall within a given time window. 
+    intf_all = [];
+    for item in intf_pairs:
+        date1=item[3:11];
+        date2=item[22:30];
+        d1 = dt.datetime.strptime(date1,"%Y%m%d");
+        d2 = dt.datetime.strptime(date2,"%Y%m%d");
+        if d1>=startdate and d2>=startdate and d1<=enddate and d2<=enddate:
+            intf_all.append(item);
+    return intf_all;
 
 
 def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselinefile = 'raw/baseline_table.dat'):
-    print("printing network plot with %d intfs" % (len(intf_pairs)) );
+    print("Printing network plot with %d intfs" % (len(intf_pairs)) );
     if len(stems)==0 and len(xbaseline)==0:
         [stems, times, baselines, missiondays] = read_baseline_table(baselinefile);
     if len(intf_pairs)==0:
@@ -459,7 +436,7 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
     plt.title("Network Geometry with %d Interferograms" % (len(intf_pairs)) );
     plt.savefig(plotname);
     plt.close();
-    print("finished printing network plot");
+    print("Finished printing network plot");
     return;
 
 
