@@ -221,6 +221,52 @@ def write_super_master_batch_config(masterid):
     print("Writing master_image into batch.config");
     return;
 
+def set_up_merge_unwrap(config_params):
+    subprocess.call(["mkdir","-p","merged"],shell=False);
+    # subprocess.call(["cp","topo/dem.grd","merged"],shell=False);  # I needed to actually copy it, not just soft link. 
+    subprocess.call(["cp","batch.config","merged"],shell=False);
+    return;
+
+def write_merge_batch_input(intf_all, master_image):
+    # Useful for the merge swaths step. 
+    # The master of the first line should be the super master. 
+    # In the future, would be good to defensively check whether each directory contains phasefilt, mask, and corr. 
+    ofile=open("merged/inputfile.txt","w");
+
+    # Find the super master and stick it to the front.
+    for item in intf_all:
+        first_part=item.split(":")[0];
+        if master_image.split()[0][0:-3] in first_part:
+            print("Found master image in intf %s" % item);
+            print("Moving this image to the front");
+            intf_all.insert(0, intf_all.pop(intf_all.index(item)) );
+            break;
+
+    for item in intf_all:
+        first_part = item.split(":")[0];
+        second_part = item.split(":")[1];
+        jd1 = ymd2yj(item[3:11]); # a string
+        jd2 = ymd2yj(item[22:30]); # a string
+        ofile.write("../F1/intf_all/%s_%s/:" % (jd1, jd2) );
+        ofile.write(first_part+".PRM:"+second_part+".PRM,");
+        ofile.write("../F2/intf_all/%s_%s/:" % (jd1, jd2) );
+        ofile.write(first_part.replace("_F1","_F2")+".PRM:"+second_part.replace("_F1","_F2")+".PRM,");
+        ofile.write("../F3/intf_all/%s_%s/:" % (jd1, jd2) );
+        ofile.write(first_part.replace("_F1","_F3")+".PRM:"+second_part.replace("_F1","_F3")+".PRM\n");
+    ofile.close();
+    return;
+
+def write_merge_unwrap(outfile):
+    print("Writing unwrap instructions in file %s " % outfile)
+    ofile=open(outfile,'w');
+    ofile.write("cd merged\n");
+    ofile.write("pwd\n");
+    ofile.write("ls\n");
+    ofile.write("merge_batch.csh inputfile.txt batch.config\n")
+    ofile.write("cd ../\n");
+    ofile.close();
+    return;
+
 def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     [stem1, stem2, mean_corr] = read_corr_results("corr_results.txt");
 
@@ -235,24 +281,6 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     outfile.write("rm intf?.in\n");
     for i,item in enumerate(stem1_ordered):
         outfile.write('echo "' + stem1_ordered[i]+":"+stem2_ordered[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n');        
-    outfile.write("\n# Unwrap the interferograms.\n\n")
-    outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
-    outfile.close();
-
-    return;
-
-
-def write_long_unwrapping(numproc, swath, sh_file, config_file):
-    # A special function to unwrap only 1-year, 2-year, and 3-year interferograms. 
-    intfs = np.loadtxt("F"+swath+"/intf_long.in", dtype=str, unpack=True);   # created manually
-
-    outfile=open(sh_file,'w');
-    outfile.write("#!/bin/bash\n");
-    outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
-    outfile.write("cd F"+swath+"\n");
-    outfile.write("rm intf?.in\n");
-    for i,item in enumerate(intfs):
-        outfile.write('echo "' + intfs[i] +'" >> intf'+str(np.mod(i,numproc))+'.in\n'); 
     outfile.write("\n# Unwrap the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} "+config_file+"'\n\n\n");
     outfile.close();

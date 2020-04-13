@@ -83,6 +83,19 @@ set incs="6.0s/4.5s" # choosing pretty high resolution  # THIS IS THE KEY. THIS 
 # If you ask for a higher geocoded resolution than your RADAR data actually has, then you 
 # will end up filling your vel_ll with nans. 
 
+# FROM A KZM-CUSTOM VERSION OF projra2ll:
+# set filt = `ls gauss_*`
+# if ( $filt != "" ) then
+#    set pix_m = `ls gauss_* | awk -F_ '{print $2/4}'` # Use 1/4 the filter width
+#    echo "Sampling in geocoordinates with $pix_m meter pixels ..."
+# else
+#    set pix_m = 180  # KZM CHANGED DEFAULT FROM 60 TO 180 TO AVOID NANs
+#    echo "Sampling in geocoordinates with deault ($pix_m meter) pixel size ..."
+# endif
+# set incs = `m2s.csh $pix_m llp`			  # Get fine and crude grid interval for lookup grids
+
+
+
 set R =  `gmt gmtinfo llp -I$incs -bi3f `
 gmt xyz2grd llp $R -I$incs  -r -fg -G$ofile -bi3f
 

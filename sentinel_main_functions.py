@@ -110,8 +110,8 @@ def read_config():
     #logtime is the timestamp added to all logfiles created during this run
     logtime=time.strftime("%Y_%m_%d-%H_%M_%S")
     config_file='batch.run.'+ logtime +'.cfg'
-    with open(config_file, 'w') as configfilehandle:
-        config.write(configfilehandle)
+    # with open(config_file, 'w') as configfilehandle:
+    #     config.write(configfilehandle)
 
 
     config_params=Params(config_file=config_file_orig, SAT=SAT,wavelength=wavelength,startstage=startstage,endstage=endstage,master=master,
@@ -344,17 +344,9 @@ def topo2ra(config_params):
 
 
 # --------------- STEP 4: Make Interferograms ------------ # 
-def make_interferograms(config_params):
-    """
-    1. form interferogram pairs from baseline_table
-    2. make network plot
-    3. write README_proc.txt
-    """
-    if config_params.startstage>4:  # if we're starting at sbas, we don't do this. 
-        return;
-    if config_params.endstage<4:   # if we're ending at topo, we don't do this. 
-        return;
 
+def get_total_intf_all(config_params):
+    # Make a selection of interferograms to form. 
     [stems, times, baselines,_] = sentinel_utilities.read_baseline_table('F1'+'/raw/baseline_table.dat');  # hard coding for consistency. 
 
     # Retrieving interferogram pairs based on settings in config_files. 
@@ -378,7 +370,23 @@ def make_interferograms(config_params):
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_all,stems,times, baselines, "F"+str(config_params.swath)+"/Total_Network_Geometry.eps");
-    
+    return intf_all;
+
+
+
+def make_interferograms(config_params):
+    """
+    1. form interferogram pairs from baseline_table
+    2. make network plot
+    3. write README_proc.txt
+    """
+    if config_params.startstage>4:  # if we're starting at sbas, we don't do this. 
+        return;
+    if config_params.endstage<4:   # if we're ending at topo, we don't do this. 
+        return;
+
+    intf_all = get_total_intf_all(config_params);  # Make selection of interferograms to form. 
+
     # Write the intf.in files
     outdir = "F"+str(config_params.swath+"/intf_all/");
     outfile=open("README_proc.txt",'w');
@@ -431,13 +439,18 @@ def unwrapping(config_params):
     if config_params.detrend_atm_topo==1:
         flattentopo_driver.main_function();
 
+    # For merging multiple swaths
+    sentinel_utilities.set_up_merge_unwrap(config_params);  # just set up the merged directory. 
+    intf_all = get_total_intf_all(config_params);  # Make selection of interferograms to form. 
+    sentinel_utilities.write_merge_batch_input(intf_all, config_params.master); # write the intfs and PRM files into an input file. 
+
     # Make plots of phasefilt.grd files. 
     # phasefilt_plot.top_level_driver('manual_remove.txt');
     # If you want to do this before and after flattentopo, you have to do it separately. 
 
     unwrap_sh_file="README_unwrap.txt";
-    sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
-    # sentinel_utilities.write_long_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    sentinel_utilities.write_merge_unwrap(unwrap_sh_file);
+    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
     # sentinel_utilities.write_select_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
 
     print("Ready to call "+unwrap_sh_file)
