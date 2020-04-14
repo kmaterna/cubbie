@@ -32,13 +32,13 @@ def get_signal_spread(data_vector, cutoff):
         a = 100 * len(np.where(data_vector>cutoff)[0])/len(data_vector);  # This has been tested. 
     return a;
 
-def drive_signal_spread_calculation(swath, unwrap_ref_dir, intfs, output_dir):
+def drive_signal_spread_calculation(intfs, cutoff, output_dir):
     print("Making stack_corr")
-    mytuple=rmd.reader(intfs)
-    a=stack_corr(mytuple, np.nan)
-    rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', 'F'+swath+'/'+output_dir+'/signalspread.nc')
-    rwr.produce_output_plot('F'+swath+'/'+output_dir+'/signalspread.nc', 'Signal Spread', 
-        'F'+swath+'/'+output_dir+'/signalspread.png', 'Percentage of coherence (out of '+str(len(intfs))+' images)' )
+    mytuple=rmd.reader(corr_files)
+    a=stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully. 
+    rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_dir+'/signalspread.nc')
+    rwr.produce_output_plot(output_dir+'/signalspread.nc', 'Signal Spread', 
+        output_dir+'/signalspread.png', 'Percentage of coherence (out of '+str(len(intfs))+' images)' , aspect=1.2);
     return;
 
 

@@ -223,7 +223,7 @@ def write_super_master_batch_config(masterid):
 
 def set_up_merge_unwrap(config_params):
     subprocess.call(["mkdir","-p","merged"],shell=False);
-    # subprocess.call(["cp","topo/dem.grd","merged"],shell=False);  # I needed to actually copy it, not just soft link. 
+    subprocess.call(["cp","topo/dem.grd","merged"],shell=False);  # I needed to actually copy it, not just soft link. 
     subprocess.call(["cp","batch.config","merged"],shell=False);
     return;
 
@@ -486,6 +486,7 @@ def compare_intended_list_with_directory(intended_array, actual_array, errormsg)
 
 def check_intf_all_sanity():
     # Figure out whether all intended interferograms were made and unwrapped. 
+    # This makes sense for a single swath, not a merged situation. 
 
     print("Checking the progress of intf and unwrap steps. ")
 

@@ -3,7 +3,6 @@ import os,sys,shutil,argparse,time,configparser, glob
 import numpy as np
 from subprocess import call, check_output
 import stacking_utilities
-import unwrapping_errors
 import aps 
 import detrend_atm_topo
 import flattentopo_driver
@@ -22,9 +21,9 @@ def set_up_output_directories(config_params):
         return;
     if config_params.endstage<0:   
         return;
-    print("Stage 0 - Setting up output directories.");
+    print("Stage 0 - Setting up output directories within %s." % config_params.ts_parent_dir);
     call(['mkdir','-p',config_params.ts_parent_dir],shell=False);
-    call(['mkdir','-p',config_params.ref_dir],shell=False);
+    # call(['mkdir','-p',config_params.ref_dir],shell=False);
     call(['mkdir','-p',config_params.ts_output_dir],shell=False);
     call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
     call(['cp',config_params.skip_file, config_params.ts_output_dir],shell=False);
@@ -43,8 +42,6 @@ def make_corrections(config_params):
     # Step 3A: Solve or exclude unwrapping errors
     # Step 3B: Try APS-based atmospheric correction
     # Step 3C: Detrend topo-correlated atmosphere   
-    # if config_params.solve_unwrap_errors:
-    #     #unwrapping_errors.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     # if config_params.gacos:
     #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
     # if config_params.aps:
@@ -62,17 +59,16 @@ def collect_unwrap_ref(config_params):
     if config_params.endstage<2:   # if we're ending at intf, we don't do this. 
         return;
 
-    print("Stage 2 - Collecting referenced unwrapped.");
+    print("Stage 2 - Finding Reference Information.");
 
     # Very general, takes all files and doesn't discriminate. 
     intf_files=stacking_utilities.get_list_of_intf_all(config_params);
 
     # Here we need to get ref_idx if we don't have it already
-    rowref, colref = stacking_utilities.get_ref_index(config_params.ref_swath, config_params.swath, config_params.ref_loc, config_params.ref_idx, intf_files);
+    rowref, colref = stacking_utilities.get_ref_index_merged(config_params.ref_loc, config_params.ref_idx, intf_files); 
 
     # Now we coalesce the files and reference them to the right value/pixel
-    stacking_utilities.make_referenced_unwrapped(intf_files, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
-
+    # stacking_utilities.make_referenced_unwrapped(intf_files, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
     return;
 
 
@@ -88,11 +84,12 @@ def vels_and_ts(config_params):
     intfs = stacking_utilities.make_selection_of_intfs(config_params);
     
     # We make signal_spread here. Can be commented if you already have it. 
-    # stack_corr.drive_signal_spread_calculation(config_params.swath, config_params.ref_dir, intfs, config_params.ts_output_dir);
-
+    # corr_files = [i.replace("unwrap.grd","corr.grd") for i in intfs];
+    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
+ 
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
+        # sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
     if config_params.ts_type=="SBAS":
         print("Running velocities and time series by SBAS");
         # sbas.drive_velocity_sbas(config_params.swath, intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
@@ -101,7 +98,6 @@ def vels_and_ts(config_params):
         # print("Running velocities and time series by NSBAS");
         # nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
         nsbas.drive_ts_nsbas(config_params);
-
     return; 
 
 

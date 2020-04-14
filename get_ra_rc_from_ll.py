@@ -8,7 +8,7 @@ import sys
 import netcdf_read_write
 
 def get_nearest_row_col(example_grd, ra, az):
-	[xdata, ydata, zdata] = netcdf_read_write.read_grd_xyz(example_grd);	
+	[xdata, ydata, zdata] = netcdf_read_write.read_netcdf4_xyz(example_grd);	
 	col_idx = (np.abs(xdata - ra)).argmin()  # xdata is columns
 	row_idx = (np.abs(ydata - az)).argmin()  # ydata is rows
 	print(ydata[row_idx]);
@@ -122,7 +122,7 @@ def get_ll_from_ra(trans_dat, ra, az):
 
 
 def get_ll_from_row_col(row, col, example_grd, trans_dat):
-	[xdata, ydata, zdata] = netcdf_read_write.read_grd_xyz(example_grd)
+	[xdata, ydata, zdata] = netcdf_read_write.read_netcdf4_xyz(example_grd)
 	ra = xdata[col]; 
 	az = ydata[row]; # check this
 	[lon, lat] = get_ll_from_ra(trans_dat, ra, az);

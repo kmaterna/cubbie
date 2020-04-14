@@ -10,22 +10,28 @@ data = collections.namedtuple('data', ['filepaths', 'dates_correct', 'date_delta
 def reader(filepathslist):
     """This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
     in a cuboid of data. It splits and stores this data in a named tuple which is returned. This can then be used
-    to extract key pieces of information."""
+    to extract key pieces of information.
+    It functions on GMTSAR grd files."""
     filepaths  = []
     dates_correct , date_deltas = [], []
     xvalues, yvalues, zvalues = [], [], []
     for i in range(len(filepathslist)):
         print(filepathslist[i])
+        # Establish timing and filepath information
         filepaths.append(filepathslist[i])
-        datesplit = filepathslist[i].split('/')[-1]  # example: 2015157_2018177_unwrap.grd
+        datesplit = filepathslist[i].split('/')[-2]  # example: 2015157_2018177_unwrap.grd
         date_new = datesplit.replace(datesplit[0:7], str(int(datesplit[0:7]) + 1))
         date_new = date_new.replace(date_new[8:15], str(int(date_new[8:15]) + 1))  # adding 1 to the date because 000 = January 1
         dates_correct.append(date_new[0:15])  # example: 2015158_2018178
-
         delta = abs(datetime.strptime(dates_correct[i][0:7], '%Y%j') - datetime.strptime(dates_correct[i][8:15], '%Y%j'))  # timedelta object
         date_deltas.append(delta.days/365.24)  # in years. Is that a good idea? 
 
-        xdata, ydata, zdata = rwr.read_grd_xyz(filepathslist[i])
+        # Read in the data
+        try: 
+            xdata, ydata, zdata = rwr.read_grd_xyz(filepathslist[i])  # a NETCDF3 file
+        except TypeError:
+            xdata, ydata, zdata = rwr.read_netcdf4_xyz(filepathslist[i])  # a NETCDF4 file
+
         xvalues=xdata
         yvalues=ydata
         zvalues.append(zdata)

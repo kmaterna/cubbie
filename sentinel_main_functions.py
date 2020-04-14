@@ -435,6 +435,9 @@ def unwrapping(config_params):
     if config_params.endstage<5:   # if we're ending at intf, we don't do this. 
         return;   
 
+    # This isn't so smooth right now with handling merged as well as single interferograms. 
+    # Future work. 
+
     # Marie-Pierre's atmosphere correction 
     if config_params.detrend_atm_topo==1:
         flattentopo_driver.main_function();
@@ -457,7 +460,6 @@ def unwrapping(config_params):
     call(['chmod','+x',unwrap_sh_file],shell=False);
     call("./"+unwrap_sh_file,shell=True);
 
-    # sentinel_utilities.check_intf_all_sanity();
     return;
 
 
