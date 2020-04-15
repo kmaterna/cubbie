@@ -34,7 +34,7 @@ def get_signal_spread(data_vector, cutoff):
 
 def drive_signal_spread_calculation(intfs, cutoff, output_dir):
     print("Making stack_corr")
-    mytuple=rmd.reader(corr_files)
+    mytuple=rmd.reader(intfs)
     a=stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully. 
     rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_dir+'/signalspread.nc')
     rwr.produce_output_plot(output_dir+'/signalspread.nc', 'Signal Spread', 

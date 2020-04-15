@@ -12,77 +12,8 @@ import readmytupledata as rmd
 import netcdf_read_write as rwr 
 import stack_corr
 
-def drive_velocity_nsbas(swath, intfs, nsbas_min_intfs, sbas_smoothing, wavelength, outdir):
-    signal_spread_file=outdir+"/signalspread_cut.nc"
-    intf_tuple = rmd.reader(intfs); 
-    make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
-    signal_spread_data=rwr.read_grd(signal_spread_file);
-    velocities = driver_vels(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, signal_spread_data); 
-    
-    # An issue with the lightswitch at Moffett turning off... 
-    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', '/Users/kmaterna/Documents/testvelo/F'+swath+'_'+'velo_nsbas.grd');  # just in case we screw up
-    rwr.produce_output_plot('/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.grd', 'LOS Velocity',
-        '/Users/kmaterna/Documents/testvelo/F'+swath+'_velo_nsbas.png', 'velocity (mm/yr)');
 
-    # The more general case. 
-    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', outdir+'/velo_nsbas.grd');
-    rwr.produce_output_plot(outdir+'/velo_nsbas.grd', 'LOS Velocity', outdir+'/velo_nsbas.png', 'velocity (mm/yr)');
-    return;
-
-def drive_ts_nsbas(config_params):
-	lons, lats, names, swaths, rows, cols = stacking_utilities.get_rows_cols(config_params.ts_points_file);
-	if len(rows)==0:
-		return;
-	drive_ts_nsbas_one_swath(config_params, '1', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
-	drive_ts_nsbas_one_swath(config_params, '2', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
-	drive_ts_nsbas_one_swath(config_params, '3', rows, cols, swaths, names, lons, lats, config_params.sbas_smoothing, config_params.wavelength);
-	return;
-
-# FOR A GIVEN SWATH, LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
-def drive_ts_nsbas_one_swath(config_params, select_swath, rows, cols, swaths, names, lons, lats, smoothing, wavelength):
-	outdir = config_params.ts_output_dir+"/ts";
-	print("TS OUTPUT DIR IS: " + outdir)
-	call(['mkdir','-p',outdir],shell=False);
-	
-	rows=np.array(rows);
-	cols=np.array(cols);
-	names=np.array(names);
-	lons=np.array(lons);
-	lats=np.array(lats);
-	select_rows = rows[np.array(swaths)==select_swath];
-	select_cols = cols[np.array(swaths)==select_swath];
-	select_names = names[np.array(swaths)==select_swath];
-	select_lons = lons[np.array(swaths)==select_swath];
-	select_lats = lats[np.array(swaths)==select_swath];
-	print("For Swath %s, extracting time series for:" % (select_swath) );
-	for i in range(len(select_rows)):
-		print(select_rows[i], select_cols[i]);
-	if len(select_rows)==0:
-		return;	
-	intfs = stacking_utilities.make_selection_of_intfs(config_params, swath=select_swath);
-	intf_tuple = rmd.reader(intfs);
-	for i in range(len(select_rows)):
-		pixel_value = intf_tuple.zvalues[:,select_rows[i],select_cols[i]];
-		vel, dts, m_cumulative = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, full_ts_return=True); 
-		m_cumulative=[i*-1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
-		nsbas_ts_outputs(dts, m_cumulative, select_swath, select_rows[i], select_cols[i], select_names[i], select_lons[i], select_lats[i], outdir);
-	return;
-
-# This might be redundant, not sure. 
-def single_pixel_ts(intf_tuple, pixel_coords, sbas_smoothing, wavelength, signal_spread_file,outdir, coh_tuple=[]):
-	# Plot a single pixel's time series. 
-	datestrs, x_dts, xdates = get_TS_dates(intf_tuple.dates_correct);
-	pixel_value = intf_tuple.zvalues[:,pixel_coords[0],pixel_coords[1]];
-	if coh_tuple==[]:
-		coh_value=[];
-	else:
-		coh_value = coh_tuple.zvalues[:,pixel_coords[0], pixel_coords[1]];
-	ts = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, sbas_smoothing, wavelength, datestrs, xdates, coh_value, 
-		full_ts_return=True);
-	output_single_pixel_ts(pixel_coords, xdates, ts, signal_spread_file, outdir);
-	return;
-
-
+# ------------ UTILITY FUNCTIONS ------------ #
 # Before velocities, might want to make stack_corr_custom if you have excluded significant data. 
 def make_stack_corr_custom(mydata,signal_spread_file):
     # Stack corr for this exact calculation (given right inputs and outputs). 
@@ -99,23 +30,27 @@ def make_stack_corr_custom(mydata,signal_spread_file):
 	# The point here is to loop through each pixel, determine if there's enough data to use, and then 
 	# make an NSBAS matrix describing each image that's a real number (not nan). 
 
-def driver_vels(intf_tuple, nsbas_good_perc, smoothing, wavelegnth, signal_spread_data, coh_tuple = []):
+def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelegnth, rowref, colref, signal_spread_data, coh_tuple = []):
+	# This is how you access velocity solutions from NSBAS
 	retval = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
+	datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct); 
 	def packager_function(i, j, intf_tuple):
 		# Giving access to all these variables
-		return compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple);
+		return compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs, x_axis_days, coh_tuple);
 	retval = iterator_func(intf_tuple, nsbas_good_perc, smoothing, wavelength, 
 		signal_spread_data, packager_function, coh_tuple);  # how does it get compute_vels()?
 	return retval
 
-def driver_Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, coh_tuple = []):
+
+def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple = []):
+	# This is how you access Time Series solutions from NSBAS
 	datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct); 
 	# Establishing the return array
 	empty_vector=[np.empty(np.shape(x_axis_days))];
 	retval = [ [ empty_vector for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
 	def packager_function(i, j, intf_tuple):
 		# Giving access to all these variables. 
-		return compute_TS(i,j,intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple);
+		return compute_TS(i,j,intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs, x_axis_days, coh_tuple);
 	retval = iterator_func(intf_tuple, packager_function, retval);  
 	return retval;
 
@@ -147,30 +82,34 @@ def iterator_func(intf_tuple, func, retval):
 	return retval;
 
 
-def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
+def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
 	signal_spread = signal_spread_data[i,j];
 	pixel_value = intf_tuple.zvalues[:,i,j];
+	reference_pixel_value = intf_tuple.zvalues[:,rowref,colref];
 	if coh_tuple==[]:
 		coh_value=[];
 	else:
 		coh_value = coh_tuple.zvalues[:,i,j];
 	if signal_spread > nsbas_good_perc: 
+		pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
 		vel = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=False); 
 	else:
 		vel = np.nan;
 	return vel;
 
-def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
+def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
 	# For a given iteration, what's the right time series? 
 	empty_vector = np.empty(np.shape(x_axis_days));  # Length of the TS model
 	empty_vector[:] = np.nan;
 	signal_spread = signal_spread_data[i,j];
 	pixel_value = intf_tuple.zvalues[:,i,j];
+	reference_pixel_value = intf_tuple.zvalues[:,rowref,colref];
 	if coh_tuple==[]:
 		coh_value=[];
 	else:
 		coh_value = coh_tuple.zvalues[:,i,j];
 	if signal_spread > nsbas_good_perc:
+		pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
 		vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=True); 
 		TS = [vector];
 	else:
@@ -200,7 +139,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
 	# This solves Gm = d for the movement of the pixel with smoothing. 
 	# If coh_value is an array, we do weighted least squares. 
-	# Need to implement WLS next. 
+	# This function expects the values in the preferred reference system (i.e. reference pixel already implemented). 
 
 	d = np.array([]);
 	diagonals = [];
@@ -298,23 +237,8 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 # ------------ OUTPUT ------------ #
 
 
-
-
-def output_single_pixel_ts(pixel_coords, xdates, ts, signal_spread_file, outdir):
-    print("Random Pixel");
-    fig = plt.figure()
-    plt.plot(xdates, ts,'.-',markersize=10);
-    plt.title("Pixel "+str(pixel_coords[0])+", "+str(pixel_coords[1]));
-    plt.ylabel('Displacement (mm)');
-    plt.savefig(outdir+'/test_pixel.png');
-    rwr.produce_output_plot(signal_spread_file, 'Signal Spread', outdir+'/show_test_pixels.png', 
-        'Percentage of coherence', aspect=1/4, invert_yaxis=False, dot_points = [[pixel_coords[1]],[pixel_coords[0]]] );
-    return;
-
-
-
-def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir):
-	# This outdir is expected to be something like "F2/stacking/nsbas/ts". 
+def nsbas_ts_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
+	# This outdir is expected to be something like "stacking/nsbas/ts". 
 	# It must exist before the function is called. 
 
 	mean_disp = np.nanmean(m_cumulative);
@@ -324,13 +248,13 @@ def nsbas_ts_outputs(dts, m_cumulative, swath, row, col, name, lon, lat, outdir)
 	plt.plot(dts,plotting_ts,'b.');
 	plt.xlabel("Time");
 	plt.ylabel("Displacement (mm)");
-	plt.title(str(swath)+' '+str(row)+' '+str(col)+' '+str(lon)+' '+str(lat)+' '+str(name));
+	plt.title(str(row)+' '+str(col)+' '+str(lon)+' '+str(lat)+' '+str(name));
 	plt.ylim([-40,50]);
 	plt.savefig(outdir+'/'+str(name)+'_'+str(lon)+'_'+str(lat)+'_disp.eps');
 
 	ofile=open(outdir+'/'+str(name)+'_'+str(row)+'_'+str(col)+'_record.txt','w');
 	for i in range(len(dts)):
-		ofile.write("%s %f %f %s %d %d " % (name, lon, lat, swath, row, col) );
+		ofile.write("%s %f %f %d %d " % (name, lon, lat, row, col) );
 		ofile.write(dt.datetime.strftime(dts[i],"%Y-%m-%d"));
 		ofile.write(" %f\n" % (m_cumulative[i]) );
 	ofile.close();

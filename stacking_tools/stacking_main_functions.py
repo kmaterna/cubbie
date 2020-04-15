@@ -9,6 +9,7 @@ import flattentopo_driver
 import phasefilt_plot
 import sbas
 import nsbas
+import nsbas_accessing
 import gps_into_LOS
 import Super_Simple_Stack as sss
 import netcdf_read_write as rwr
@@ -79,11 +80,15 @@ def vels_and_ts(config_params):
     if config_params.endstage<3:   # if we're ending at intf, we don't do this. 
         return;
 
-    # This is where the hand-picking takes place. 
-    # Ex: manual excludes, manual selects, long intfs only, ramp-removed, atm-removed, etc. 
+    # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     intfs = stacking_utilities.make_selection_of_intfs(config_params);
     
-    # We make signal_spread here. Can be commented if you already have it. 
+    # Plumbing stuff
+    rowref=int(config_params.ref_idx.split('/')[0]);
+    colref=int(config_params.ref_idx.split('/')[1]);
+    call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
+
+    # Make signal_spread here. Can be commented if you already have it. 
     # corr_files = [i.replace("unwrap.grd","corr.grd") for i in intfs];
     # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
  
@@ -92,12 +97,18 @@ def vels_and_ts(config_params):
         # sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
     if config_params.ts_type=="SBAS":
         print("Running velocities and time series by SBAS");
-        # sbas.drive_velocity_sbas(config_params.swath, intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
-        # sbas.drive_ts_sbas(config_params);
+        # sbas.drive_velocity_sbas(intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
     if config_params.ts_type=="NSBAS":
-        # print("Running velocities and time series by NSBAS");
-        # nsbas.drive_velocity_nsbas(config_params.swath, intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
-        nsbas.drive_ts_nsbas(config_params);
+        print("Running velocities and time series by NSBAS");
+        # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        # nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
+    if config_params.ts_type=="WNSBAS":
+        print("Running velocities and time series by WNSBAS");
+        # coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intfs);
+        # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
+        # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
+        # nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files); 
     return; 
 
 

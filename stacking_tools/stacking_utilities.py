@@ -67,19 +67,23 @@ def get_ref_index_merged(ref_loc, ref_idx, intf_files):
         lat=float(ref_loc.split('/')[1])        
         print("Finding coordinate %.3f, %.3f in grd file" % (lon, lat) )
         trans_dat="merged/trans.dat";
-        example_grd=glob.glob("merged/*/unwrap.grd")[0];
-        [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, example_grd, lon, lat);
-        if np.isnan(ra) or np.isnan(az):
-            print("WARNING: Cannot Find %f %f in file." % (lon, lat) );
-            rowref = np.nan; colref = np.nan; 
-            sys.exit(0);
-        else:
-            [rowref, colref] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az); 
-            print("Found reference coordinate at row, col %d, %d " % (rowref, colref) );
-            print("Please write this into your config file. ")
-            sys.exit(0);
+        example_grd=intf_files[0];
+        rowref, colref = get_index_merged(lon, lat, trans_dat, example_grd);            
+        print("Found reference coordinate at row, col %d, %d " % (rowref, colref) );
+        print("Please write this into your config file. ")
+        sys.exit(0);
     return rowref, colref;
 
+def get_index_merged(lon, lat, trans_dat, example_grd):
+    print("Finding coordinate %.3f, %.3f in grd file" % (lon, lat) )
+    [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, example_grd, lon, lat);
+    if np.isnan(ra) or np.isnan(az):
+        print("WARNING: Cannot Find %f %f in file." % (lon, lat) );
+        rowref = np.nan; colref = np.nan; 
+    else:
+        [rowref, colref] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az); 
+        print("Found Coordinate at row, col %d, %d " % (rowref, colref) );
+    return rowref, colref;
 
 def exclude_intfs_manually(total_intf_list, skip_file):
     print("Excluding intfs based on manual_exclude file %s." % skip_file);
@@ -160,7 +164,7 @@ def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time, coseism
     print(" Returning %d interferograms " % len(select_intf_list));
     return select_intf_list;
 
-def make_selection_of_intfs(config_params, swath=0):
+def make_selection_of_intfs(config_params):
     # For TS and velocities:  
     # Get all ref_unwrapped
     if config_params.SAT=="S1":
@@ -199,15 +203,79 @@ def make_selection_of_intfs(config_params, swath=0):
     return select_intf_list; 
 
 def make_selection_of_coh_files(config_params, intf_files):
-    # Selecting coherence information for UAVSAR. Not sure when this gets used. 
+    # Selecting coherence information for each intf_file we've already determined. 
     coh_files=[];
     for i in range(len(intf_files)):
         if config_params.SAT=="UAVSAR":
             datestring = intf_files[i].split('/')[-1][0:17];
             coh_file = "../Igrams/"+datestring+"/alt_unwrapped/filt_"+datestring+"_cut.cor";
             coh_files.append(coh_file);
+        if config_params.SAT=="S1":
+            coh_file = intf_files[i].replace("unwrap.grd","corr.grd");
+            coh_files.append(coh_file);
     print("Returning %d files with coherence information " % (len(coh_files)) )
     return coh_files;
+
+
+# Functions to get TS points in row/col coordinates
+def drive_cache_ts_points(ts_points_file):
+    # If you want to re-compute things, you need to delete the cache. 
+    if os.path.isfile(ts_points_file+".cache"):
+        lons, lats, names, rows, cols = read_ts_points_file(ts_points_file+".cache");
+    elif os.path.isfile(ts_points_file): # if there's no cache, we will make one. 
+        lons, lats, names, rows, cols = read_ts_points_file(ts_points_file);
+        lons, lats, names, rows, cols = match_ts_points_row_col(lons, lats, names, rows, cols);
+        write_ts_points_file(lons, lats, names, rows, cols, ts_points_file+".cache");
+    else:
+        print("Error! You are asking for points but there's not ts_points_file %s . No points computed. " % ts_points_file);
+        return [], [], [], [], [];
+    return lons, lats, names, rows, cols;
+
+def read_ts_points_file(ts_points_file):
+    # Here we can use several formats simultaneously. Point name is required. 
+    #Format 1:  -117.76 35.88 313 654 coso1
+    #Format 2:  -117.76 35.90 coso2
+    print("Reading file %s" % ts_points_file);
+    lons=[]; lats=[]; names=[]; rows=[]; cols=[];
+    ifile=open(ts_points_file,'r');
+    for line in ifile:
+        temp=line.split();
+        if len(temp)==3:  # we have provided the lat/lon/name
+            lons.append(float(temp[0]));
+            lats.append(float(temp[1]));
+            names.append(temp[2]);
+            rows.append('');
+            cols.append('');                
+        if len(temp)==5:  # we have provided the lat/lon/row/col/name
+            if np.isnan(float(temp[2])):  # if the cache has nan for those pixels, we skip. 
+                continue;
+            else:
+                lons.append(float(temp[0]));
+                lats.append(float(temp[1]));
+                rows.append(int(temp[2]));
+                cols.append(int(temp[3]));
+                names.append(temp[4]);
+    print("Computing time series at %d geographic points " % (len(lons)) );
+    return lons, lats, names, rows, cols;
+
+def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
+    ofile=open(ts_points_file,'w');
+    for i in range(len(lons)):
+        ofile.write("%.5f %.5f %s %s %s\n" % (lons[i], lats[i], str(rows[i]), str(cols[i]), names[i]) );
+    ofile.close();
+    return;
+
+def match_ts_points_row_col(lons, lats, names, rows, cols):
+    # Find each row and col that hasn't been found before. 
+    trans_dat="merged/trans.dat";
+    example_grd=glob.glob("merged/*/unwrap.grd")[0];  # specific to the merged case. 
+    for i in range(len(lons)):
+        if rows[i]=='':
+            irow, icol = get_index_merged(lons[i], lats[i], trans_dat, example_grd);
+            rows[i]=irow;
+            cols[i]=icol;
+    return lons, lats, names, rows, cols;
+
 
 
 def get_axarr_numbers(rows, cols, idx):
