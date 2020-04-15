@@ -47,8 +47,15 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 # LET'S GET THE FULL TS FOR EVERY PIXEL
 def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
     # SETUP. 
+    start_index = 500000;
+    end_index   = 1250000;
     signal_spread_file=outdir+"/signalspread.nc"
-    intf_tuple = rmd.reader(intf_files[0:50]); 
+
+    # LOCAL SAVING
+    outdir="/Users/kmaterna/Documents"+"/"+str(start_index)+"_"+str(end_index);
+    call(["mkdir",outdir],shell=False);
+
+    intf_tuple = rmd.reader(intf_files);
     coh_tuple=[];
     if coh_files != []:
         coh_tuple = rmd.reader(coh_files);
@@ -57,8 +64,8 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
-    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple);
-    TS_NC_file = outdir+"/TS.nc";
+    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, start_index, end_index, coh_tuple);
+    # TS_NC_file = outdir+"/TS.nc";
     # rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', TS_NC_file);
     rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', outdir);
     return;

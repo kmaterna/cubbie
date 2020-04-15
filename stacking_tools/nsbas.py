@@ -42,7 +42,7 @@ def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelegnth, rowref, colre
 	return retval
 
 
-def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple = []):
+def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index, end_index, coh_tuple = []):
 	# This is how you access Time Series solutions from NSBAS
 	datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct); 
 	# Establishing the return array
@@ -51,11 +51,11 @@ def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, 
 	def packager_function(i, j, intf_tuple):
 		# Giving access to all these variables. 
 		return compute_TS(i,j,intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs, x_axis_days, coh_tuple);
-	retval = iterator_func(intf_tuple, packager_function, retval);  
+	retval = iterator_func(intf_tuple, packager_function, retval, start_index, end_index);  
 	return retval;
 
 
-def iterator_func(intf_tuple, func, retval):
+def iterator_func(intf_tuple, func, retval, start_index, end_index):
 	# This iterator performs a for loop. It assumes the return value can be stored in an array of ixj
 	# if np.shape(retval) != np.shape(signal_spread_data):
 	# 	print("ERROR: signal spread does not match input data. Stopping immediately. ");
@@ -65,17 +65,29 @@ def iterator_func(intf_tuple, func, retval):
 	print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)) );
 	print("Started at: ");
 	print(dt.datetime.now());
+	previous_time=dt.datetime.now();
 	c = 0;
+	true_count=1;
 	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
 	while not it.finished:
 		i=it.multi_index[0];
 		j=it.multi_index[1];
-		retval[i][j]=func(i,j,intf_tuple);
-		c=c+1;
-		if np.mod(c,10000)==0:
-			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
-		if c==200000:
-			break;
+		if c>=start_index:
+			if c==end_index:
+				break;
+			retval[i][j], nanflag =func(i,j,intf_tuple);
+			if np.mod(c,10000)==0:
+				print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')
+			if nanflag==False:
+				true_count=true_count+1;   # how many pixels were actually inverted? 
+			if np.mod(true_count, 10000)==0:
+				current_time = dt.datetime.now();
+				delta = current_time - previous_time;
+				print("--> 10K inversions took: %.2f s" % delta.total_seconds() );
+				previous_time = current_time;
+		# if c==60000:
+		# 	break;
+		c=c+1;		
 		it.iternext();
 	print("Finished at: ");
 	print(dt.datetime.now());
@@ -93,9 +105,11 @@ def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref
 	if signal_spread > nsbas_good_perc: 
 		pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel. 
 		vel = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=False); 
+		nanflag=False;
 	else:
 		vel = np.nan;
-	return vel;
+		nanflag=True;
+	return vel, nanflag;
 
 def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs, x_axis_days, coh_tuple=[]):
 	# For a given iteration, what's the right time series? 
@@ -112,9 +126,11 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
 		pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel. 
 		vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=True); 
 		TS = [vector];
+		nanflag=False;
 	else:
 		TS = [empty_vector];
-	return TS;
+		nanflag=True;
+	return TS, nanflag;
 
 
 def get_TS_dates(date_pairs):
