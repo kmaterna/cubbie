@@ -3,6 +3,7 @@
 
 import numpy as np 
 import scipy.io.netcdf as netcdf
+import datetime as dt
 import matplotlib.pyplot as plt 
 import subprocess
 import copy
@@ -118,7 +119,7 @@ def read_3D_netcdf(filename):
 
 # --------------- WRITING ------------------- # 
 
-def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
+def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname, dtype=float):
 	# # Write the netcdf velocity grid file. 
 	print("Writing output netcdf to file %s " % netcdfname); 
 	f=netcdf.netcdf_file(netcdfname,'w');
@@ -126,13 +127,13 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname):
 	f.createDimension('x',len(xdata));
 	f.createDimension('y',len(ydata));
 	print(np.shape(zdata));
-	x=f.createVariable('x',float,('x',))
+	x=f.createVariable('x',dtype,('x',))
 	x[:]=xdata;
 	x.units = 'range';
-	y=f.createVariable('y',float,('y',))
+	y=f.createVariable('y',dtype,('y',))
 	y[:]=ydata;
 	y.units = 'azimuth';
-	z=f.createVariable('z',float,('y','x',));
+	z=f.createVariable('z',dtype,('y','x',));
 	z[:,:]=zdata;
 	z.units = zunits;
 	f.close();
@@ -216,12 +217,25 @@ def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
 	plt.close();
 	return;	
 
+def produce_output_TS_grids(xdata, ydata, zdata, timearray, zunits, outdir):
+	print("Shape of zdata originally:", np.shape(zdata));
+	for i in range(len(timearray)):	
+		filename=dt.datetime.strftime(timearray[i],"%Y%m%d")+".grd";
+		zdata_slice = np.zeros([len(ydata),len(xdata)]);
+		for k in range(len(xdata)):
+			for j in range(len(ydata)):
+				temp_array = zdata[j][k][0];
+				zdata_slice[j][k] = temp_array[i]; 
+		produce_output_netcdf(xdata, ydata, zdata_slice, zunits, outdir+"/"+filename);
+	return;
+
 
 def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname):
 	# Ultimately we will need a function that writes a large 3D array.  
 	# Each 2D slice is the displacement at a particular time, associated with a time series. 
 	# zdata comes in as a 2D array where each element is a timeseries (1D array). 
 	# It must be re-packaged into a 3D array before we save it. 
+	# Broke during long SoCal experiment for some reason. f.close() didn't work. 
 
 	print("Shape of zdata originally:", np.shape(zdata));
 	zdata_repacked = np.zeros([len(timearray),len(ydata), len(xdata)] );

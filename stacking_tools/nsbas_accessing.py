@@ -48,20 +48,19 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
     # SETUP. 
     signal_spread_file=outdir+"/signalspread.nc"
-    intf_tuple = rmd.reader(intf_files); 
+    intf_tuple = rmd.reader(intf_files[0:50]); 
     coh_tuple=[];
     if coh_files != []:
         coh_tuple = rmd.reader(coh_files);
     xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
-    nsbas.make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
+    # nsbas.make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
     TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple);
-
-    # OUTPUTS
     TS_NC_file = outdir+"/TS.nc";
-    rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', TS_NC_file);
+    # rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', TS_NC_file);
+    rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', outdir);
     return;
 
 

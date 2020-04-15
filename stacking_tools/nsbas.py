@@ -74,8 +74,8 @@ def iterator_func(intf_tuple, func, retval):
 		c=c+1;
 		if np.mod(c,10000)==0:
 			print('Done with ' + str(c) + ' out of ' + str(len(intf_tuple.xvalues)*len(intf_tuple.yvalues)) + ' pixels')        
-		# if c==40000:
-		# 	break;
+		if c==200000:
+			break;
 		it.iternext();
 	print("Finished at: ");
 	print(dt.datetime.now());
@@ -91,7 +91,7 @@ def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref
 	else:
 		coh_value = coh_tuple.zvalues[:,i,j];
 	if signal_spread > nsbas_good_perc: 
-		pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
+		pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel. 
 		vel = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=False); 
 	else:
 		vel = np.nan;
@@ -109,7 +109,7 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
 	else:
 		coh_value = coh_tuple.zvalues[:,i,j];
 	if signal_spread > nsbas_good_perc:
-		pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
+		pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel. 
 		vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, coh_value, full_ts_return=True); 
 		TS = [vector];
 	else:
