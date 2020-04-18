@@ -1,6 +1,6 @@
 from subprocess import call
 import numpy as np
-import sys
+import sys, glob
 import stacking_utilities
 import readmytupledata as rmd
 import netcdf_read_write as rwr 
@@ -47,8 +47,8 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 # LET'S GET THE FULL TS FOR EVERY PIXEL
 def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
     # SETUP. 
-    start_index = 500000;
-    end_index   = 1250000;
+    start_index = 5500000;
+    end_index   = 7000000;
     signal_spread_file=outdir+"/signalspread.nc"
 
     # LOCAL SAVING
@@ -72,6 +72,13 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
 
 
 
+def make_vels_from_ts(ts_dir):
+    filelist = glob.glob(ts_dir+"/combined/????????.grd");
+    mydata = rmd.reader_from_ts(filelist);
+    vel = nsbas.Velocities_from_TS(mydata);
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', ts_dir+'/velo_nsbas.grd');
+    rwr.produce_output_plot(ts_dir+'/velo_nsbas.grd', 'LOS Velocity', ts_dir+'/velo_nsbas.png', 'velocity (mm/yr)');
+    return;
 
 
 

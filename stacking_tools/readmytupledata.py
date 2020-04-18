@@ -43,6 +43,33 @@ def reader(filepathslist):
     return mydata
 
 
+def reader_from_ts(filepathslist):
+    """ This function makes a tuple of grids in timesteps
+    """
+    filepaths  = [];
+    dates_correct, date_deltas=[], [];
+    xvalues, yvalues, zvalues = [], [], [];
+    for i in range(len(filepathslist)):
+        print(filepathslist[i])
+        # Establish timing and filepath information
+        filepaths.append(filepathslist[i]);
+        datestr = filepathslist[i].split('/')[-1][0:8];
+        dates_correct.append(datetime.strptime(datestr,"%Y%m%d"));
+        date_deltas.append(0);
+        # Read in the data
+        try: 
+            xdata, ydata, zdata = rwr.read_grd_xyz(filepathslist[i])  # a NETCDF3 file
+        except TypeError:
+            xdata, ydata, zdata = rwr.read_netcdf4_xyz(filepathslist[i])  # a NETCDF4 file
+        xvalues=xdata;
+        yvalues=ydata;
+        zvalues.append(zdata);
+        if i == round(len(filepathslist)/2):
+            print('halfway done reading files...');
+    mydata = data(filepaths=np.array(filepaths), dates_correct=np.array(dates_correct), 
+        date_deltas=np.array(date_deltas), xvalues=np.array(xvalues), yvalues=np.array(yvalues), zvalues=np.array(zvalues));        
+    return mydata;
+
 
 def reader_isce(filepathslist, band=1):
     import isce_read_write

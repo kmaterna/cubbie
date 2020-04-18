@@ -102,7 +102,8 @@ def vels_and_ts(config_params):
         print("Running velocities and time series by NSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
         # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
+        # nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
+        nsbas_accessing.make_vels_from_ts(config_params.ts_output_dir);
     if config_params.ts_type=="WNSBAS":
         print("Running velocities and time series by WNSBAS");
         # coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intfs);

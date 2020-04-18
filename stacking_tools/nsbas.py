@@ -41,7 +41,6 @@ def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelegnth, rowref, colre
 		signal_spread_data, packager_function, coh_tuple);  # how does it get compute_vels()?
 	return retval
 
-
 def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index, end_index, coh_tuple = []):
 	# This is how you access Time Series solutions from NSBAS
 	datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct); 
@@ -54,8 +53,20 @@ def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, 
 	retval = iterator_func(intf_tuple, packager_function, retval, start_index, end_index);  
 	return retval;
 
+def Velocities_from_TS(ts_tuple):
+	retval = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues) ]);
+	x_axis_days= [ (i-ts_tuple.dates_correct[0]).days for i in ts_tuple.dates_correct ];
+	def packager_function(i,j,ts_tuple):
+		return compute_velocity_from_ts(i,j,ts_tuple, x_axis_days);
+	retval = iterator_func(ts_tuple, packager_function, retval);
+	return retval;
 
-def iterator_func(intf_tuple, func, retval, start_index, end_index):
+
+
+
+
+
+def iterator_func(intf_tuple, func, retval, start_index=[], end_index=[]):
 	# This iterator performs a for loop. It assumes the return value can be stored in an array of ixj
 	# if np.shape(retval) != np.shape(signal_spread_data):
 	# 	print("ERROR: signal spread does not match input data. Stopping immediately. ");
@@ -68,6 +79,10 @@ def iterator_func(intf_tuple, func, retval, start_index, end_index):
 	previous_time=dt.datetime.now();
 	c = 0;
 	true_count=1;
+	if start_index==[]:
+		start_index=0;
+	if end_index==[]:
+		end_index=len(intf_tuple.yvalues)*len(intf_tuple.xvalues);
 	it = np.nditer(intf_tuple.zvalues[0,:,:], flags=['multi_index'], order='F');  # iterate through the 3D array of data
 	while not it.finished:
 		i=it.multi_index[0];
@@ -131,6 +146,18 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
 		TS = [empty_vector];
 		nanflag=True;
 	return TS, nanflag;
+
+def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
+	# What is the velocity of bunch of dates and displacements? in mm/yr. 
+	ts_values = ts_tuple.zvalues[:,i,j];
+	if sum(np.isnan(ts_values))>30:
+		nanflag=1;
+		vel=np.nan;
+	else:
+		vel = np.polyfit(x_axis_days, ts_values, 1);
+		vel = vel[0]*365.24;
+		nanflag = 0;
+	return vel, nanflag;	
 
 
 def get_TS_dates(date_pairs):
@@ -247,6 +274,8 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 		return disp_ts;
 	else:
 		return vel;
+
+
 
 
 
