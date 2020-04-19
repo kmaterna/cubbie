@@ -171,7 +171,7 @@ def make_selection_of_intfs(config_params):
         total_intf_list=glob.glob(config_params.intf_dir+"/*/unwrap.grd");  # the GMTSAR workflow
         d1, d2 = get_intf_dates_gmtsar_merged(total_intf_list);
     elif config_params.SAT=="UAVSAR":
-        total_intf_list=glob.glob(config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow
+        total_intf_list=glob.glob(config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow (fix later)
         d1, d2 = get_intf_dates_isce(total_intf_list);
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
@@ -191,6 +191,16 @@ def make_selection_of_intfs(config_params):
     # select_criterion=0.8; # 3+ years, 2+ years, 1+ year
     # THIS IS WHERE YOU WILL MAKE CHANGES
     # ------------------------------ # 
+    if config_params.ts_type=="STACK":
+        # Then we are stacking only the long interferograms. 
+        print("Selecting interferograms for long-intf stacking and velocity formation.");
+        long_intfs= [];
+        d1, d2 = get_intf_dates_gmtsar_merged(select_intf_list);
+        for i in range(len(select_intf_list)):
+            delta = d2[i]-d1[i];
+            if delta.days > 300:
+                long_intfs.append(select_intf_list[i]);
+        select_intf_list=long_intfs;
 
     # Writing the exact interferograms used in this run. 
     record_file=config_params.ts_output_dir+"/"+"intf_record.txt";

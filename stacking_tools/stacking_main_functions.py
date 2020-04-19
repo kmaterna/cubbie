@@ -82,7 +82,7 @@ def vels_and_ts(config_params):
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     intfs = stacking_utilities.make_selection_of_intfs(config_params);
-    
+
     # Plumbing stuff
     rowref=int(config_params.ref_idx.split('/')[0]);
     colref=int(config_params.ref_idx.split('/')[1]);
@@ -94,7 +94,7 @@ def vels_and_ts(config_params):
  
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        # sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
     if config_params.ts_type=="SBAS":
         print("Running velocities and time series by SBAS");
         # sbas.drive_velocity_sbas(intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
