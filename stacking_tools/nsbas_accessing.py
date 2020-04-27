@@ -47,8 +47,8 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 # LET'S GET THE FULL TS FOR EVERY PIXEL
 def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
     # SETUP. 
-    start_index = 5500000;
-    end_index   = 7000000;
+    start_index = 0;
+    end_index   = 3500000;
     signal_spread_file=outdir+"/signalspread.nc"
 
     # LOCAL SAVING

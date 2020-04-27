@@ -54,6 +54,8 @@ def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, 
 	return retval;
 
 def Velocities_from_TS(ts_tuple):
+	# The easy function to take a timeseries saved on disk and construct velocities
+	# This one doesn't have a memory leak. 
 	retval = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues) ]);
 	x_axis_days= [ (i-ts_tuple.dates_correct[0]).days for i in ts_tuple.dates_correct ];
 	def packager_function(i,j,ts_tuple):
@@ -200,11 +202,15 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 
 	# Average weights at the end of the weigting vector
 	Wavg = np.nanmean(diagonals)
-	for i in range(model_num-1):
-		diagonals.append(Wavg)
+	if smoothing>0.0:
+		for i in range(model_num-1):
+			diagonals.append(Wavg)
 	W = np.diag(diagonals);
 
-	G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
+	if smoothing>0.0:
+		G = np.zeros([len(date_pairs_used)+model_num-1, model_num]);  # in one case, 91x35
+	else:
+		G = np.zeros([len(date_pairs_used), model_num]);  
 	# print(np.shape(G));
 	
 	# building G matrix line by line. 
@@ -218,11 +224,12 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 			G[i][first_index+j]=1;
 
 	# Building the smoothing matrix with 1, -1 pairs
-	for i in range(len(date_pairs_used),len(date_pairs_used)+model_num-1):
-		position=i-len(date_pairs_used);
-		G[i][position]=1*smoothing;
-		G[i][position+1]=-1*smoothing;
-		d = np.append(d,0);
+	if smoothing>0.0:
+		for i in range(len(date_pairs_used),len(date_pairs_used)+model_num-1):
+			position=i-len(date_pairs_used);
+			G[i][position]=1*smoothing;
+			G[i][position+1]=-1*smoothing;
+			d = np.append(d,0);
   
 	# solving the SBAS linear least squares equation for displacement between each epoch.
 	if coh_value != []:
