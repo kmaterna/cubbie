@@ -137,49 +137,15 @@ def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
 
 
 
-def make_referenced_unwrapped_isce(intf_files, rowref, colref, output_dir):
-	# This is simpler than the Sentinel case, since you don't have to cross 
-	# swath borders or solve for n pi. 
-	# We just return the values minus a single reference pixel, 
-	# and write them to a directory. 
-	print("Imposing reference pixel on %d files; saving output in %s" % (len(intf_files), output_dir) );
-	print("Removing existing files");
-	existing_files = glob.glob(output_dir+"/*.refunwrapped");
-	for item in existing_files:
-		call(["rm",item],shell=False);
-	num_warnings = 0;
-	for item in intf_files:
-		datestr = item.split('/')[2];
-		outname=output_dir+"/"+datestr+".refunwrapped";
-		print("Making %s " % outname);
-		zdata = isce_read_write.read_scalar_data(item);
-		refvalue = zdata[rowref, colref];
-		if np.isnan(refvalue):
-			print("WARNING: Intererogram %s has nan as reference pixel" % item);
-			print("SKIPPING THIS INTERFEROGRAM");
-			num_warnings = num_warnings+1; 
-			continue;
-		xdata = range(0,np.shape(zdata)[1]);
-		ydata = range(0,np.shape(zdata)[0]);
-		referenced_zdata = stacking_utilities.apply_reference_value(xdata, ydata, zdata, refvalue);
-		referenced_zdata = np.float32(referenced_zdata);
-		isce_read_write.write_isce_data(referenced_zdata, len(xdata), len(ydata), dtype="FLOAT",filename=outname);
-	print("Done making reference unwrapped");
-	print("There were %d warnings of reference pixels == np.nan" % num_warnings);
-	total_intf_list=glob.glob(output_dir+"/*.refunwrapped");
-	print("%s contains %d files " % (output_dir, len(total_intf_list)) );
-	return;
-
-
-def stack_corr_for_ref_unwrapped(ref_dir, rowref, colref, ts_output_dir):
+def stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, ts_output_dir,label=""):
 	# WE MAKE THE SIGNAL SPREAD FOR THE CUT IMAGES
-	total_refunw_list=glob.glob(ref_dir+"/*.refunwrapped");
-	netcdfname = ts_output_dir+'/signalspread_cut_ref.nc'
+	cor_files = [i.replace("fully_processed.unwrappedphase","cut.cor") for i in intf_files]; # get for isce
+	netcdfname = ts_output_dir+'/signalspread_cut_ref'+label+'.nc'
 	cor_value=np.nan;
-	cor_data = readmytupledata.reader_isce(total_refunw_list);
+	cor_data = readmytupledata.reader_isce(cor_files);
 	a = stack_corr.stack_corr(cor_data, cor_value);
 	rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', netcdfname)
-	rwr.produce_output_plot(netcdfname, 'Signal Spread above cor='+str(cor_value), ts_output_dir+'/signalspread_cut_ref.png', 
+	rwr.produce_output_plot(netcdfname, 'Signal Spread above cor='+str(cor_value), ts_output_dir+'/signalspread_cut_ref'+label+'.png', 
 		'Percentage of coherence', aspect=1/4, invert_yaxis=False, dot_points=[[colref], [rowref]]);
 	signal_spread_ref = a[rowref, colref];
 	print("Signal Spread of the reference pixel = %.2f " % (signal_spread_ref) );
@@ -190,9 +156,7 @@ def stack_corr_for_ref_unwrapped(ref_dir, rowref, colref, ts_output_dir):
 	return;
 
 
-
-
-# --------------- STEP 2: Make ref_unwrap.grd ------------ # 
+# --------------- STEP 2: Get Reference Pixel ------------ # 
 
 def collect_unwrap_ref(config_params):
     if config_params.startstage>2:  # if we're starting after, we don't do this. 
@@ -216,13 +180,12 @@ def collect_unwrap_ref(config_params):
         sys.exit(0);
     # .... or we already know the reference indices:
     if config_params.ref_idx!="":  
-        rowref = int(config_params.ref_idx.split(",")[0]);
-        colref = int(config_params.ref_idx.split(",")[1]);
+        rowref = int(config_params.ref_idx.split("/")[0]);
+        colref = int(config_params.ref_idx.split("/")[1]);
         print("From the config file, the Rowref and Colref are %d, %d\n" % (rowref, colref) );
 
-    # Now we coalesce the files and reference them to the right value/pixel, and visualize the new stack. 
-    make_referenced_unwrapped_isce(intf_files, rowref, colref, config_params.ref_dir);
-    stack_corr_for_ref_unwrapped(config_params.ref_dir, rowref, colref, config_params.ts_output_dir);
+    stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir)
+
     return;
 
 
@@ -237,19 +200,21 @@ def vels_and_ts(config_params):
 	# This is where the hand-picking takes place. 
 	# Ex: manual excludes, manual selects, long intfs only, ramp-removed, etc. 
 	intf_files = stacking_utilities.make_selection_of_intfs(config_params);
-    rowref=int(config_params.ref_idx.split('/')[0]);
-    colref=int(config_params.ref_idx.split('/')[1]);
+	rowref=int(config_params.ref_idx.split('/')[0]);
+	colref=int(config_params.ref_idx.split('/')[1]);
 	call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
+
+	# Make signal_spread here. Can be commented if you already have it. 
+	stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
 
 	if config_params.ts_type=="STACK":
 		print("Running velocities by simple stack.")
-		# sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, config_params.ts_output_dir);
+		sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
 	if config_params.ts_type=="COSEISMIC":
 		print("Making a simple coseismic stack");
-		coseismic_stack.drive_coseismic_stack_isce(intf_files, config_params.wavelength, config_params.ts_output_dir);
+		coseismic_stack.drive_coseismic_stack_isce(intf_files, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
 	if config_params.ts_type=="SBAS":
-		print("Running velocities and time series by SBAS");
-		# sbas.drive_velocity_sbas(intf_files, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+		print("Running velocities and time series by SBAS: SBAS currently broken.");
 	if config_params.ts_type=="NSBAS":
 		print("Running velocities and time series by NSBAS");
 		nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);

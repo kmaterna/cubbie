@@ -52,7 +52,7 @@ def make_corrections(config_params):
     return;
 
 
-# --------------- STEP 2: Make ref_unwrap.grd ------------ # 
+# --------------- STEP 2: Get Reference Pixel ------------ # 
 
 def collect_unwrap_ref(config_params):
     if config_params.startstage>2:  # if we're starting after, we don't do this. 
@@ -68,8 +68,6 @@ def collect_unwrap_ref(config_params):
     # Here we need to get ref_idx if we don't have it already
     rowref, colref = stacking_utilities.get_ref_index_merged(config_params.ref_loc, config_params.ref_idx, intf_files); 
 
-    # Now we coalesce the files and reference them to the right value/pixel
-    # stacking_utilities.make_referenced_unwrapped(intf_files, config_params.swath, config_params.ref_swath, rowref, colref, config_params.ref_dir);
     return;
 
 
@@ -94,10 +92,12 @@ def vels_and_ts(config_params):
  
     if config_params.ts_type=="STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+    if config_params.ts_type=="COSEISMIC":
+        print("Making a simple coseismic stack");
+        coseismic_stack.drive_coseismic_stack_gmtsar(intfs, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
     if config_params.ts_type=="SBAS":
-        print("Running velocities and time series by SBAS");
-        # sbas.drive_velocity_sbas(intfs, config_params.sbas_smoothing, config_params.wavelength, config_params.ts_output_dir);
+        print("Running velocities and time series by SBAS: SBAS currently broken. ");
     if config_params.ts_type=="NSBAS":
         print("Running velocities and time series by NSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);

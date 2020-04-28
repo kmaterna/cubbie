@@ -147,7 +147,7 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
 
 	# Step 3: Perform appropriate mask
 	coherence_mask = mask_and_interpolate.make_coherence_mask(cor_cut, coherence_cutoff);
-	coherence_mask_liberal = mask_and_interpolate.make_coherence_mask(cor_cut, coherence_cutoff-0.2);  # an experiment to get more pixels back
+	coherence_mask_liberal = mask_and_interpolate.make_coherence_mask(cor_cut, coherence_cutoff-0.0);  # an experiment to get more pixels back
 	masked_slc = mask_and_interpolate.apply_coherence_mask(slc_cut, coherence_mask, is_complex=1);
 	axarr=add_plot(axarr, 5, masked_slc, 'masked_phasefilt', colormap='rainbow', aspect=plot_aspect, is_complex=1, vmin=-np.pi, vmax=np.pi);
 

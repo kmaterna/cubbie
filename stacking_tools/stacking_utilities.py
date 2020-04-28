@@ -32,6 +32,7 @@ def write_super_master_batch_config(masterid):
 def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
     # The smarter selection takes place in make_selection_of_intfs. 
+    # This is where the directory tree is coded. 
     if config_params.SAT=="S1":
         total_intf_list=glob.glob(config_params.intf_dir+"/???????_???????/unwrap.grd");
     elif config_params.SAT=="UAVSAR":
@@ -167,11 +168,10 @@ def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time, coseism
 def make_selection_of_intfs(config_params):
     # For TS and velocities:  
     # Get all ref_unwrapped
+    total_intf_list = get_list_of_intf_all(config_params);
     if config_params.SAT=="S1":
-        total_intf_list=glob.glob(config_params.intf_dir+"/*/unwrap.grd");  # the GMTSAR workflow
         d1, d2 = get_intf_dates_gmtsar_merged(total_intf_list);
     elif config_params.SAT=="UAVSAR":
-        total_intf_list=glob.glob(config_params.ref_dir+"/????????_????????.refunwrapped");  # The ISCE workflow (fix later)
         d1, d2 = get_intf_dates_isce(total_intf_list);
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
