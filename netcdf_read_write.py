@@ -239,13 +239,18 @@ def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname
 
 	print("Shape of zdata originally:", np.shape(zdata));
 	zdata_repacked = np.zeros([len(timearray),len(ydata), len(xdata)] );
-	print("Making repackaged zdata of shape: ", np.shape(zdata_repacked));
-	for i in range(len(zdata[0][0][0])): # for each time interval: 
-		print(i);
-		for k in range(len(xdata)):
-			for j in range(len(ydata)):
-				temp_array = zdata[j][k][0];
-				zdata_repacked[i][j][k] = temp_array[i];
+	print("Intended repackaged zdata of shape: ", np.shape(zdata_repacked));
+	if np.shape(zdata)==np.shape(zdata_repacked):
+		print("No repacking necessary");
+		zdata_repacked = zdata;
+	else:
+		print("Repacking zdata into zdata_repacked");
+		for i in range(len(zdata[0][0][0])): # for each time interval: 
+			print(i);
+			for k in range(len(xdata)):
+				for j in range(len(ydata)):
+					temp_array = zdata[j][k][0];
+					zdata_repacked[i][j][k] = temp_array[i];
 
 	print("Writing output netcdf to file %s " % netcdfname); 
 	days_array=[];
