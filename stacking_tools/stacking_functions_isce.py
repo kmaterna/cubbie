@@ -205,7 +205,7 @@ def vels_and_ts(config_params):
 	call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
 
 	# Make signal_spread here. Can be commented if you already have it. 
-	stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
+	# stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
 
 	if config_params.ts_type=="STACK":
 		print("Running velocities by simple stack.")

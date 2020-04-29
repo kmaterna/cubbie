@@ -41,7 +41,7 @@ def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelegnth, rowref, colre
 		signal_spread_data, packager_function, coh_tuple);  # how does it get compute_vels()?
 	return retval
 
-def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index, end_index, coh_tuple = []):
+def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index=0, end_index=10e6, coh_tuple = []):
 	# This is how you access Time Series solutions from NSBAS
 	datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct); 
 	# Establishing the return array

@@ -217,7 +217,8 @@ def make_selection_of_coh_files(config_params, intf_files):
     coh_files=[];
     for i in range(len(intf_files)):
         if config_params.SAT=="UAVSAR":
-            datestring = intf_files[i].split('/')[-1][0:17];
+            datestring = intf_files[i].split('/')[-1][5:22];
+            print(datestring)
             coh_file = "../Igrams/"+datestring+"/alt_unwrapped/filt_"+datestring+"_cut.cor";
             coh_files.append(coh_file);
         if config_params.SAT=="S1":
