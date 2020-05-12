@@ -15,8 +15,8 @@ if __name__=="__main__":
 	# Step 1: make atmospheric corrections, etc.
 	stacking_main_functions.make_corrections(config_params); 
 
-	# Step 2: make reference unwrapped
-	stacking_main_functions.collect_unwrap_ref(config_params); 
+	# Step 2: Get reference information
+	stacking_main_functions.get_ref(config_params); 
 
 	# Step 3: make velocity field
 	stacking_main_functions.vels_and_ts(config_params); 

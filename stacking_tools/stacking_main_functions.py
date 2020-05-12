@@ -54,7 +54,7 @@ def make_corrections(config_params):
 
 # --------------- STEP 2: Get Reference Pixel ------------ # 
 
-def collect_unwrap_ref(config_params):
+def get_ref(config_params):
     if config_params.startstage>2:  # if we're starting after, we don't do this. 
         return;
     if config_params.endstage<2:   # if we're ending at intf, we don't do this. 

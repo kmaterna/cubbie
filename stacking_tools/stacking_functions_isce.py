@@ -158,7 +158,7 @@ def stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, ts_output_dir,
 
 # --------------- STEP 2: Get Reference Pixel ------------ # 
 
-def collect_unwrap_ref(config_params):
+def get_ref(config_params):
     if config_params.startstage>2:  # if we're starting after, we don't do this. 
         return;
     if config_params.endstage<2:   # if we're ending at intf, we don't do this. 
@@ -233,9 +233,38 @@ def geocode_vels(config_params):
 	if config_params.endstage<4:   # if we're ending before, we don't do this. 
 		return; 
 	if config_params.SAT=="UAVSAR":
-		geocode_UAVSAR_stack(config_params);
+		# geocode_UAVSAR_stack(config_params);  # do this once or more than once
+		create_isce_unw_geo(config_params);
 	return;
 
+def cut_resampled_grid(outdir, filename, variable, config_params):
+	# This is for metadata like lon, lat, and lookvector
+	# Given an isce file and a set of bounds to cut the file, 
+	# Produce the isce data and gmtsar netcdf that match each pixel. 
+	temp = isce_read_write.read_scalar_data(outdir+"/"+filename);
+	print("Shape of the "+variable+" file: ",np.shape(temp));
+	xbounds=[float(config_params.xbounds.split(',')[0]),float(config_params.xbounds.split(',')[1])];
+	ybounds=[float(config_params.ybounds.split(',')[0]),float(config_params.ybounds.split(',')[1])];
+	cut_grid = mask_and_interpolate.cut_grid(temp, xbounds, ybounds, fractional=True, buffer_rows=3);
+	print("Shape of the cut lon file: ",np.shape(cut_grid));
+	nx = np.shape(cut_grid)[1];
+	ny = np.shape(cut_grid)[0];
+	isce_read_write.write_isce_data(cut_grid, nx, ny, "FLOAT", outdir+'/cut_'+variable+'.gdal');
+	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_grid, 
+		"degrees", outdir+'/cut_'+variable+'.nc');
+	return;
+
+def normalize_look_vector(lkve, lkvn, lkvu):
+	east_sq = np.square(lkve)
+	north_sq = np.square(lkvn)
+	up_sq = np.square(lkvu)
+	sumarray = np.add(east_sq, north_sq)
+	sumarray = np.add(sumarray, up_sq);
+	magnitude = np.sqrt(sumarray);	
+	norm_lkve = np.divide(lkve, magnitude)
+	norm_lkvn = np.divide(lkvn, magnitude)
+	norm_lkvu = np.divide(lkvu, magnitude)
+	return norm_lkve, norm_lkvn, norm_lkvu;
 
 def geocode_UAVSAR_stack(config_params):
 	# The goals here for UAVSAR:
@@ -245,11 +274,17 @@ def geocode_UAVSAR_stack(config_params):
 	# Write them out in the output folder
 	# Turn some images (vel, ts steps, etc.) into KMLs
 	# Collect initial information and set things up
+	geocoded_folder=config_params.ts_output_dir+"/geocoded"
+	call(["mkdir","-p",geocoded_folder],shell=False);
 	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector. 
-	lon=[]; lat=[]; hgt=[];
+	lkv_array = np.fromfile(config_params.lkv_file, dtype=np.float32);
+	lon=[]; lat=[]; hgt=[]; lkv_e = []; lkv_n = []; lkv_u = [];
 	lat=llh_array[np.arange(0,len(llh_array),3)];  # ordered array opened from the provided UAVSAR files
 	lon=llh_array[np.arange(1,len(llh_array),3)];
 	hgt=llh_array[np.arange(2,len(llh_array),3)];
+	lkv_e=lkv_array[np.arange(0,len(lkv_array),3)]
+	lkv_n=lkv_array[np.arange(1,len(lkv_array),3)]
+	lkv_u=lkv_array[np.arange(2,len(lkv_array),3)]
 	example_igram=glob.glob("../Igrams/????????_????????/*.int")[0];  
 	phase_array = isce_read_write.read_phase_data(example_igram);
 	print("Shape of the interferogram: ", np.shape(phase_array));
@@ -269,57 +304,81 @@ def geocode_UAVSAR_stack(config_params):
 	print("llh_pixels_range: ",llh_pixels_range);
 
 	# We turn the llh data into 2D arrays.
+	# The look vector is in meters from the aircraft to the ground. 
 	lat_array = np.reshape(lat,(llh_pixels_azimuth,llh_pixels_range));
 	lon_array = np.reshape(lon,(llh_pixels_azimuth,llh_pixels_range));
+	lkve_array = np.reshape(lkv_e, (llh_pixels_azimuth, llh_pixels_range));
+	lkvn_array = np.reshape(lkv_n, (llh_pixels_azimuth, llh_pixels_range));
+	lkvu_array = np.reshape(lkv_u, (llh_pixels_azimuth, llh_pixels_range));
+	lkve_array, lkvn_array, lkvu_array = normalize_look_vector(lkve_array, lkvn_array, lkvu_array);
 
 	# # write the data into a GDAL format. 
-	isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", config_params.ts_output_dir+"/lon_total.gdal");
-	isce_read_write.write_isce_data(lat_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", config_params.ts_output_dir+"/lat_total.gdal");
-	temp = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/lon_total.gdal");
-	print("Shape of the lon file: ",np.shape(temp));
+	isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lon_total.gdal");
+	isce_read_write.write_isce_data(lat_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lat_total.gdal");
+	isce_read_write.write_isce_data(lkve_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkve_total.gdal");
+	isce_read_write.write_isce_data(lkvn_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvn_total.gdal");
+	isce_read_write.write_isce_data(lkvu_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvu_total.gdal");
 
-	# Resampling in GDAL
+	# Resampling in GDAL to match the interferogram sampling
 	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',config_params.ts_output_dir+'/lon_total.gdal',
-		config_params.ts_output_dir+'/lon_igram_res.tif'],shell=False);
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lon_total.gdal',
+		geocoded_folder+'/lon_igram_res.tif'],shell=False);
 	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',config_params.ts_output_dir+'/lat_total.gdal',
-		config_params.ts_output_dir+'/lat_igram_res.tif'],shell=False);
-
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lat_total.gdal',
+		geocoded_folder+'/lat_igram_res.tif'],shell=False);
+	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkve_total.gdal',
+		geocoded_folder+'/lkve_igram_res.tif'],shell=False);
+	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvn_total.gdal',
+		geocoded_folder+'/lkvn_igram_res.tif'],shell=False);
+	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvu_total.gdal',
+		geocoded_folder+'/lkvu_igram_res.tif'],shell=False);
 
 	# Cut the data, and quality check. 
 	# Writing the cut lon/lat into new files. 
-	temp_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/lon_igram_res.tif");
-	print("Shape of the lon file: ",np.shape(temp_lon));
-	xbounds=[float(config_params.xbounds.split(',')[0]),float(config_params.xbounds.split(',')[1])];
-	ybounds=[float(config_params.ybounds.split(',')[0]),float(config_params.ybounds.split(',')[1])];
-	cut_lon = mask_and_interpolate.cut_grid(temp_lon, xbounds, ybounds, fractional=True, buffer_rows=3);
-	print("Shape of the cut lon file: ",np.shape(cut_lon));
-	nx = np.shape(cut_lon)[1];
-	ny = np.shape(cut_lon)[0];
-	isce_read_write.write_isce_data(cut_lon, nx, ny, "FLOAT", config_params.ts_output_dir+'/cut_lon.gdal');
-	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_lon, 
-		"degrees", config_params.ts_output_dir+'/cut_lon.nc');
-	temp_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir+"/lat_igram_res.tif");
-	print("Shape of the lat file: ",np.shape(temp_lat));
-	cut_lat = mask_and_interpolate.cut_grid(temp_lat, xbounds, ybounds, fractional=True, buffer_rows=3);
-	print("Shape of the cut lat file: ",np.shape(cut_lat));
-	isce_read_write.write_isce_data(cut_lat, nx, ny, "FLOAT", config_params.ts_output_dir+'/cut_lat.gdal');
-	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_lat, 
-		"degrees", config_params.ts_output_dir+'/cut_lat.nc');
+	cut_resampled_grid(geocoded_folder, "lon_igram_res.tif", "lon", config_params);
+	cut_resampled_grid(geocoded_folder, "lat_igram_res.tif", "lat", config_params);
+	cut_resampled_grid(geocoded_folder, "lkve_igram_res.tif", "lkve", config_params);
+	cut_resampled_grid(geocoded_folder, "lkvn_igram_res.tif", "lkvn", config_params);
+	cut_resampled_grid(geocoded_folder, "lkvu_igram_res.tif", "lkvu", config_params);
 
-	isce_read_write.plot_scalar_data(config_params.ts_output_dir+'/cut_lat.gdal',
-		colormap='rainbow',aspect=1/4,outname=config_params.ts_output_dir+'/cut_lat_geocoded.png');
+	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lat.gdal',
+		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/cut_lat_geocoded.png');
+	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkvu.gdal',
+		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_up.png');
+	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkve.gdal',
+		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_east.png');
+	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkvn.gdal',
+		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_north.png');			
 
 	# This last thing may not work when finding the reference pixel, only when geocoding at the very last. 
-	# Might have to re-arrange. 
 	# Double checking the shape of the interferogram data (should match!)
-	# signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
-	# print("For comparison, shape of cut data is: ",np.shape(signalspread));
+	signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
+	print("For comparison, shape of cut data is: ",np.shape(signalspread));
 
-	# NEXT: HERE WE WILL TURN THE GRID INTO A KML
 	return;
 
 
+def create_isce_unw_geo(config_params):
+	# With pixel-wise lat and lon and lookvector information, 
+	# Can we make the standard isce geocoded unwrapped products? 
+	# Goal 1: .unw.geo / .unw.geo.xml (test seems to work)
+	# Goal 2: los.rdr.geo / los.rdr.geo.xml
+	# geocodeGdal.py -l cut_lat.gdal -L cut_lon.gdal -f cut_something.gdal -b "S N W E"
+	# Creates a few files (as long as the xmls have the right path)
+	# If we name the file .unw, then it will create an .unw.geo
+	# I need to call this from the same directory that I created the files. 
+	# There is a relative path issue when calling from other directories. 
+	# We also don't have the TS data in isce format
+
+	# Does geocodeGdal make an .unw.geo in the right format? Looks like it. 
+	isce_read_write.plot_scalar_data(config_params.ts_output_dir+"/unw_geo/cut_lkvu.unw.geo",
+		outname=config_params.ts_output_dir+"/unw_geo/resulting_geocoded_lkvu.png");
+	return;
