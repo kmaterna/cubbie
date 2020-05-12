@@ -31,6 +31,7 @@ def read_grd_xyz(filename):
 	return [xdata, ydata, zdata]; 
 
 def read_grd_lonlatz(filename):
+	# for geocoded netcdf from gmtsar
 	xdata0 = netcdf.netcdf_file(filename,'r').variables['lon'][:];
 	ydata0 = netcdf.netcdf_file(filename,'r').variables['lat'][:];
 	zdata0 = netcdf.netcdf_file(filename,'r').variables['z'][::];
@@ -197,7 +198,6 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, in
 	plt.close();
 	return;
 
-
 def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
 	# Read in the dataset
 	[xread, yread, zread] = read_grd_xyz(netcdfname);
@@ -278,3 +278,14 @@ def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname
 	z.units = zunits;
 	f.close();
 	return;
+
+def produce_output_text_file(infile):
+	# Write text files that can be used in a slippy inversion. 
+	# Format: Lon, lat, LOS, e, n, u
+
+
+	return;
+
+
+
+
