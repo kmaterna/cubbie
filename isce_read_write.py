@@ -106,13 +106,14 @@ def write_isce_data(data, nx, ny, dtype, filename):
     data.tofile(filename) # write file out
     return
 
-def write_isce_unw(data, nx, ny, dtype, filename):
+def write_isce_unw(data1, data2, nx, ny, dtype, filename):
     # ISCE uses band=2 for the unwrapped phase of .unw files
     # Writes to float32
     import isce
     import isceobj
-    data=np.float32(data);
-    data=np.hstack((data,data));  # copying into other band for kicks
+    data1=np.float32(data1);  # we should be consistent about float types here. 
+    data2=np.float32(data2);
+    data=np.hstack((data1,data2));  # establishing two bands
     print("Writing data as file %s " % filename);
     out = isceobj.Image.createUnwImage()     
     out.setFilename(filename)

@@ -2,6 +2,7 @@ import os,sys,shutil,argparse,time,configparser, glob
 import numpy as np
 import matplotlib.pyplot as plt 
 from subprocess import call, check_output
+import xml.etree.ElementTree as et
 import stacking_utilities
 import readmytupledata
 import stack_corr
@@ -236,10 +237,52 @@ def geocode_vels(config_params):
 	if config_params.SAT=="UAVSAR":
 		geocode_directory=config_params.ts_output_dir+"/isce_geocode";
 		# Deleting the contents of this folder would be a good automatic step in the future. 
-		file_utilities.gmtsar_nc_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory);
+		file_utilities.gmtsar_nc_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);
 		W, E, S, N = geocode_UAVSAR_stack(config_params, geocode_directory);  # do this once or more than once
 		create_isce_unw_geo(geocode_directory, W, E, S, N);
+		create_isce_rdr(geocode_directory, W, E, S, N);
 		inspect_isce(geocode_directory);
+		# rdr_geocode_xml_function(geocode_directory);
+	return;
+
+def rdr_geocode_xml_function(geocode_directory):
+	# After geocoding a dataset with a single band, we create an xml file
+	# that we can use as a template for making a los.rdr.geo with two bands. 
+	# This is a painful function and isn't really necessary. 
+	print("Writing xml for los.rdr.geo")
+	source_file = geocode_directory+"/cut_azimuth.gdal.geo.xml";
+	dest_file = geocode_directory+"/los.rdr.geo.xml";
+	xml_data = et.parse(source_file);
+	root=xml_data.getroot();
+	for child in root.iter('property'):
+		# print(child.tag)  # something like property
+		# print(child.attrib);  # something like {"name":"number_bands"}
+		# print(child.find('value').text) # something like 2
+		# print(child.items())  # something like [('name','width')] (doesn't help much)
+		if child.attrib['name']=="number_bands":   # write two bands
+			temp = child.find('value');
+			temp.text = '2';
+		if child.attrib['name']=="file_name":  # refer to the los.rdr.geo data file
+			temp = child.find('value');
+			first_text = child.find('value').text;
+			second_text = first_text.replace('cut_azimuth.gdal.geo','los.rdr.geo');
+			temp.text = second_text; 
+
+	# At the end, we are going to append children. 
+	newElement1=et.SubElement(root,'property',attrib={"name":"extra_file_name"});
+	x = et.SubElement(newElement1,'',attrib={"value":second_text+'.vrt'})
+
+	# This doesn't really work. 
+	# test_element = child.find('value');
+	# newElement1.append(test_element);
+	# newElement1.find('value').text = second_text+".vrt"
+
+	# Double checking
+	# for child in root.iter('property'):
+	# 	print(child.attrib)
+	# 	print(child.find('value').text);
+
+	xml_data.write(dest_file);
 	return;
 
 def cut_resampled_grid(outdir, filename, variable, config_params):
@@ -270,6 +313,22 @@ def normalize_look_vector(lkve, lkvn, lkvu):
 	norm_lkvn = np.divide(lkvn, magnitude)
 	norm_lkvu = np.divide(lkvu, magnitude)
 	return norm_lkve, norm_lkvn, norm_lkvu;
+
+def calc_isce_azimuth_incidence(lkve, lkvn, lkvu):
+	# lkve, lkvn, lkvu describe vector from plane to ground
+	# ISCE convention: Azimuth angle measured from North in Anti-clockwise direction
+	# ISCE convention: Incidence angle measured from vertical at target (always +ve)
+	east_sq = np.square(lkve);
+	north_sq = np.square(lkvn);
+	sumarray = np.add(east_sq, north_sq);
+	magnitude = np.sqrt(sumarray);
+	azimuth_standard=np.arctan2(-lkvn, -lkve);
+	azimuth_standard = np.rad2deg(azimuth_standard);
+	azimuth = np.add(azimuth_standard,-90);
+
+	incidence = np.arctan2(magnitude, -lkvu);
+	incidence = np.rad2deg(incidence);
+	return azimuth, incidence;
 
 def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	# The goals here for UAVSAR:
@@ -312,13 +371,16 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	lkvn_array = np.reshape(lkv_n, (llh_pixels_azimuth, llh_pixels_range));
 	lkvu_array = np.reshape(lkv_u, (llh_pixels_azimuth, llh_pixels_range));
 	lkve_array, lkvn_array, lkvu_array = normalize_look_vector(lkve_array, lkvn_array, lkvu_array);
+	azimuth, incidence = calc_isce_azimuth_incidence(lkve_array, lkvn_array, lkvu_array);
 
 	# # write the data into a GDAL format. 
 	isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lon_total.gdal");
 	isce_read_write.write_isce_data(lat_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lat_total.gdal");
-	isce_read_write.write_isce_data(lkve_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkve_total.gdal");
-	isce_read_write.write_isce_data(lkvn_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvn_total.gdal");
-	isce_read_write.write_isce_data(lkvu_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvu_total.gdal");
+	# isce_read_write.write_isce_data(lkve_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkve_total.gdal");
+	# isce_read_write.write_isce_data(lkvn_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvn_total.gdal");
+	# isce_read_write.write_isce_data(lkvu_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvu_total.gdal");
+	isce_read_write.write_isce_data(azimuth, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/azimuth_total.gdal");
+	isce_read_write.write_isce_data(incidence, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/incidence_total.gdal");
 
 	# Resampling in GDAL to match the interferogram sampling
 	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
@@ -329,35 +391,39 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
 		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lat_total.gdal',
 		geocoded_folder+'/lat_igram_res.tif'],shell=False);
+	# call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+	# 	'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+	# 	'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkve_total.gdal',
+	# 	geocoded_folder+'/lkve_igram_res.tif'],shell=False);
+	# call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+	# 	'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+	# 	'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvn_total.gdal',
+	# 	geocoded_folder+'/lkvn_igram_res.tif'],shell=False);
+	# call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
+	# 	'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
+	# 	'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvu_total.gdal',
+	# 	geocoded_folder+'/lkvu_igram_res.tif'],shell=False);
 	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkve_total.gdal',
-		geocoded_folder+'/lkve_igram_res.tif'],shell=False);
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/incidence_total.gdal',
+		geocoded_folder+'/incidence_igram_res.tif'],shell=False);
 	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvn_total.gdal',
-		geocoded_folder+'/lkvn_igram_res.tif'],shell=False);
-	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvu_total.gdal',
-		geocoded_folder+'/lkvu_igram_res.tif'],shell=False);
+		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/azimuth_total.gdal',
+		geocoded_folder+'/azimuth_igram_res.tif'],shell=False);
 
 	# Cut the data, and quality check. 
 	# Writing the cut lon/lat into new files. 
 	cut_resampled_grid(geocoded_folder, "lon_igram_res.tif", "lon", config_params);
 	cut_resampled_grid(geocoded_folder, "lat_igram_res.tif", "lat", config_params);
-	cut_resampled_grid(geocoded_folder, "lkve_igram_res.tif", "lkve", config_params);
-	cut_resampled_grid(geocoded_folder, "lkvn_igram_res.tif", "lkvn", config_params);
-	cut_resampled_grid(geocoded_folder, "lkvu_igram_res.tif", "lkvu", config_params);
+	# cut_resampled_grid(geocoded_folder, "lkve_igram_res.tif", "lkve", config_params);
+	# cut_resampled_grid(geocoded_folder, "lkvn_igram_res.tif", "lkvn", config_params);
+	# cut_resampled_grid(geocoded_folder, "lkvu_igram_res.tif", "lkvu", config_params);
+	cut_resampled_grid(geocoded_folder, "incidence_igram_res.tif", "incidence", config_params);
+	cut_resampled_grid(geocoded_folder, "azimuth_igram_res.tif", "azimuth", config_params);
 
 	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lat.gdal',
 		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/cut_lat_geocoded.png');
-	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkvu.gdal',
-		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_up.png');
-	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkve.gdal',
-		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_east.png');
-	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkvn.gdal',
-		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_north.png');
 	cut_lon = isce_read_write.read_scalar_data(geocoded_folder+'/cut_lon.gdal');
 	cut_lat = isce_read_write.read_scalar_data(geocoded_folder+'/cut_lat.gdal');
 	W,E = np.min(cut_lon), np.max(cut_lon);
@@ -373,7 +439,7 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 
 def create_isce_unw_geo(geocoded_dir, W, E, S, N):
 	# With pixel-wise lat and lon and lookvector information, 
-	# Can we make the standard isce geocoded unwrapped products? 
+	# Can we make isce geocoded unwrapped products? 
 	# Goal 1: .unw.geo / .unw.geo.xml (seems to work)
 	# Goal 2: los.rdr.geo / los.rdr.geo.xml
 	# geocodeGdal.py -l cut_lat.gdal -L cut_lon.gdal -f cut_something.gdal -b "S N W E"
@@ -387,12 +453,34 @@ def create_isce_unw_geo(geocoded_dir, W, E, S, N):
 		# This places the geocoded .unw.geo into each sub-directory. 
 		datafile = glob.glob(folder_i+"/*.unw");
 		datafile = datafile[0]
-		command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\""
+		command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\" -x 0.00025 -y 0.00025"
 		print(command);
 		print("\n");
 		call(command,shell=True);
 	return;
 
+def create_isce_rdr(geocoded_dir, W, E, S, N):
+	# Create a geocoded azimuth and geocoded incidence file
+	# Then concatenate them into a two-band-file (los.rdr.geo)
+	# Then update the xml metadata. 
+	print("Creating los.rdr.geo")
+	datafile=geocoded_dir+"/cut_azimuth.gdal"
+	command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\" -x 0.00025 -y 0.00025"
+	print(command);
+	print("\n");
+	call(command,shell=True);
+	datafile=geocoded_dir+"/cut_incidence.gdal"
+	command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\" -x 0.00025 -y 0.00025"
+	call(command,shell=True);
+	grid_inc = isce_read_write.read_scalar_data(geocoded_dir+"/cut_incidence.gdal.geo", flush_zeros=False);
+	grid_az = isce_read_write.read_scalar_data(geocoded_dir+"/cut_azimuth.gdal.geo",flush_zeros=False);
+	ny, nx = np.shape(grid_inc);
+	filename=geocoded_dir+"/los.rdr.geo"
+	isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", filename);
+
+	angle1 = isce_read_write.read_scalar_data(geocoded_dir+"/los.rdr.geo",band=1);
+	angle2 = isce_read_write.read_scalar_data(geocoded_dir+"/los.rdr.geo",band=2);
+	return;
 
 def inspect_isce(geocoded_dir):
 	# Plot things. 
@@ -405,4 +493,5 @@ def inspect_isce(geocoded_dir):
 		print("shape: ",np.shape(grid))
 		print("max: ",np.nanmax(grid))
 		print("min: ",np.nanmin(grid))
-		isce_read_write.plot_scalar_data(datafile, colormap="rainbow",outname=folder_i+"/geocoded_data.png");
+		isce_read_write.plot_scalar_data(datafile, colormap="rainbow",datamin=-50,datamax=200,outname=folder_i+"/geocoded_data.png");
+	return;	
