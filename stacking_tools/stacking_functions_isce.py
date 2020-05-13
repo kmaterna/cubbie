@@ -9,6 +9,7 @@ import coseismic_stack
 import netcdf_read_write as rwr
 import nsbas_accessing
 import isce_read_write
+import file_utilities
 import mask_and_interpolate
 import unwrapping_errors
 import haversine
@@ -233,8 +234,12 @@ def geocode_vels(config_params):
 	if config_params.endstage<4:   # if we're ending before, we don't do this. 
 		return; 
 	if config_params.SAT=="UAVSAR":
-		# geocode_UAVSAR_stack(config_params);  # do this once or more than once
-		create_isce_unw_geo(config_params);
+		geocode_directory=config_params.ts_output_dir+"/isce_geocode";
+		# Deleting the contents of this folder would be a good automatic step in the future. 
+		file_utilities.gmtsar_nc_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory);
+		W, E, S, N = geocode_UAVSAR_stack(config_params, geocode_directory);  # do this once or more than once
+		create_isce_unw_geo(geocode_directory, W, E, S, N);
+		inspect_isce(geocode_directory);
 	return;
 
 def cut_resampled_grid(outdir, filename, variable, config_params):
@@ -266,15 +271,11 @@ def normalize_look_vector(lkve, lkvn, lkvu):
 	norm_lkvu = np.divide(lkvu, magnitude)
 	return norm_lkve, norm_lkvn, norm_lkvu;
 
-def geocode_UAVSAR_stack(config_params):
+def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	# The goals here for UAVSAR:
-	# Load lon/lat grids
-	# Resample lon/lat grids
-	# Cut them appropriately
-	# Write them out in the output folder
-	# Turn some images (vel, ts steps, etc.) into KMLs
-	# Collect initial information and set things up
-	geocoded_folder=config_params.ts_output_dir+"/geocoded"
+	# Load lon/lat grids and look vector grids
+	# Resample and cut the grids appropriately
+	# Write pixel-wise metadata out in the output folder
 	call(["mkdir","-p",geocoded_folder],shell=False);
 	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector. 
 	lkv_array = np.fromfile(config_params.lkv_file, dtype=np.float32);
@@ -356,29 +357,52 @@ def geocode_UAVSAR_stack(config_params):
 	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkve.gdal',
 		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_east.png');
 	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lkvn.gdal',
-		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_north.png');			
+		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/look_north.png');
+	cut_lon = isce_read_write.read_scalar_data(geocoded_folder+'/cut_lon.gdal');
+	cut_lat = isce_read_write.read_scalar_data(geocoded_folder+'/cut_lat.gdal');
+	W,E = np.min(cut_lon), np.max(cut_lon);
+	S,N = np.min(cut_lat), np.max(cut_lat);
 
 	# This last thing may not work when finding the reference pixel, only when geocoding at the very last. 
 	# Double checking the shape of the interferogram data (should match!)
 	signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
 	print("For comparison, shape of cut data is: ",np.shape(signalspread));
 
-	return;
+	return W, E, S, N;
 
 
-def create_isce_unw_geo(config_params):
+def create_isce_unw_geo(geocoded_dir, W, E, S, N):
 	# With pixel-wise lat and lon and lookvector information, 
 	# Can we make the standard isce geocoded unwrapped products? 
-	# Goal 1: .unw.geo / .unw.geo.xml (test seems to work)
+	# Goal 1: .unw.geo / .unw.geo.xml (seems to work)
 	# Goal 2: los.rdr.geo / los.rdr.geo.xml
 	# geocodeGdal.py -l cut_lat.gdal -L cut_lon.gdal -f cut_something.gdal -b "S N W E"
 	# Creates a few files (as long as the xmls have the right path)
 	# If we name the file .unw, then it will create an .unw.geo
 	# I need to call this from the same directory that I created the files. 
-	# There is a relative path issue when calling from other directories. 
-	# We also don't have the TS data in isce format
 
-	# Does geocodeGdal make an .unw.geo in the right format? Looks like it. 
-	isce_read_write.plot_scalar_data(config_params.ts_output_dir+"/unw_geo/cut_lkvu.unw.geo",
-		outname=config_params.ts_output_dir+"/unw_geo/resulting_geocoded_lkvu.png");
+	folders = glob.glob(geocoded_dir+"/scene*");
+	for folder_i in folders:
+		# Run the geocode command. 
+		# This places the geocoded .unw.geo into each sub-directory. 
+		datafile = glob.glob(folder_i+"/*.unw");
+		datafile = datafile[0]
+		command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\""
+		print(command);
+		print("\n");
+		call(command,shell=True);
 	return;
+
+
+def inspect_isce(geocoded_dir):
+	# Plot things. 
+	folders = glob.glob(geocoded_dir+"/scene*");
+	for folder_i in folders:
+		datafile = glob.glob(folder_i+"/*.unw.geo");
+		datafile = datafile[0];
+		grid = isce_read_write.read_scalar_data(datafile, flush_zeros=False);
+		print("Statistics:")
+		print("shape: ",np.shape(grid))
+		print("max: ",np.nanmax(grid))
+		print("min: ",np.nanmin(grid))
+		isce_read_write.plot_scalar_data(datafile, colormap="rainbow",outname=folder_i+"/geocoded_data.png");

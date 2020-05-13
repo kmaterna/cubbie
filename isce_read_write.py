@@ -106,6 +106,28 @@ def write_isce_data(data, nx, ny, dtype, filename):
     data.tofile(filename) # write file out
     return
 
+def write_isce_unw(data, nx, ny, dtype, filename):
+    # ISCE uses band=2 for the unwrapped phase of .unw files
+    # Writes to float32
+    import isce
+    import isceobj
+    data=np.float32(data);
+    data=np.hstack((data,data));  # copying into other band for kicks
+    print("Writing data as file %s " % filename);
+    out = isceobj.Image.createUnwImage()     
+    out.setFilename(filename)
+    out.setWidth(nx)
+    out.setLength(ny)
+    out.imageType = 'unw'
+    out.bands = 2
+    out.scheme="BIL"
+    out.setAccessMode('read')
+    out.setDataType(dtype)
+    out.renderHdr()
+    data.tofile(filename)
+    return;
+
+
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 
     datamin=None, datamax=None,draw_colorbar=True,colorbar_orientation="horizontal",background=None, outname=None):
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
