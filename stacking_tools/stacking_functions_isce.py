@@ -237,52 +237,11 @@ def geocode_vels(config_params):
 	if config_params.SAT=="UAVSAR":
 		geocode_directory=config_params.ts_output_dir+"/isce_geocode";
 		# Deleting the contents of this folder would be a good automatic step in the future. 
-		file_utilities.gmtsar_nc_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);
+		file_utilities.gmtsar_nc_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);  # write the TS data into isce binaries
 		W, E, S, N = geocode_UAVSAR_stack(config_params, geocode_directory);  # do this once or more than once
 		create_isce_unw_geo(geocode_directory, W, E, S, N);
-		create_isce_rdr(geocode_directory, W, E, S, N);
+		create_isce_rdr_geo(geocode_directory, W, E, S, N);
 		inspect_isce(geocode_directory);
-		# rdr_geocode_xml_function(geocode_directory);
-	return;
-
-def rdr_geocode_xml_function(geocode_directory):
-	# After geocoding a dataset with a single band, we create an xml file
-	# that we can use as a template for making a los.rdr.geo with two bands. 
-	# This is a painful function and isn't really necessary. 
-	print("Writing xml for los.rdr.geo")
-	source_file = geocode_directory+"/cut_azimuth.gdal.geo.xml";
-	dest_file = geocode_directory+"/los.rdr.geo.xml";
-	xml_data = et.parse(source_file);
-	root=xml_data.getroot();
-	for child in root.iter('property'):
-		# print(child.tag)  # something like property
-		# print(child.attrib);  # something like {"name":"number_bands"}
-		# print(child.find('value').text) # something like 2
-		# print(child.items())  # something like [('name','width')] (doesn't help much)
-		if child.attrib['name']=="number_bands":   # write two bands
-			temp = child.find('value');
-			temp.text = '2';
-		if child.attrib['name']=="file_name":  # refer to the los.rdr.geo data file
-			temp = child.find('value');
-			first_text = child.find('value').text;
-			second_text = first_text.replace('cut_azimuth.gdal.geo','los.rdr.geo');
-			temp.text = second_text; 
-
-	# At the end, we are going to append children. 
-	newElement1=et.SubElement(root,'property',attrib={"name":"extra_file_name"});
-	x = et.SubElement(newElement1,'',attrib={"value":second_text+'.vrt'})
-
-	# This doesn't really work. 
-	# test_element = child.find('value');
-	# newElement1.append(test_element);
-	# newElement1.find('value').text = second_text+".vrt"
-
-	# Double checking
-	# for child in root.iter('property'):
-	# 	print(child.attrib)
-	# 	print(child.find('value').text);
-
-	xml_data.write(dest_file);
 	return;
 
 def cut_resampled_grid(outdir, filename, variable, config_params):
@@ -335,6 +294,7 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	# Load lon/lat grids and look vector grids
 	# Resample and cut the grids appropriately
 	# Write pixel-wise metadata out in the output folder
+	# All these grids have only single band. 
 	call(["mkdir","-p",geocoded_folder],shell=False);
 	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector. 
 	lkv_array = np.fromfile(config_params.lkv_file, dtype=np.float32);
@@ -436,18 +396,16 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 
 	return W, E, S, N;
 
-
 def create_isce_unw_geo(geocoded_dir, W, E, S, N):
 	# With pixel-wise lat and lon and lookvector information, 
 	# Can we make isce geocoded unwrapped products? 
 	# Goal 1: .unw.geo / .unw.geo.xml (seems to work)
 	# Goal 2: los.rdr.geo / los.rdr.geo.xml
 	# geocodeGdal.py -l cut_lat.gdal -L cut_lon.gdal -f cut_something.gdal -b "S N W E"
-	# Creates a few files (as long as the xmls have the right path)
-	# If we name the file .unw, then it will create an .unw.geo
-	# I need to call this from the same directory that I created the files. 
-
+	# After that, the BIL arrangement can be switched to BSQ, 
+	# So I need to make an adjustment
 	folders = glob.glob(geocoded_dir+"/scene*");
+	i=0;
 	for folder_i in folders:
 		# Run the geocode command. 
 		# This places the geocoded .unw.geo into each sub-directory. 
@@ -457,9 +415,32 @@ def create_isce_unw_geo(geocoded_dir, W, E, S, N):
 		print(command);
 		print("\n");
 		call(command,shell=True);
+
+		# Unfortunately, after geocodeGdal, the files end up BSQ instead of BIL.  This is necessary to reshape them. 
+		filename = datafile+".geo"
+		isce_read_write.plot_scalar_data(filename,colormap='rainbow',datamin=-50, datamax=200,outname='test_after_geocode.png',band=2);
+		nlat=508
+		nlon=1325  # obviously will have to change depending on the situation. 
+		disp=np.memmap(filename,dtype='<f4').reshape(nlat*2, nlon)  # The right way to read this file.
+		band1 = disp[0:nlat,:];
+		band2 = disp[nlat:,:];
+
+		# Places the two images side by side . This is necessary for reading by Kite
+		properdata = np.hstack((band1, band2));
+		f2 = plt.plot();
+		plt.imshow(properdata)
+		plt.savefig('after_rearranging.png')
+		plt.close();
+		properdata.tofile(filename);
+
+		# There's a bit of a metadata problem when I do this, but hey, as long as it works in Kite, right? 
+		# If you read this as a normal two-band ISCE file, it'll get messed up. 
+		# But Kite is fine.  Oh well. 
+		isce_read_write.plot_scalar_data(filename,colormap='rainbow',datamin=-50, datamax=200,outname='test_after_geocode_band2.png',band=2);
+		i=i+1;
 	return;
 
-def create_isce_rdr(geocoded_dir, W, E, S, N):
+def create_isce_rdr_geo(geocoded_dir, W, E, S, N):
 	# Create a geocoded azimuth and geocoded incidence file
 	# Then concatenate them into a two-band-file (los.rdr.geo)
 	# Then update the xml metadata. 
@@ -477,9 +458,6 @@ def create_isce_rdr(geocoded_dir, W, E, S, N):
 	ny, nx = np.shape(grid_inc);
 	filename=geocoded_dir+"/los.rdr.geo"
 	isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", filename);
-
-	angle1 = isce_read_write.read_scalar_data(geocoded_dir+"/los.rdr.geo",band=1);
-	angle2 = isce_read_write.read_scalar_data(geocoded_dir+"/los.rdr.geo",band=2);
 	return;
 
 def inspect_isce(geocoded_dir):
