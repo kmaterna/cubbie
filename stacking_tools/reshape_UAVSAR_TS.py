@@ -10,6 +10,7 @@ def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):
 	# It's for track 26509. 
 	# This function pastes together a pre-seismic, co-seismic, and post-seismic set of time series or jumps. 
 	# On the same xy grid. 
+	tolerance=300;  # Purposely killing all pixels above this value. 
 	print("Reshaping UAVSAR file into single TS File");
 	[tdata1, xdata1, ydata1, zdata1] = netcdf_read_write.read_3D_netcdf(earlyfile);
 	[xdata2, ydata2, zdata2] = netcdf_read_write.read_grd_xyz(cofile);
@@ -21,12 +22,18 @@ def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):
 	total_data=np.zeros([znum, ynum, xnum]);
 	print(np.shape(total_data));
 	for i in range(np.shape(zdata1)[0]):
-		total_data[i,:,:]=zdata1[i,:,:];  # doing this six times. 
+		temp=zdata1[i,:,:];
+		temp[abs(temp)>tolerance]=np.nan;  # killing outliers
+		total_data[i,:,:]=temp;  # doing this six times. 
 		print("Early data Slice %d" % i);
-	total_data[7,:,:]=np.add(total_data[6,:,:],zdata2);
+	temp=zdata2;
+	temp[abs(temp)>tolerance]=np.nan;
+	total_data[7,:,:]=np.add(total_data[6,:,:],zdata2);  # The coseismic chunk
 	print("Coseismic data slice 7");
 	for i in range(1,np.shape(zdata3)[0]):
-		total_data[i+np.shape(zdata1)[0],:,:]=np.add(zdata3[i,:,:],total_data[7,:,:]);
+		temp=zdata3[i,:,:];
+		temp[abs(temp)>tolerance]=np.nan;  # killing outliers
+		total_data[i+np.shape(zdata1)[0],:,:]=np.add(temp,total_data[7,:,:]);
 		print("Postseismic data slice %d " % (i+np.shape(zdata1)[0]) );
 	dtarray = [];
 	dtarray.append(dt.datetime.strptime("2009-04-24","%Y-%m-%d")); # Hard-coded
@@ -49,9 +56,9 @@ def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):
 
 
 if __name__=="__main__":
-	outdir="April29/";
-	earlyfile=outdir+"TS_early.nc";
-	cofile=outdir+"coseismic.grd";
-	latefile=outdir+"TS_later.nc";
+	outdir="nsbas_apr20_total_18_14_1.5/";
+	earlyfile = "nsbas_apr20_early_18_14_1.5/TS.nc";
+	cofile = "nsbas_apr20_coseismic_18_14_1.5/coseismic.grd";
+	latefile="nsbas_apr20_late_18_14_1.5/TS.nc";
 	outfile=outdir+"TS.nc";
 	reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile);
