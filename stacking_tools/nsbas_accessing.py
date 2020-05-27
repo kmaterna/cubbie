@@ -64,7 +64,8 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
-    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, start_index, end_index, coh_tuple);
+    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, 
+        start_index=start_index, end_index=end_index, coh_tuple=coh_tuple);
     # TS_NC_file = outdir+"/TS.nc";
     # rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', TS_NC_file);
     rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', outdir);
@@ -96,7 +97,7 @@ def drive_full_TS_isce(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, 
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
-    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple);
+    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple=coh_tuple);
 
     # OUTPUTS
     TS_NC_file = outdir+"/TS.nc";

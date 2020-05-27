@@ -17,8 +17,8 @@ if __name__=="__main__":
 	# Step 1: make atmospheric corrections, etc. prior to TS
 	stacking_functions_isce.make_corrections_isce(config_params); 
 
-	# Step 2: make reference unwrapped
-	stacking_functions_isce.collect_unwrap_ref(config_params); 
+	# Step 2: get reference information
+	stacking_functions_isce.get_ref(config_params); 
 
 	# Step 3: make velocity field
 	stacking_functions_isce.vels_and_ts(config_params); 

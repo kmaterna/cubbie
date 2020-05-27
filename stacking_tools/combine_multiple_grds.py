@@ -3,6 +3,8 @@ import sys, glob
 from subprocess import call
 import netcdf_read_write
 
+# This is for when you've run a large SBAS in chunks of several million pixels each 
+# Because it saves time to run in parallel. 
 
 def get_input_dirs():
 	input_files=[];

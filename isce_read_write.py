@@ -11,14 +11,13 @@
 
 import numpy as np 
 import matplotlib.pyplot as plt 
-from osgeo import gdal            ## GDAL support for reading virtual files
-
 
 
 # ----------- READING FUNCTIONS ------------- # 
 
 def read_complex_data(GDALfilename):
     # Reads data into a 2D array where each element is a complex number. 
+    from osgeo import gdal            ## GDAL support for reading virtual files
     print("Reading file %s " % GDALfilename);
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(1).ReadAsArray()
@@ -48,6 +47,7 @@ def read_complex_data(GDALfilename):
 def read_scalar_data(GDALfilename, band=1,flush_zeros=True):
     # band = 1;  # this seems right for most applications 
     # For unwrapped files, band = 2
+    from osgeo import gdal            ## GDAL support for reading virtual files
     print("Reading file %s " % GDALfilename);
     if ".unw" in GDALfilename and ".unw." not in GDALfilename and band==1:
         print("WARNING: We usually read band=2 for snaphu unwrapped files. Are you sure you want band 1 ????");
@@ -93,7 +93,8 @@ def write_isce_data(data, nx, ny, dtype, filename):
     # If DTYPE=="FLOAT": you're writing scalar data
     # IF DTYPE=="CFLOAT": you're writing complex data
     import isce
-    import isceobj
+    import isceobj    
+    from osgeo import gdal
     print("Writing data as file %s " % filename);
     out = isceobj.createIntImage()
     out.setFilename(filename)
@@ -106,8 +107,33 @@ def write_isce_data(data, nx, ny, dtype, filename):
     data.tofile(filename) # write file out
     return
 
+def write_isce_unw(data1, data2, nx, ny, dtype, filename):
+    # ISCE uses band=2 for the unwrapped phase of .unw files
+    # Writes to float32
+    import isce
+    import isceobj
+    from osgeo import gdal    
+    data1=np.float32(data1);  # we should be consistent about float types here. 
+    data2=np.float32(data2);
+    data=np.hstack((data1,data2));  # establishing two bands
+    print("Writing data as file %s " % filename);
+    out = isceobj.Image.createUnwImage()     
+    out.setFilename(filename)
+    out.setWidth(nx)
+    out.setLength(ny)
+    out.imageType = 'unw'
+    out.bands = 2
+    out.scheme="BIL"
+    out.setAccessMode('read')
+    out.setDataType(dtype)
+    out.renderHdr()
+    data.tofile(filename)
+    return;
+
+
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 
     datamin=None, datamax=None,draw_colorbar=True,colorbar_orientation="horizontal",background=None, outname=None):
+    from osgeo import gdal    
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
@@ -151,6 +177,7 @@ def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1,
 
 def plot_complex_data(GDALfilename,title="",aspect=1, band=1, colormap='rainbow',
     datamin=None, datamax=None,draw_colorbar=None,colorbar_orientation="horizontal", outname=None):
+    from osgeo import gdal   
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
