@@ -10,11 +10,6 @@ def get_input_dirs():
 	input_files=[];
 	input_files.append("/Volumes/Ironwolf/Track_71/stacking/no_smoothing/0_3500000");
 	input_files.append("/Volumes/Ironwolf/Track_71/stacking/no_smoothing/3500000_7000000");
-	# input_files.append("/Volumes/Ironwolf/Track_71/stacking/nsbas_apr20/1250000_2000000");
-	# input_files.append("/Volumes/Ironwolf/Track_71/stacking/nsbas_apr20/2000000_3500000");
-	# input_files.append("/Volumes/Ironwolf/Track_71/stacking/nsbas_apr20/3500000_4500000");
-	# input_files.append("/Volumes/Ironwolf/Track_71/stacking/nsbas_apr20/4500000_5500000");
-	# input_files.append("/Volumes/Ironwolf/Track_71/stacking/nsbas_apr20/5500000_7000000");
 	return input_files;
 
 def get_datestrs():
@@ -28,11 +23,6 @@ def combine_all_files(datestr, input_dirs, output_dir):
 
 	xdata, ydata, zdata0 = netcdf_read_write.read_grd_xyz(input_dirs[0]+"/"+datestr+".grd");
 	xdata, ydata, zdata1 = netcdf_read_write.read_grd_xyz(input_dirs[1]+"/"+datestr+".grd");
-	# xdata, ydata, zdata2 = netcdf_read_write.read_grd_xyz(input_dirs[2]+"/"+datestr+".grd");
-	# xdata, ydata, zdata3 = netcdf_read_write.read_grd_xyz(input_dirs[3]+"/"+datestr+".grd");
-	# xdata, ydata, zdata4 = netcdf_read_write.read_grd_xyz(input_dirs[4]+"/"+datestr+".grd");
-	# xdata, ydata, zdata5 = netcdf_read_write.read_grd_xyz(input_dirs[5]+"/"+datestr+".grd");
-	# xdata, ydata, zdata6 = netcdf_read_write.read_grd_xyz(input_dirs[6]+"/"+datestr+".grd");
 	zdata_total = np.zeros(np.shape(zdata0));
 	
 	for j in range(len(ydata)):

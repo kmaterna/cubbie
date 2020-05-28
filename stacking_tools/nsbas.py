@@ -180,7 +180,6 @@ def get_TS_dates(date_pairs):
 
 def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=[], full_ts_return=False):
 	# pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram. 
-	# dates: if we have 35 images, this is the date of each image, in format 
 	# date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
 	# This solves Gm = d for the movement of the pixel with smoothing. 
 	# If coh_value is an array, we do weighted least squares. 
@@ -301,7 +300,7 @@ def nsbas_ts_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
 	plt.xlabel("Time");
 	plt.ylabel("Displacement (mm)");
 	plt.title(str(row)+' '+str(col)+' '+str(lon)+' '+str(lat)+' '+str(name));
-	plt.ylim([-40,50]);
+	# plt.ylim([-40,50]);
 	plt.savefig(outdir+'/'+str(name)+'_'+str(lon)+'_'+str(lat)+'_disp.eps');
 
 	ofile=open(outdir+'/'+str(name)+'_'+str(row)+'_'+str(col)+'_record.txt','w');
