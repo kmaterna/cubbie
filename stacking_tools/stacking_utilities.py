@@ -86,130 +86,145 @@ def get_index_merged(lon, lat, trans_dat, example_grd):
         print("Found Coordinate at row, col %d, %d " % (rowref, colref) );
     return rowref, colref;
 
-def exclude_intfs_manually(total_intf_list, skip_file):
+# Turn interferograms into date-date-filename tuples
+def get_intf_dates_gmtsar(total_intf_list):
+    intf_tuple_list=[];
+    for item in total_intf_list:
+        datesplit = item.split('/')[-1];  # example: 2015157_2018177_unwrap.grd
+        date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1),"%Y%j");
+        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1),"%Y%j");  # adding 1 to the date because 000 = January 1
+        intf_tuple_list.append( (date1, date2, item) )
+    return intf_tuple_list;
+
+def get_intf_dates_gmtsar_merged(total_intf_list):
+    intf_tuple_list = [];
+    for item in total_intf_list:
+        datesplit = item.split('/')[-2];  # example: merged/2015133_2015157/unwrap.grd
+        date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1),"%Y%j");
+        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1),"%Y%j");  # adding 1 to the date because 000 = January 1
+        intf_tuple_list.append( (date1, date2, item) );
+    return intf_tuple_list;
+
+def get_intf_dates_isce(total_intf_list):
+    intf_tuple_list=[];
+    for item in total_intf_list:
+        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", item)[0]; #  example: 20100402_20140304
+        date1 = dt.datetime.strptime(datesplit[0:8],"%Y%m%d");
+        date2 = dt.datetime.strptime(datesplit[9:17],"%Y%m%d");
+        intf_tuple_list.append( (date1, date2, item) )
+    return intf_tuple_list;
+
+# Exclude and Include criteria
+def exclude_intfs_manually(total_intf_tuple, skip_file):
     print("Excluding intfs based on manual_exclude file %s." % skip_file);
-    print(" Started with %d total interferograms. " % (len(total_intf_list)) );
+    print(" Started with %d total interferograms. " % (len(total_intf_tuple)) );
+    select_intf_tuple=[]; manual_removes=[];
     if skip_file=="":
-        print(" No manual exclude file provided.\n Returning all %d interferograms. " % (len(total_intf_list)) );
-        selected_intf_list=total_intf_list;
+        print(" No manual exclude file provided.\n Returning all %d interferograms. " % (len(total_intf_tuple)) );
+        select_intf_tuple=total_intf_tuple;
     else:
         print(" Excluding the following interferograms based on SkipFile %s: " % skip_file);
         ifile=open(skip_file,'r');
-        manual_removes = [];
         for line in ifile:
             manual_removes.append(line.split()[0]);
         ifile.close();
         print(manual_removes);
 
         if manual_removes==[]:
-            selected_intf_list = total_intf_list;
+            select_intf_tuple = total_intf_tuple;
         else:
             # Checking to see if each interferogram should be included. 
-            selected_intf_list=[];
-            for igram in total_intf_list:
+            for igram in total_intf_tuple:
                 include_flag = 1;
                 for scene in manual_removes:
-                    if scene in igram:
+                    if scene in igram[2]:
                         include_flag=0;
                 if include_flag==1:
                     selected_intf_list.append(igram);
-        print(" Returning %d interferograms " % len(selected_intf_list) );
-    return selected_intf_list;
+        print(" Returning %d interferograms " % len(select_intf_tuple) );
+    return select_intf_tuple;
 
-def get_intf_dates_gmtsar(total_intf_list):
-    d1 = []; d2 = [];
-    for item in total_intf_list:
-        datesplit = item.split('/')[-1];  # example: 2015157_2018177_unwrap.grd
-        date1 = str(int(datesplit[0:7]) + 1);
-        date2 = str(int(datesplit[8:15]) + 1);  # adding 1 to the date because 000 = January 1
-        d1.append(dt.datetime.strptime(date1,"%Y%j"));
-        d2.append(dt.datetime.strptime(date2,"%Y%j"));
-    return d1, d2;
+def include_coseismic_intfs(total_intf_tuple, coseismic):
+    # Implements a filter for spanning a coseismic interval, if you include one. 
+    select_intf_tuple=[];
+    if coseismic=="":
+        return total_intf_tuple;
+    else:
+        print("Returning only interferograms that cross coseismic event at %s " % (dt.datetime.strftime(coseismic,"%Y-%m-%d")) )
+        for mytuple in total_intf_tuple:
+            if mytuple[0]<coseismic and mytuple[1]>coseismic:
+                select_intf_tuple.append(mytuple);  # in the case of a coseismic constraint    
+        print(" Returning %d interferograms " % len(select_intf_tuple));
+        return select_intf_tuple;
 
-def get_intf_dates_gmtsar_merged(total_intf_list):
-    d1 = []; d2 = [];
-    for item in total_intf_list:
-        datesplit = item.split('/')[-2];  # example: merged/2015133_2015157/unwrap.grd
-        date1 = str(int(datesplit[0:7]) + 1);
-        date2 = str(int(datesplit[8:15]) + 1);  # adding 1 to the date because 000 = January 1
-        d1.append(dt.datetime.strptime(date1,"%Y%j"));
-        d2.append(dt.datetime.strptime(date2,"%Y%j"));
-    return d1, d2;
-
-def get_intf_dates_isce(total_intf_list):
-    d1 = []; d2 = [];
-    for item in total_intf_list:
-        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", item)[0]; #  example: 20100402_20140304
-        date1 = dt.datetime.strptime(datesplit[0:8],"%Y%m%d");
-        date2 = dt.datetime.strptime(datesplit[9:17],"%Y%m%d");
-        d1.append(date1);
-        d2.append(date2);
-    return d1, d2;
-
-def include_intfs_by_time_range(intf_list, d1, d2, start_time, end_time, coseismic):
+def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
     # Here, we look for each interferogram that falls totally within the time range 
     # given in the config file.
-    # It also implements a filter for spanning a coseismic interval, if you include one. 
     print("Including only interferograms in time range %s to %s ." % (dt.datetime.strftime(start_time,"%Y-%m-%d"),
         dt.datetime.strftime(end_time, "%Y-%m-%d"))); 
-    print(" Starting with %d interferograms " % len(intf_list) )
-    select_intf_list=[];
-    for i in range(len(intf_list)):
-        if d1[i]>=start_time and d1[i]<=end_time:
-            if d2[i]>=start_time and d2[i]<=end_time:
-                if coseismic=="":
-                    select_intf_list.append(intf_list[i]);  # in the case of no coseismic constraint
-                else:
-                    if d1[i]<coseismic and d2[i]>coseismic:
-                        select_intf_list.append(intf_list[i]);  # in the case of a coseismic constraint
-    print(" Returning %d interferograms " % len(select_intf_list));
-    return select_intf_list;
+    print(" Starting with %d interferograms " % len(total_intf_tuple) )
+    select_intf_tuple=[];
+    for mytuple in total_intf_tuple:
+        if mytuple[0]>=start_time and mytuple[0]<=end_time:
+            if mytuple[1]>=start_time and mytuple[1]<=end_time:
+                    select_intf_tuple.append(mytuple);  # in the case of no coseismic constraint
+    print(" Returning %d interferograms " % len(select_intf_tuple));
+    return select_intf_tuple;
+
+def exclude_timeinterval_intfs(total_intf_tuple, days=300, criterion="longer"):
+    # Exclude interferograms of a certain time interval (such as shorter than one year, or longer than one year);
+    select_intf_tuple=[];
+    print("Excluding interferograms %s than %d days " % (criterion, days) );
+    for mytuple in total_intf_tuple:
+        datedelta = (mytuple[1]-mytuple[0]).days;
+        if criterion =="longer":
+            if datedelta<days:
+                select_intf_tuple.append(mytuple);
+        else:
+            if datedelta>days:
+                select_intf_tuple.append(mytuple);
+    print(" Returning %d interferograms " % len(select_intf_tuple));
+    return select_intf_tuple;
 
 def make_selection_of_intfs(config_params):
-    # For TS and velocities:  
-    # Get all ref_unwrapped
+    # Get the right intf files
+    # The working internal format is a tuple of (d1, d2, filename)
     total_intf_list = get_list_of_intf_all(config_params);
     if config_params.SAT=="S1":
-        d1, d2 = get_intf_dates_gmtsar_merged(total_intf_list);
+        intf_tuples = get_intf_dates_gmtsar_merged(total_intf_list);
     elif config_params.SAT=="UAVSAR":
-        d1, d2 = get_intf_dates_isce(total_intf_list);
-
-    # Use the config file to excluse certain time ranges and implement coseismic constraints
-    select_intf_list = include_intfs_by_time_range(total_intf_list, d1, d2, 
-        config_params.start_time, config_params.end_time, config_params.coseismic);
-
-    # Employing the Manual Removes
-    select_intf_list = exclude_intfs_manually(select_intf_list, config_params.skip_file);
+        intf_tuples = get_intf_dates_isce(total_intf_list);
 
     # ------------------------------ # 
     # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
-    # THIS GETS CREATIVE.  
-    # IN A GENERAL CASE, WE WILL NOT BE SELECTING ONLY LONG INTERFEROGRAMS
     # WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT. 
     # THIS DEPENDS ON YOUR CONFIG SETTINGS
-    # I THINK WE MIGHT WANT TO SELECT ALL INTERFEROGRAMS
-    # select_criterion=0.8; # 3+ years, 2+ years, 1+ year
-    # THIS IS WHERE YOU WILL MAKE CHANGES
-    # ------------------------------ # 
+    # ------------------------------ #         
+
+    # Use the config file to excluse certain time ranges and implement coseismic constraints
+    select_intf_tuples = include_intfs_by_time_range(intf_tuples, config_params.start_time, config_params.end_time);
+    select_intf_tuples = include_coseismic_intfs(select_intf_tuples, config_params.coseismic);
+
+    # Employing the Manual Removes
+    select_intf_tuples = exclude_intfs_manually(select_intf_tuples, config_params.skip_file);
+
+    # Do you want to exclude long or short interferograms?  Manual here. 
+    select_intf_tuples = exclude_timeinterval_intfs(select_intf_tuples, days=300, criterion="longer");
+
     if config_params.ts_type=="STACK":
-        # Then we are stacking only the long interferograms. 
-        print("Selecting interferograms for long-intf stacking and velocity formation.");
-        long_intfs= [];
-        d1, d2 = get_intf_dates_gmtsar_merged(select_intf_list);
-        for i in range(len(select_intf_list)):
-            delta = d2[i]-d1[i];
-            if delta.days > 300:
-                long_intfs.append(select_intf_list[i]);
-        select_intf_list=long_intfs;
+        # If STACK, then we are stacking only the long interferograms. 
+        print("Selecting interferograms for long-intf stacking and velocity formation.");        
+        select_intf_tuples = exclude_timeinterval_intfs(select_intf_tuples, days=300, criterion="shorter");
 
     # Writing the exact interferograms used in this run. 
     record_file=config_params.ts_output_dir+"/"+"intf_record.txt";
-    print("Writing out list of %d interferograms used in this run to %s" % (len(select_intf_list), record_file) );
+    print("Writing out list of %d interferograms used in this run to %s" % (len(select_intf_tuples), record_file) );
     ofile=open(record_file,'w');
-    ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_list)) );
-    for item in select_intf_list:
-        ofile.write("%s\n" % (item) );
+    ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_tuples)) );
+    for mytuple in select_intf_tuples:
+        ofile.write("%s\n" % (mytuple[2]) );
     ofile.close();
+    select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
     return select_intf_list; 
 
 def make_selection_of_coh_files(config_params, intf_files):

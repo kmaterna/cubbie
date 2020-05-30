@@ -16,7 +16,6 @@ def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, ro
     coh_tuple = [];
     if coh_files != []:
         coh_tuple = rmd.reader(coh_files);
-    # nsbas.make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
     velocities = nsbas.Velocities(intf_tuple, nsbas_min_intfs, smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple); 
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', outdir+'/velo_nsbas.grd');
@@ -48,20 +47,19 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 # LET'S GET THE FULL TS FOR EVERY PIXEL
 def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
     # SETUP. 
-    start_index = 3500000;
-    end_index   = 7000000;
+    start_index = 0;
+    end_index   = 50000;
     signal_spread_file=outdir+"/signalspread.nc"
 
-    # LOCAL SAVING
-    outdir="/Users/kmaterna/Documents"+"/"+str(start_index)+"_"+str(end_index);
-    call(["mkdir",outdir],shell=False);
+    # # LOCAL SAVING
+    # outdir="/Users/kmaterna/Documents"+"/"+str(start_index)+"_"+str(end_index);
+    # call(["mkdir",outdir],shell=False);
 
     intf_tuple = rmd.reader(intf_files);
     coh_tuple=[];
     if coh_files != []:
         coh_tuple = rmd.reader(coh_files);
     xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
-    # nsbas.make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
@@ -94,7 +92,6 @@ def drive_full_TS_isce(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, 
     if coh_files != []:
         coh_tuple = rmd.reader_isce(coh_files);
     xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
-    nsbas.make_stack_corr_custom(intf_tuple, signal_spread_file);  # for safety, let's make signalspread again. 
     signal_spread_data=rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
