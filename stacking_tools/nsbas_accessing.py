@@ -38,7 +38,7 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
     for i in range(len(rows)):
         pixel_value = intf_tuple.zvalues[:,rows[i],cols[i]];
         pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
-        m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days, full_ts_return=True); 
+        vel, m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days); 
         m_cumulative=[i*-1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
         nsbas.nsbas_ts_outputs(x_dts, m_cumulative, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;
@@ -48,12 +48,8 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
     # SETUP. 
     start_index = 0;
-    end_index   = 50000;
+    end_index   = 7000000;
     signal_spread_file=outdir+"/signalspread.nc"
-
-    # # LOCAL SAVING
-    # outdir="/Users/kmaterna/Documents"+"/"+str(start_index)+"_"+str(end_index);
-    # call(["mkdir",outdir],shell=False);
 
     intf_tuple = rmd.reader(intf_files);
     coh_tuple=[];
