@@ -75,7 +75,7 @@ def read_netcdf4_variables(filename, var1, var2, var3):
 	netcdf4file=filename;
 	netcdf3file=filename+'nc3';
 	subprocess.call('nccopy -k classic '+netcdf4file+' '+netcdf3file,shell=True); 
-	[xdata, ydata, zdata] = read_grd_variables(filename, var1, var2, var3);
+	[xdata, ydata, zdata] = read_grd_variables(netcdf3file, var1, var2, var3);
 	return [xdata, ydata, zdata];
 
 

@@ -121,17 +121,24 @@ def geocode_vels(config_params):
         return; 
 
     directory = config_params.ts_output_dir
-    vel_name = "velo_nsbas"
+    # vel_name = "velo_nsbas"
 
-    outfile=open("geocoding.txt",'w');
-    outfile.write("#!/bin/bash\n");
-    outfile.write("# Script to geocode velocities.\n\n");
-    outfile.write("cd F"+str(config_params.swath)+"\n");
-    outfile.write("geocode_mod.csh "+vel_name+".grd "+vel_name+"_ll.grd "+vel_name+"_ll "+directory+"\n");
-    outfile.close();
-    print("Ready to call geocoding.txt.")
-    call("chmod +x geocoding.txt",shell=True);
-    call("./geocoding.txt",shell=True); 
+    # outfile=open("geocoding.txt",'w');
+    # outfile.write("#!/bin/bash\n");
+    # outfile.write("# Script to geocode velocities.\n\n");
+    # outfile.write("cd F"+str(config_params.swath)+"\n");
+    # outfile.write("geocode_mod.csh "+vel_name+".grd "+vel_name+"_ll.grd "+vel_name+"_ll "+directory+"\n");
+    # outfile.close();
+    # print("Ready to call geocoding.txt.")
+    # call("chmod +x geocoding.txt",shell=True);
+    # call("./geocoding.txt",shell=True); 
+
+    # Then, quickly geocode all the time series files. 
+    # Call from the processing directory
+    filelist = glob.glob("/Volumes/Ironwolf/Track_71/stacking/no_smoothing_shortintfs/combined/*.grd");
+    datestrs = get_datestrs();
+    for i in range(len(datestrs)):
+        call(["quick_geocode.csh","stacking/no_smoothing_shortintfs/combined","merged",datestrs[i]+".grd",datestrs[i]+"_ll"],shell=False);    
     
     return; 
 

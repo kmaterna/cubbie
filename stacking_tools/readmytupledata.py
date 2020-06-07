@@ -8,10 +8,12 @@ import netcdf_read_write as rwr
 data = collections.namedtuple('data', ['filepaths', 'dates_correct', 'date_deltas',  'xvalues', 'yvalues', 'zvalues'])
 
 def reader(filepathslist):
-    """This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
+    """
+    This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
     in a cuboid of data. It splits and stores this data in a named tuple which is returned. This can then be used
     to extract key pieces of information.
-    It functions on GMTSAR grd files."""
+    It functions on GMTSAR grd files in radar coordinates. 
+    """
     filepaths  = []
     dates_correct , date_deltas = [], []
     xvalues, yvalues, zvalues = [], [], []
@@ -43,40 +45,38 @@ def reader(filepathslist):
     return mydata
 
 
-def reader_from_ts(filepathslist):
-    """ This function makes a tuple of grids in timesteps
+def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
+    """ 
+    This function makes a tuple of grids in timesteps
+    It can read in radar coords or geocoded coords, depending on the use of xvar, yvar
     """
-    filepaths  = [];
+    filepaths  = [];  zvalues = [];
     dates_correct, date_deltas=[], [];
-    xvalues, yvalues, zvalues = [], [], [];
     for i in range(len(filepathslist)):
         print(filepathslist[i])
         # Establish timing and filepath information
         filepaths.append(filepathslist[i]);
         datestr = filepathslist[i].split('/')[-1][0:8];
         dates_correct.append(datetime.strptime(datestr,"%Y%m%d"));
-        date_deltas.append(0);
+        date_deltas.append(0);  # placeholder because these are timesteps, not intfs
         # Read in the data
-        try: 
-            xdata, ydata, zdata = rwr.read_grd_xyz(filepathslist[i])  # a NETCDF3 file
-        except TypeError:
-            xdata, ydata, zdata = rwr.read_netcdf4_xyz(filepathslist[i])  # a NETCDF4 file
-        xvalues=xdata;
-        yvalues=ydata;
+        [xvalues, yvalues, zdata] = rwr.read_any_grd_variables(filepathslist[i],xvar,yvar,zvar);  # can read netcdf3 or netcdf4
         zvalues.append(zdata);
         if i == round(len(filepathslist)/2):
             print('halfway done reading files...');
     mydata = data(filepaths=np.array(filepaths), dates_correct=np.array(dates_correct), 
-        date_deltas=np.array(date_deltas), xvalues=np.array(xvalues), yvalues=np.array(yvalues), zvalues=np.array(zvalues));        
+        date_deltas=np.array(date_deltas), xvalues=np.array(xvalues), yvalues=np.array(yvalues), zvalues=np.array(zvalues)); 
     return mydata;
 
 
 def reader_isce(filepathslist, band=1):
     import isce_read_write
 
-    """This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
+    """
+    This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
     in a cuboid of data. It splits and stores this data in a named tuple which is returned. This can then be used
-    to extract key pieces of information. It reads in ISCE format. """
+    to extract key pieces of information. It reads in ISCE format. 
+    """
 
     filepaths  = []
     dates_correct , date_deltas = [], []
