@@ -172,9 +172,9 @@ def flip_if_necessary(filename):
 
 
 def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True, 
-	dot_points=[], vmin=[], vmax=[], cmap='rainbow'):
+	dot_points=[], vmin=[], vmax=[], cmap='rainbow', xvar='x', yvar='y', zvar='z'):
 	# Read in the dataset
-	[xread, yread, zread] = read_grd_xyz(netcdfname);
+	[xread, yread, zread] = read_any_grd_variables(netcdfname,xvar, yvar, zvar);
 
 	# Make a plot
 	fig = plt.figure(figsize=(7,10));

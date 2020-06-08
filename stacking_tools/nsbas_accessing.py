@@ -68,9 +68,13 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
 
 
 
-def make_vels_from_ts(ts_dir):
-    filelist = glob.glob(ts_dir+"/combined/????????.grd");
-    mydata = rmd.reader_from_ts(filelist);
+def make_vels_from_ts(ts_dir,geocoded=False):
+    if geocoded:
+        filelist = glob.glob(ts_dir+"/????????_ll.grd");
+        mydata = rmd.reader_from_ts(filelist,"lon","lat","z");  # put these if using geocoded values
+    else:
+        filelist = glob.glob(ts_dir+"/????????.grd");
+        mydata = rmd.reader_from_ts(filelist); 
     vel = nsbas.Velocities_from_TS(mydata);
     rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', ts_dir+'/velo_nsbas.grd');
     rwr.produce_output_plot(ts_dir+'/velo_nsbas.grd', 'LOS Velocity', ts_dir+'/velo_nsbas.png', 'velocity (mm/yr)');
