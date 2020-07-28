@@ -4,19 +4,33 @@
 
 if [[ "$#" -eq 0 ]]; then
   echo ""
-  echo "This script downloads the results of data queries"
+  echo "This script downloads the results of data queries and puts it into a directory called DATA/"
+  echo "one level below where the script is called.  To use ASF, you will need a NASA Earthdata login."
+  echo "You can put your credentials into a file called ~/.wgetrc if you don't want to write them into the script."
   echo "Usage: ./scihub_download_s1_sar.sh -options"
-  echo "Example: ./scihub_download_s1_sar.sh -i search_results1.txt -i search_results2.txt"
+  echo "Example: ./scihub_download_s1_sar.sh -i search_results1.txt -i search_results2.txt -u username -p password"
   echo "Please provide one or more input files."
   echo ""
   exit 1
 fi
 
 
-# Read the search results. It could be multiple calls of the -i flag. 
-while getopts i: opt; do
+# Read the search results. It could be multiple calls of the -i flag. Read in the username and password. 
+while getopts i:u:p: opt; do
     case $opt in
-        i) multi+=("$OPTARG");;
+      i) multi+=("$OPTARG")
+        ;;
+      u)  # username
+        echo "-u was triggered, parameter: $OPTARG" >&2
+        username=$OPTARG
+        ;;
+      p)  # password
+        echo "-p was triggered, parameter: $OPTARG" >&2
+        password=$OPTARG
+        ;;  
+      \?)
+        echo "Invalid option: -$OPTARG" >&2
+        ;;
     esac
 done
 shift $((OPTIND -1))
@@ -63,9 +77,12 @@ while read p; do
   	title=$p
 
     if [ ! -d DATA/$title.SAFE ]; then
-    # In this version, I actually download from the ASF. The download goes about 5x faster for some reason. 
+    # In this version, I actually download from the ASF. The download goes about 5x faster than Copernicus for users in North America. 
+    # Note: You generally need a login information.  We pass this in from the command prompt usually. 
+    # Option 1: wget -c --http-user=username --http-password=password -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
+    # Option 2: create ~/.wgetrc with http_user=username and http_password=password (doesn't work on my computer right now)
       echo "Downloading DATA/"$title
-      wget -c --http-user=kmaterna@berkeley.edu --http-password=Access_d4t4 -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
+      wget --http-user=$username --http-password=$password -c -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
 
       # cd DATA
       # unzip $title.zip

@@ -13,11 +13,12 @@ Dislcaimer: this library is under development and is not finished.  Nonetheless,
 * Example config files are kept in the configs_and_setup directory
 
 ### Usage of Data Search Features: 
-An example usage of the scripts to search the Sentinel-1 database is given here. The directory containing these scripts must be on your path. 
+An example usage of the scripts to search the Sentinel-1 database is given here. The directory containing these scripts must be on your path. Type the name of each program by itself (with no arguments) to see a help menu. 
 ```bash
+scihub_search_s1_data
 scihub_search_s1_data.sh -s 2015-01-01 -e 2020-07-01 -p -124/40.3 -d Descending -o 13
 scihub_display_footprints.sh -i search_results.txt 
-scihub_download_s1_sar.sh -i search_results.txt
+scihub_download_s1_sar.sh -i search_results.txt -u earthdatausername -p earthdatapassword
 ```
 
 ## Example: 
