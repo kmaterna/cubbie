@@ -130,6 +130,27 @@ def write_isce_unw(data1, data2, nx, ny, dtype, filename):
     data.tofile(filename)
     return;
 
+def isce_igram_dump_without_xml(data,filename):
+    # This function dumps 2D comlpex numbers into a binary file and prints out 
+    # things that you might want for xml creation. 
+    # Expects the complex numbers to be float 32 each (resulting in complex64)
+    # If you don't have ISCE on the computer but you want to write ISCE files. 
+    # The corresponding xml will have to be made some other way (e.g. with gdal translate or manually). 
+    nx = np.shape(data)[1];
+    ny = np.shape(data)[0];
+    print(np.shape(data))
+    print(type(data))
+    print(type(data[0][0]));
+    print("Writing data file as %s " % filename);
+    print("Filename: %s" % filename);
+    print("nx: %d"% nx);
+    print("ny: %d"% ny);
+    print("Interleaved Scheme: BIP");
+    print("AccessMode: READ");
+    print("Data Type: Complex");
+    data.tofile(filename);
+    return;
+
 
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 
     datamin=None, datamax=None,draw_colorbar=True,colorbar_orientation="horizontal",background=None, outname=None):
