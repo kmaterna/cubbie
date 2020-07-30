@@ -11,6 +11,7 @@
 
 import numpy as np 
 import matplotlib.pyplot as plt 
+import struct
 
 
 # ----------- READING FUNCTIONS ------------- # 
@@ -83,7 +84,31 @@ def read_phase_data(GDALfilename):
     phasearray = np.angle(slc);
     return phasearray;
 
+def read_scalar_data_no_isce(filename, nx, ny):
+    # Takes float32 numbers from binary file into 2d array
+    final_shape=(ny,nx);
+    num_data = nx*ny;
+    print("Reading file %s into %d x %d array" % (filename, ny, nx));
+    f = open(filename,'rb')
+    rawnum = f.read();
+    f.close();
+    floats = np.array(struct.unpack('f'*num_data, rawnum));
+    scalar_field = floats.reshape(final_shape);
+    return scalar_field;
 
+def read_phase_data_no_isce(filename, nx, ny):
+    final_shape=(ny,nx);
+    num_data = nx*ny*2;
+    print("Reading file %s into %d x %d array" % (filename, ny, nx));
+    f = open(filename,'rb')
+    rawnum = f.read();    
+    floats = np.array(struct.unpack('f'*num_data, rawnum))
+    f.close();
+    real = floats[::2];
+    imag = floats[1::2];
+    phase = np.arctan2(imag,real);
+    phase = phase.reshape(final_shape);
+    return phase;
 
 # ----------- WRITING FUNCTIONS ------------- # 
 
