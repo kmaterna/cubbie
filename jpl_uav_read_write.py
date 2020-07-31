@@ -53,20 +53,27 @@ def get_rows_cols(ann_file, igram_type):
 	for line in open(ann_file):
 		if igram_type=='ground':
 			if 'Ground Range Data Latitude Lines' in line:
-				temp=line.split('=');
-				num_rows = int(temp[1]);
+				num_rows = int(line.split('=')[1]);
 			if 'Ground Range Data Longitude Samples' in line:
-				temp=line.split('=');
-				num_cols = int(temp[1]);
+				num_cols = int(line.split('=')[1]);
 		elif igram_type=='slant':
 			if 'Slant Range Data Azimuth Lines' in line:
-				temp=line.split('=');
-				num_rows = int(temp[1]);
+				num_rows = int(line.split('=')[1]);
 			if 'Slant Range Data Range Samples' in line:
-				temp=line.split('=');
-				num_cols = int(temp[1]);
+				num_cols = int(line.split('=')[1]);
 		else:
 			print("Error! Igram type not recognized");
 
 	return num_rows, num_cols;
 
+def get_ground_range_corner_increment(ann_file):
+	for line in open(ann_file):
+		if 'Ground Range Data Starting Latitude' in line:
+			start_lat = float(line.split('=')[1].split()[0]);
+		if 'Ground Range Data Starting Longitude' in line:
+			start_lon = float(line.split('=')[1].split()[0]);
+		if 'Ground Range Data Latitude Spacing' in line:
+			lat_inc = float(line.split('=')[1].split()[0]);
+		if 'Ground Range Data Longitude Spacing' in line:
+			lon_inc = float(line.split('=')[1].split()[0]);
+	return start_lon, start_lat, lon_inc, lat_inc;
