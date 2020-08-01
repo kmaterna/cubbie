@@ -110,24 +110,70 @@ def read_phase_data_no_isce(filename, nx, ny):
     phase = phase.reshape(final_shape);
     return phase;
 
+# If you don't have ISCE
+def read_unw_data_from_xml(filename):
+    # For the unw format produced by isce (one minor change from that format)
+    # (BIL scheme assumed)
+    # There must be a matching xml in this directory
+    # --------------------
+
+    # Parse xml in a slightly manual fashion, looking for length and width
+    xml_file = filename+".xml";
+    tree = ET.parse(xml_file);
+    root = tree.getroot();  # open xml file
+    for element in root:  # we can index through the root
+        if element.attrib['name']=="coordinate1":
+            for subE in element:
+                if len(subE)>0:
+                    if subE.attrib['name']=='size':
+                        ncols = int(subE[0].text);
+        if element.attrib['name']=="coordinate2":
+            for subE in element:
+                if len(subE)>0:
+                    if subE.attrib['name']=='size':
+                        nrows = int(subE[0].text);
+
+    # Open the binary file
+    f = open(filename,'rb');
+    final_shape=(nrows,ncols*2);  # unw has two bands with BIL scheme
+    num_data = final_shape[0]*final_shape[1];
+    rawnum = f.read();
+    floats = np.array(struct.unpack('f'*num_data, rawnum))
+    data = floats.reshape(final_shape); 
+    f.close();
+    return data;
+
 # ----------- WRITING FUNCTIONS ------------- # 
 
-def write_isce_data(data, nx, ny, dtype, filename):
-    # This function writes ISCE data into a file with given filename
+def write_isce_data(data, nx, ny, dtype, filename, 
+    firstLat=None, firstLon=None, deltaLon=None, deltaLat=None,Xmin=None, Xmax=None):
+    # This function writes ISCE data into a single-band file with given filename
     # Plus creating an associated .vrt and .xml file
-    # If DTYPE=="FLOAT": you're writing scalar data
-    # IF DTYPE=="CFLOAT": you're writing complex data
+    # If DTYPE=="FLOAT": you're writing scalar data (float32)
+    # IF DTYPE=="CFLOAT": you're writing complex data (float32 + j*float32)
     import isce
     import isceobj    
     from osgeo import gdal
     print("Writing data as file %s " % filename);
-    out = isceobj.createIntImage()
+    out = isceobj.createImage()
     out.setFilename(filename)
     out.setWidth(nx)
     out.setLength(ny)
     out.setInterleavedScheme('BIP') #'BIP'/ 'BIL' / ‘BSQ’
     out.setAccessMode('READ')
     out.setDataType(dtype)
+    if firstLon is not None:  # Special options that aren't usually used. 
+        out.setFirstLongitude(firstLon);
+    if firstLat is not None:
+        out.setFirstLatitude(firstLat);
+    if deltaLon is not None:
+        out.setDeltaLongitude(deltaLon);
+    if deltaLat is not None:
+        out.setDeltaLatitude(deltaLat);
+    if Xmin is not None:
+        out.setXmin(Xmin);
+    if Xmax is not None:
+        out.setXmax(Xmax);
     out.renderHdr()
     data.tofile(filename) # write file out
     return
@@ -153,46 +199,6 @@ def write_isce_unw(data1, data2, nx, ny, dtype, filename):
     out.setDataType(dtype)
     out.renderHdr()
     data.tofile(filename)
-    return;
-
-def isce_igram_dump_without_xml(data,filename):
-    # This function dumps 2D comlpex numbers into a binary file and prints out 
-    # things that you might want for xml creation. 
-    # Expects the complex numbers to be float 32 each (resulting in complex64)
-    # If you don't have ISCE on the computer but you want to write ISCE files. 
-    # The corresponding xml will have to be made some other way (e.g. with gdal translate or manually). 
-    nx = np.shape(data)[1];
-    ny = np.shape(data)[0];
-    print(np.shape(data))
-    print(type(data[0][0]));
-    print("Writing data file as %s " % filename);
-    print("Filename: %s" % filename);
-    print("nx: %d"% nx);
-    print("ny: %d"% ny);
-    print("Interleaved Scheme: BIP");
-    print("AccessMode: READ");
-    print("Data Type: Complex");
-    data.tofile(filename);
-    return;
-
-def isce_scalar_dump_without_xml(data,filename):
-    # This function dumps 2D scalar numbers into a binary file and prints out 
-    # things that you might want for xml creation. 
-    # Expects the floats to be float 32 each
-    # If you don't have ISCE on the computer but you want to write ISCE files. 
-    # The corresponding xml will have to be made some other way (e.g. with gdal translate or manually). 
-    nx = np.shape(data)[1];
-    ny = np.shape(data)[0];
-    print(np.shape(data))
-    print(type(data[0][0]));
-    print("Writing data file as %s " % filename);
-    print("Filename: %s" % filename);
-    print("nx: %d"% nx);
-    print("ny: %d"% ny);
-    print("Interleaved Scheme: BIP");
-    print("AccessMode: READ");
-    print("Data Type: Float");
-    data.tofile(filename);
     return;
 
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 

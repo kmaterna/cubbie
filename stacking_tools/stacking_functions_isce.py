@@ -336,9 +336,6 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	# # write the data into a GDAL format. 
 	isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lon_total.gdal");
 	isce_read_write.write_isce_data(lat_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lat_total.gdal");
-	# isce_read_write.write_isce_data(lkve_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkve_total.gdal");
-	# isce_read_write.write_isce_data(lkvn_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvn_total.gdal");
-	# isce_read_write.write_isce_data(lkvu_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lkvu_total.gdal");
 	isce_read_write.write_isce_data(azimuth, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/azimuth_total.gdal");
 	isce_read_write.write_isce_data(incidence, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/incidence_total.gdal");
 
@@ -351,18 +348,6 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
 		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lat_total.gdal',
 		geocoded_folder+'/lat_igram_res.tif'],shell=False);
-	# call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-	# 	'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-	# 	'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkve_total.gdal',
-	# 	geocoded_folder+'/lkve_igram_res.tif'],shell=False);
-	# call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-	# 	'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-	# 	'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvn_total.gdal',
-	# 	geocoded_folder+'/lkvn_igram_res.tif'],shell=False);
-	# call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-	# 	'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-	# 	'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lkvu_total.gdal',
-	# 	geocoded_folder+'/lkvu_igram_res.tif'],shell=False);
 	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
 		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
 		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/incidence_total.gdal',
@@ -376,9 +361,6 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	# Writing the cut lon/lat into new files. 
 	cut_resampled_grid(geocoded_folder, "lon_igram_res.tif", "lon", config_params);
 	cut_resampled_grid(geocoded_folder, "lat_igram_res.tif", "lat", config_params);
-	# cut_resampled_grid(geocoded_folder, "lkve_igram_res.tif", "lkve", config_params);
-	# cut_resampled_grid(geocoded_folder, "lkvn_igram_res.tif", "lkvn", config_params);
-	# cut_resampled_grid(geocoded_folder, "lkvu_igram_res.tif", "lkvu", config_params);
 	cut_resampled_grid(geocoded_folder, "incidence_igram_res.tif", "incidence", config_params);
 	cut_resampled_grid(geocoded_folder, "azimuth_igram_res.tif", "azimuth", config_params);
 
