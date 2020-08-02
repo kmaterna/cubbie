@@ -47,7 +47,7 @@ def read_corr_data(data_file, ann_file, dtype='f',igram_type='ground'):
 	f.close();
 	floats = np.array(struct.unpack(dtype*num_data, rawnum))
 	data = floats.reshape(final_shape);
-	return data;	
+	return data;
 
 def get_rows_cols(ann_file, igram_type):
 	for line in open(ann_file):
@@ -77,3 +77,26 @@ def get_ground_range_corner_increment(ann_file):
 		if 'Ground Range Data Longitude Spacing' in line:
 			lon_inc = float(line.split('=')[1].split()[0]);
 	return start_lon, start_lat, lon_inc, lat_inc;
+
+def get_nearrange_farrange_heading_angles(ann_file):
+	for line in open(ann_file):
+		if 'Average Look Angle in Near Range' in line:
+			near_range = float(line.split('=')[1].split()[0]);
+		if 'Average Look Angle in Far Range' in line:
+			far_range = float(line.split('=')[1].split()[0]);
+		if 'Peg Heading' in line:
+			heading_angle = float(line.split('=')[1].split()[0]);
+	return near_range, far_range, heading_angle; 
+
+def get_ground_range_left_corners(ann_file):
+	# upper left and lower left corners of the data in the track
+	for line in open(ann_file):
+		if 'Approximate Upper Left Longitude' in line:
+			ul_lon = float(line.split('=')[1].split()[0]);
+		if 'Approximate Upper Left Latitude' in line:
+			ul_lat = float(line.split('=')[1].split()[0]);
+		if 'Approximate Lower Left Longitude' in line:
+			ll_lon = float(line.split('=')[1].split()[0]);
+		if 'Approximate Lower Left Latitude' in line:
+			ll_lat = float(line.split('=')[1].split()[0]);	
+	return ul_lon, ul_lat, ll_lon, ll_lat;

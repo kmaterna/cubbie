@@ -275,8 +275,8 @@ def normalize_look_vector(lkve, lkvn, lkvu):
 
 def calc_isce_azimuth_incidence(lkve, lkvn, lkvu):
 	# lkve, lkvn, lkvu describe vector from plane to ground
-	# ISCE convention: Azimuth angle measured from North in Anti-clockwise direction
-	# ISCE convention: Incidence angle measured from vertical at target (always +ve)
+	# ISCE convention: Azimuth angle measured from North in Anti-clockwise direction, in degrees, from ground to plane (I think)
+	# ISCE convention: Incidence angle measured from vertical at target (aka degrees from vertical at satellite) (always +ve), in degrees
 	east_sq = np.square(lkve);
 	north_sq = np.square(lkvn);
 	sumarray = np.add(east_sq, north_sq);
@@ -399,6 +399,7 @@ def create_isce_unw_geo(geocoded_dir, W, E, S, N):
 		call(command,shell=True);
 
 		# Unfortunately, after geocodeGdal, the files end up BSQ instead of BIL.  This is necessary to reshape them. 
+		# For making this more streamlined, I should definitely use a regular isce_write function in the future. 
 		filename = datafile+".geo"
 		isce_read_write.plot_scalar_data(filename,colormap='rainbow',datamin=-50, datamax=200,outname='test_after_geocode.png',band=2);
 		nlat=508
