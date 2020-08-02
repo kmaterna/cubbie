@@ -12,7 +12,8 @@ import nsbas_accessing
 import isce_read_write
 import file_utilities
 import mask_and_interpolate
-import unwrapping_errors
+import unwrapping_isce_custom
+import isce_geocode_tools
 import haversine
 
 # --------------- STEP 1: Make corrections and TS prep ------------ # 
@@ -26,7 +27,7 @@ def make_corrections_isce(config_params):
 	# For ISCE, we might want to re-make all the interferograms and unwrap them in custom fashion. 
 	# This operates on files in the Igram directory, no need to move directories yourself. 
 	if config_params.solve_unwrap_errors:
-		unwrapping_errors.main_function(config_params.rlks, config_params.alks, config_params.filt, 
+		unwrapping_isce_custom.main_function(config_params.rlks, config_params.alks, config_params.filt, 
 			config_params.xbounds, config_params.ybounds, config_params.cor_cutoff_mask);
 
 	# WE ALSO MAKE THE SIGNAL SPREAD FOR FULL IMAGES
@@ -105,7 +106,7 @@ def from_lonlat_get_rowcol(config_params):
 	# Return its row and column. 
 	# Step 1: Geocode properly based on a sample interferogram grid (done)
 	# Step 2: extract nearest pixel (code in Brawley repo)
-	geocode_UAVSAR_stack(config_params);
+	isce_geocode_tools.geocode_UAVSAR_stack(config_params);
 
 	reflon = float(config_params.ref_loc.split(',')[0]);
 	reflat = float(config_params.ref_loc.split(',')[1]);
@@ -237,222 +238,11 @@ def geocode_vels(config_params):
 	if config_params.SAT=="UAVSAR":
 		geocode_directory=config_params.ts_output_dir+"/isce_geocode";
 		# Deleting the contents of this folder would be a good automatic step in the future. 
-		file_utilities.gmtsar_nc_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);  # write the TS data into isce binaries
-		W, E, S, N = geocode_UAVSAR_stack(config_params, geocode_directory);  # do this once or more than once
-		create_isce_unw_geo(geocode_directory, W, E, S, N);
-		create_isce_rdr_geo(geocode_directory, W, E, S, N);
-		inspect_isce(geocode_directory);
+		file_utilities.gmtsar_nc_stack_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);  # write the TS data into isce binaries
+		W, E, S, N = isce_geocode_tools.geocode_UAVSAR_stack(config_params, geocode_directory);  # do this once or more than once
+		isce_geocode_tools.create_isce_stack_unw_geo(geocode_directory, W, E, S, N);
+		isce_geocode_tools.create_isce_stack_rdr_geo(geocode_directory, W, E, S, N);
+		isce_geocode_tools.inspect_isce(geocode_directory);
 	return;
 
-def cut_resampled_grid(outdir, filename, variable, config_params):
-	# This is for metadata like lon, lat, and lookvector
-	# Given an isce file and a set of bounds to cut the file, 
-	# Produce the isce data and gmtsar netcdf that match each pixel. 
-	temp = isce_read_write.read_scalar_data(outdir+"/"+filename);
-	print("Shape of the "+variable+" file: ",np.shape(temp));
-	xbounds=[float(config_params.xbounds.split(',')[0]),float(config_params.xbounds.split(',')[1])];
-	ybounds=[float(config_params.ybounds.split(',')[0]),float(config_params.ybounds.split(',')[1])];
-	cut_grid = mask_and_interpolate.cut_grid(temp, xbounds, ybounds, fractional=True, buffer_rows=3);
-	print("Shape of the cut lon file: ",np.shape(cut_grid));
-	nx = np.shape(cut_grid)[1];
-	ny = np.shape(cut_grid)[0];
-	isce_read_write.write_isce_data(cut_grid, nx, ny, "FLOAT", outdir+'/cut_'+variable+'.gdal');
-	rwr.produce_output_netcdf(np.array(range(0,nx)), np.array(range(0,ny)), cut_grid, 
-		"degrees", outdir+'/cut_'+variable+'.nc');
-	return;
 
-def normalize_look_vector(lkve, lkvn, lkvu):
-	east_sq = np.square(lkve)
-	north_sq = np.square(lkvn)
-	up_sq = np.square(lkvu)
-	sumarray = np.add(east_sq, north_sq)
-	sumarray = np.add(sumarray, up_sq);
-	magnitude = np.sqrt(sumarray);	
-	norm_lkve = np.divide(lkve, magnitude)
-	norm_lkvn = np.divide(lkvn, magnitude)
-	norm_lkvu = np.divide(lkvu, magnitude)
-	return norm_lkve, norm_lkvn, norm_lkvu;
-
-def calc_isce_azimuth_incidence(lkve, lkvn, lkvu):
-	# lkve, lkvn, lkvu describe vector from plane to ground
-	# ISCE convention: Azimuth angle measured from North in Anti-clockwise direction, in degrees, from ground to plane (I think)
-	# ISCE convention: Incidence angle measured from vertical at target (aka degrees from vertical at satellite) (always +ve), in degrees
-	east_sq = np.square(lkve);
-	north_sq = np.square(lkvn);
-	sumarray = np.add(east_sq, north_sq);
-	magnitude = np.sqrt(sumarray);
-	azimuth_standard=np.arctan2(-lkvn, -lkve);
-	azimuth_standard = np.rad2deg(azimuth_standard);
-	azimuth = np.add(azimuth_standard,-90);
-
-	incidence = np.arctan2(magnitude, -lkvu);
-	incidence = np.rad2deg(incidence);
-	return azimuth, incidence;
-
-def geocode_UAVSAR_stack(config_params, geocoded_folder):
-	# The goals here for UAVSAR:
-	# Load lon/lat grids and look vector grids
-	# Resample and cut the grids appropriately
-	# Write pixel-wise metadata out in the output folder
-	# All these grids have only single band. 
-	call(["mkdir","-p",geocoded_folder],shell=False);
-	llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector. 
-	lkv_array = np.fromfile(config_params.lkv_file, dtype=np.float32);
-	lon=[]; lat=[]; hgt=[]; lkv_e = []; lkv_n = []; lkv_u = [];
-	lat=llh_array[np.arange(0,len(llh_array),3)];  # ordered array opened from the provided UAVSAR files
-	lon=llh_array[np.arange(1,len(llh_array),3)];
-	hgt=llh_array[np.arange(2,len(llh_array),3)];
-	lkv_e=lkv_array[np.arange(0,len(lkv_array),3)]
-	lkv_n=lkv_array[np.arange(1,len(lkv_array),3)]
-	lkv_u=lkv_array[np.arange(2,len(lkv_array),3)]
-	example_igram=glob.glob("../Igrams/????????_????????/*.int")[0];  
-	phase_array = isce_read_write.read_phase_data(example_igram);
-	print("Shape of the interferogram: ", np.shape(phase_array));
-
-	# Determine the shape of the llh array 
-	# assuming there's a giant gap somewhere in the lat array
-	# that can tell us how many elements are in the gridded array
-	typical_gap = abs(lat[1]-lat[0]);
-	for i in range(1,len(lat)):
-		if abs(lat[i]-lat[i-1]) > 100*typical_gap:
-			print(lat[i]-lat[i-1]);
-			print("There are %d columns in the lon/lat arrays" % i);
-			llh_pixels_range=i;
-			break;
-	llh_pixels_azimuth = int(len(lon)/llh_pixels_range);
-	print("llh_pixels_azimuth: ", llh_pixels_azimuth);
-	print("llh_pixels_range: ",llh_pixels_range);
-
-	# We turn the llh data into 2D arrays.
-	# The look vector is in meters from the aircraft to the ground. 
-	lat_array = np.reshape(lat,(llh_pixels_azimuth,llh_pixels_range));
-	lon_array = np.reshape(lon,(llh_pixels_azimuth,llh_pixels_range));
-	lkve_array = np.reshape(lkv_e, (llh_pixels_azimuth, llh_pixels_range));
-	lkvn_array = np.reshape(lkv_n, (llh_pixels_azimuth, llh_pixels_range));
-	lkvu_array = np.reshape(lkv_u, (llh_pixels_azimuth, llh_pixels_range));
-	lkve_array, lkvn_array, lkvu_array = normalize_look_vector(lkve_array, lkvn_array, lkvu_array);
-	azimuth, incidence = calc_isce_azimuth_incidence(lkve_array, lkvn_array, lkvu_array);
-
-	# # write the data into a GDAL format. 
-	isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lon_total.gdal");
-	isce_read_write.write_isce_data(lat_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/lat_total.gdal");
-	isce_read_write.write_isce_data(azimuth, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/azimuth_total.gdal");
-	isce_read_write.write_isce_data(incidence, llh_pixels_range, llh_pixels_azimuth, "FLOAT", geocoded_folder+"/incidence_total.gdal");
-
-	# Resampling in GDAL to match the interferogram sampling
-	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lon_total.gdal',
-		geocoded_folder+'/lon_igram_res.tif'],shell=False);
-	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/lat_total.gdal',
-		geocoded_folder+'/lat_igram_res.tif'],shell=False);
-	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/incidence_total.gdal',
-		geocoded_folder+'/incidence_igram_res.tif'],shell=False);
-	call(['gdalwarp','-ts',str(np.shape(phase_array)[1]),str(np.shape(phase_array)[0]),
-		'-r','bilinear','-to','SRC_METHOD=NO_GEOTRANSFORM',
-		'-to','DST_METHOD=NO_GEOTRANSFORM',geocoded_folder+'/azimuth_total.gdal',
-		geocoded_folder+'/azimuth_igram_res.tif'],shell=False);
-
-	# Cut the data, and quality check. 
-	# Writing the cut lon/lat into new files. 
-	cut_resampled_grid(geocoded_folder, "lon_igram_res.tif", "lon", config_params);
-	cut_resampled_grid(geocoded_folder, "lat_igram_res.tif", "lat", config_params);
-	cut_resampled_grid(geocoded_folder, "incidence_igram_res.tif", "incidence", config_params);
-	cut_resampled_grid(geocoded_folder, "azimuth_igram_res.tif", "azimuth", config_params);
-
-	isce_read_write.plot_scalar_data(geocoded_folder+'/cut_lat.gdal',
-		colormap='rainbow',aspect=1/4,outname=geocoded_folder+'/cut_lat_geocoded.png');
-	cut_lon = isce_read_write.read_scalar_data(geocoded_folder+'/cut_lon.gdal');
-	cut_lat = isce_read_write.read_scalar_data(geocoded_folder+'/cut_lat.gdal');
-	W,E = np.min(cut_lon), np.max(cut_lon);
-	S,N = np.min(cut_lat), np.max(cut_lat);
-
-	# This last thing may not work when finding the reference pixel, only when geocoding at the very last. 
-	# Double checking the shape of the interferogram data (should match!)
-	signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir+'/signalspread_cut.nc');
-	print("For comparison, shape of cut data is: ",np.shape(signalspread));
-
-	return W, E, S, N;
-
-def create_isce_unw_geo(geocoded_dir, W, E, S, N):
-	# With pixel-wise lat and lon and lookvector information, 
-	# Can we make isce geocoded unwrapped products? 
-	# Goal 1: .unw.geo / .unw.geo.xml (seems to work)
-	# Goal 2: los.rdr.geo / los.rdr.geo.xml
-	# geocodeGdal.py -l cut_lat.gdal -L cut_lon.gdal -f cut_something.gdal -b "S N W E"
-	# After that, the BIL arrangement can be switched to BSQ, 
-	# So I need to make an adjustment
-	folders = glob.glob(geocoded_dir+"/scene*");
-	i=0;
-	for folder_i in folders:
-		# Run the geocode command. 
-		# This places the geocoded .unw.geo into each sub-directory. 
-		datafile = glob.glob(folder_i+"/*.unw");
-		datafile = datafile[0]
-		command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\" -x 0.00025 -y 0.00025"
-		print(command);
-		print("\n");
-		call(command,shell=True);
-
-		# Unfortunately, after geocodeGdal, the files end up BSQ instead of BIL.  This is necessary to reshape them. 
-		# For making this more streamlined, I should definitely use a regular isce_write function in the future. 
-		filename = datafile+".geo"
-		isce_read_write.plot_scalar_data(filename,colormap='rainbow',datamin=-50, datamax=200,outname='test_after_geocode.png',band=2);
-		nlat=508
-		nlon=1325  # obviously will have to change depending on the situation. 
-		disp=np.memmap(filename,dtype='<f4').reshape(nlat*2, nlon)  # The right way to read this file.
-		band1 = disp[0:nlat,:];
-		band2 = disp[nlat:,:];
-
-		# Places the two images side by side . This is necessary for reading by Kite
-		properdata = np.hstack((band1, band2));
-		f2 = plt.plot();
-		plt.imshow(properdata)
-		plt.savefig('after_rearranging.png')
-		plt.close();
-		properdata.tofile(filename);
-
-		# There's a bit of a metadata problem when I do this, but hey, as long as it works in Kite, right? 
-		# If you read this as a normal two-band ISCE file, it'll get messed up. 
-		# But Kite is fine.  Oh well. 
-		isce_read_write.plot_scalar_data(filename,colormap='rainbow',datamin=-50, datamax=200,outname='test_after_geocode_band2.png',band=2);
-		i=i+1;
-	return;
-
-def create_isce_rdr_geo(geocoded_dir, W, E, S, N):
-	# Create a geocoded azimuth and geocoded incidence file
-	# Then concatenate them into a two-band-file (los.rdr.geo)
-	# Then update the xml metadata. 
-	print("Creating los.rdr.geo")
-	datafile=geocoded_dir+"/cut_azimuth.gdal"
-	command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\" -x 0.00025 -y 0.00025"
-	print(command);
-	print("\n");
-	call(command,shell=True);
-	datafile=geocoded_dir+"/cut_incidence.gdal"
-	command = "geocodeGdal.py -l "+geocoded_dir+"/cut_lat.gdal -L "+geocoded_dir+"/cut_lon.gdal "+"-f "+datafile+" -b \""+str(S)+" "+str(N)+" "+str(W)+" "+str(E)+"\" -x 0.00025 -y 0.00025"
-	call(command,shell=True);
-	grid_inc = isce_read_write.read_scalar_data(geocoded_dir+"/cut_incidence.gdal.geo", flush_zeros=False);
-	grid_az = isce_read_write.read_scalar_data(geocoded_dir+"/cut_azimuth.gdal.geo",flush_zeros=False);
-	ny, nx = np.shape(grid_inc);
-	filename=geocoded_dir+"/los.rdr.geo"
-	isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", filename);
-	return;
-
-def inspect_isce(geocoded_dir):
-	# Plot things. 
-	folders = glob.glob(geocoded_dir+"/scene*");
-	for folder_i in folders:
-		datafile = glob.glob(folder_i+"/*.unw.geo");
-		datafile = datafile[0];
-		grid = isce_read_write.read_scalar_data(datafile, flush_zeros=False);
-		print("Statistics:")
-		print("shape: ",np.shape(grid))
-		print("max: ",np.nanmax(grid))
-		print("min: ",np.nanmin(grid))
-		isce_read_write.plot_scalar_data(datafile, colormap="rainbow",datamin=-50,datamax=200,outname=folder_i+"/geocoded_data.png");
-	return;	

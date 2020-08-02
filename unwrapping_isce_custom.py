@@ -1,4 +1,4 @@
-# Deal with unwrapping errors in ISCE interferograms
+# Deal with unwrapping in ISCE interferograms
 # This is a code to take interferograms, cut and mask them, interpolate over bad areas, 
 # unwrap them, and re-mask them again. 
 # The new unwrapped files live in an alt_unwrapped directory inside each Igram dir. 
