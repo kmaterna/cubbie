@@ -238,7 +238,7 @@ def geocode_vels(config_params):
 	if config_params.SAT=="UAVSAR":
 		geocode_directory=config_params.ts_output_dir+"/isce_geocode";
 		# Deleting the contents of this folder would be a good automatic step in the future. 
-		file_utilities.gmtsar_nc_stack_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);  # write the TS data into isce binaries
+		isce_geocode_tools.gmtsar_nc_stack_2_isce_stack(config_params.ts_output_dir+"/TS.nc",geocode_directory, bands=2);  # write the TS data into isce binaries
 		W, E, S, N = isce_geocode_tools.geocode_UAVSAR_stack(config_params, geocode_directory);  # do this once or more than once
 		isce_geocode_tools.create_isce_stack_unw_geo(geocode_directory, W, E, S, N);
 		isce_geocode_tools.create_isce_stack_rdr_geo(geocode_directory, W, E, S, N);

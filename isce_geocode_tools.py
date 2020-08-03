@@ -15,6 +15,8 @@ import netcdf_read_write as rwr
 import haversine
 
 
+# ------------ MATH AND UTILITY FUNCTIONS -------------- # 
+# For calculating angles, etc.
 
 def bearing_to_cartesian(heading):
 	return 90-heading; 
@@ -76,6 +78,30 @@ def cut_resampled_grid(outdir, filename, variable, config_params):
 		"degrees", outdir+'/cut_'+variable+'.nc');
 	return;
 
+
+
+# ------------ GEOCODING FUNCTIONS FOR UAVSAR STACKS -------------- # 
+# Based on stacks of 3D netcdf's from the time series processing
+
+def gmtsar_nc_stack_2_isce_stack(ts_file, output_dir, bands=2):
+	# Decompose a 3D time series object into a series of slices
+	# Write the slices into isce unwrapped format.
+	call(["mkdir","-p",output_dir],shell=False);
+	tdata, xdata, ydata, zdata = rwr.read_3D_netcdf(ts_file);
+	for i in range(np.shape(zdata)[0]):
+		call(["mkdir","-p",output_dir+"/scene_"+str(i)]);
+		temp=zdata[i,:,:];
+
+		# Write data out in isce format
+		ny, nx = np.shape(temp);
+		name = "ts_slice_"+str(i);
+		filename = output_dir+"/scene_"+str(i)+"/"+name+".unw";
+		temp=np.float32(temp);
+		isce_read_write.write_isce_unw(temp, temp, nx, ny, "FLOAT", filename);
+
+		isce_read_write.plot_scalar_data(filename, band=bands,colormap='rainbow',datamin=-50, datamax=200,
+			aspect=1/5,outname=output_dir+"/scene_"+str(i)+"/isce_unw_band.png");
+	return;
 
 def geocode_UAVSAR_stack(config_params, geocoded_folder):
 	# The goals here for UAVSAR:
@@ -319,13 +345,13 @@ def write_unwrapped_ground_range_displacements(ground_range_phase_file,output_fi
 	plt.savefig('unwrapped_geocoded_phase.png');	
 	
 	# CONVERT TO MM using the wavelength of UAVSAR	
-	unw = np.multiply(unw, wavelength/2);   
+	unw = np.multiply(unw, wavelength/(4*np.pi)); 
 	(ny, nx) = np.shape(unw);	
 
 	# ISCE UNW.GEO (IN MM)
-	isce_read_write.write_isce_data(unw, nx, ny, "FLOAT", output_file, 
+	isce_read_write.write_isce_unw(unw, unw, nx, ny, "FLOAT", output_file, 
 		firstLat=max(y_axis), firstLon=min(x_axis), deltaLon=lon_inc, deltaLat=lat_inc,
-		Xmin=min(x_axis), Xmax=max(x_axis)); # 1 band, floats
+		Xmin=min(x_axis), Xmax=max(x_axis)); # 2 bands, floats
 	return;
 
 
@@ -359,7 +385,7 @@ def create_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
 			inc = incidence_angle_trig(xtp, cross_track_max, near_angle, far_angle);
 			grid_inc[i,j] = inc;
 	
-	# Finally, write the thing
+	# Finally, write the 2 bands for los.rdr.geo
 	isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", 'los.rdr.geo');
 	
 	return;

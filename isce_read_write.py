@@ -178,15 +178,13 @@ def write_isce_data(data, nx, ny, dtype, filename,
     data.tofile(filename) # write file out
     return
 
-def write_isce_unw(data1, data2, nx, ny, dtype, filename):
+def write_isce_unw(data1, data2, nx, ny, dtype, filename,
+    firstLat=None, firstLon=None, deltaLon=None, deltaLat=None,Xmin=None, Xmax=None):
     # ISCE uses band=2 for the unwrapped phase of .unw files
     # Writes to float32
     import isce
     import isceobj
     from osgeo import gdal    
-    data1=np.float32(data1);  # we should be consistent about float types here. 
-    data2=np.float32(data2);
-    data=np.hstack((data1,data2));  # establishing two bands
     print("Writing data as file %s " % filename);
     out = isceobj.Image.createUnwImage()     
     out.setFilename(filename)
@@ -196,9 +194,28 @@ def write_isce_unw(data1, data2, nx, ny, dtype, filename):
     out.bands = 2
     out.scheme="BIL"
     out.setAccessMode('read')
+    if firstLon is not None:  # Special options that aren't usually used. 
+        out.setFirstLongitude(firstLon);
+    if firstLat is not None:
+        out.setFirstLatitude(firstLat);
+    if deltaLon is not None:
+        out.setDeltaLongitude(deltaLon);
+    if deltaLat is not None:
+        out.setDeltaLatitude(deltaLat);
+    if Xmin is not None:
+        out.setXmin(Xmin);
+    if Xmax is not None:
+        out.setXmax(Xmax);    
     out.setDataType(dtype)
     out.renderHdr()
-    data.tofile(filename)
+    data_to_file_2_bands(data1, data2, filename); #  dump the data into a binary file
+    return;
+
+def data_to_file_2_bands(data1, data2, filename):
+    data1=np.float32(data1);  # we should be consistent about float types here. 
+    data2=np.float32(data2);
+    data=np.hstack((data1,data2));  # establishing two bands
+    data.tofile(filename)        
     return;
 
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 
