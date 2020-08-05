@@ -218,6 +218,11 @@ def data_to_file_2_bands(data1, data2, filename):
     data.tofile(filename)        
     return;
 
+def data_to_file_1_bands(data1, filename):
+    data1=np.float32(data1);  # we should be consistent about float types here. 
+    data1.tofile(filename)        
+    return;
+
 def plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1, 
     datamin=None, datamax=None,draw_colorbar=True,colorbar_orientation="horizontal",background=None, outname=None):
     from osgeo import gdal    

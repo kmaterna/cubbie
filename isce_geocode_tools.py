@@ -214,7 +214,13 @@ def create_isce_stack_unw_geo(geocoded_dir, W, E, S, N):
 		# For making this more streamlined, I should definitely use a regular isce_write function in the future. 
 		filename = datafile+".geo"
 		isce_read_write.plot_scalar_data(filename,colormap='rainbow',datamin=-50, datamax=200,outname='test_after_geocode.png',band=2);
-		
+
+		print("DANGER! DO NOT CONTINUE WITHOUT FIXING THE CODE BELOW!")
+		sys.exit(0);		
+
+		#------------------ NOTE ----------------- # 
+		# UNW IMAGES SHOULD HAVE TWO BANDS
+		# IF I EVER COME BACK TO THIS, I NEED TO RE-PLACE THIS WHOLE SECTION WITH A REGULAR WRITE COMMAND. 
 
 		# THIS WHOLE SECTION COULD EVENTUALLY BE REMOVED NOW THAT I HAVE BETTER ISCE WRITE FUNCTIONS
 		# REPLACED WITH A SINGLE LINE CALL TO ISCE WRITE FUNCTIONS. 
@@ -272,6 +278,78 @@ def inspect_isce(geocoded_dir):
 		isce_read_write.plot_scalar_data(datafile, colormap="rainbow",datamin=-50,datamax=200,outname=folder_i+"/geocoded_data.png");
 	return;	
 
+def get_xmin_xmax_xinc_from_xml(xml_file):
+	isce_xml = ISCEXMLParser(xml_file)
+
+	coord_lon = getProperty(isce_xml, 'coordinate1')
+	coord_lat = getProperty(isce_xml, 'coordinate2')
+	dN = coord_lat['delta']
+	dE = coord_lon['delta']
+	nlon = int(coord_lon['size'])
+	nlat = int(coord_lat['size'])
+	firstLat = coord_lat['startingvalue']
+	firstLon = coord_lon['startingvalue']
+	xmin = firstLon;
+	xmax = coord_lon['startingvalue'] +(nlon * coord_lon['delta'])
+	return firstLon, firstLat, dE, dN, xmin, xmax;
+
+def ISCEXMLParser(filename):
+	import xml.etree.ElementTree as ET
+	root = ET.parse(filename).getroot()
+	return root;
+
+def type_convert(value):
+	for t in (float, int, str):
+		try:
+			return t(value)
+		except ValueError:
+			continue
+	raise ValueError('Could not convert value')	
+
+def getProperty(root, name):
+	name = name.lower()
+
+	for child in root.iter():
+		child_name = child.get('name')
+		if isinstance(child_name, str):
+			child_name = child_name.lower()
+		if child_name == name.lower():
+			if child.tag == 'property':
+				return type_convert(child.find('value').text)
+			elif child.tag == 'component':
+				values = {}
+				for prop in child.iter('property'):
+					values[prop.get('name')] = type_convert(prop.find('value').text)
+	return values
+
+
+def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
+	# August 2020
+	# This script is meant to un-do something that happened before on NoMachine
+	# The .unw.geo files ended up BSQ instead of BIL
+	# So we need to fix it. 
+	# At the end, the new .unw.geo and xml should be properly formatted
+	# If we fix the end of the isce_geocode script for nomachine, than this should never be necessary. 
+	
+	# Find the files
+	unw_file = geocoded_directory+'ts_slice_'+mynum+'.unw.geo';
+	unw_xml = unw_file+'.xml';
+	unw_file_final = geocoded_directory+'BIL_correct/ts_slice_'+mynum+'.unw.geo';
+
+	# Read the problematic bands and get ready to package them into a real geocoded file. 
+	data_top = isce_read_write.read_scalar_data(unw_file,band=1);  # I'm not even sure how I'm allowed to read band 2 (xml says 1 band).
+	data_bottom = isce_read_write.read_scalar_data(unw_file,band=2);  # xml is clearly wrong. 
+	data = np.vstack((data_top, data_bottom));  # each of these has a duplicate row by accident. 
+	data_surviving = np.zeros(np.shape(data_top));
+	for i in range(np.shape(data)[0]):
+		counter = int(np.floor(i/2.0));
+		data_surviving[counter,:]=data[i,:];
+	(ny, nx) = np.shape(data_surviving);
+
+	firstLon, firstLat, dE, dN, xmin, xmax = get_xmin_xmax_xinc_from_xml(unw_xml);
+
+	isce_read_write.write_isce_unw(data_surviving, data_surviving, nx, ny, "FLOAT", unw_file_final, firstLat=firstLat, firstLon=firstLon, deltaLon=dE, deltaLat=dN,Xmin=xmin, Xmax=xmax);
+	return; 
 
 
 # ------------ JPL UAVSAR IGRAM FORMATS -------------- # 
