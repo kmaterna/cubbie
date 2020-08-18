@@ -1,5 +1,7 @@
 # August 2020
 # Here we have a number of tools for post-analysis a stack of interferograms
+# Some functions are plots.
+# Some functions make masks.
 # Hopefully reducing the number of times I have to write these functions over and over again. 
 
 import numpy as np 
@@ -10,16 +12,36 @@ import matplotlib.cm as cm
 import netcdf_read_write 
 
 
+
+def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
+	# Make a mask that is ones and nans
+	# Given a co-registered stack
+	# If a pixel is above the outlier cutoff in any image of the stack, make a nanmask that masks that pixel. 
+	x, y, z = netcdf_read_write.read_grd_xyz(filelist[1])  # just to get the shape of the outputs
+	crazy_mask = np.ones(np.shape(z));
+	for ifile in filelist:
+		print(ifile);
+		x, y, ztemp = netcdf_read_write.read_grd_xyz(ifile);
+		for i in range(len(y)):
+			for j in range(len(x)):
+				if abs(ztemp[i][j])>crazy_cutoff:
+					crazy_mask[i][j] = np.nan;
+		# Put all the crazy pixels into a mask (across all images in the stack). 
+	netcdf_read_write.produce_output_netcdf(x, y, crazy_mask, "", maskfile);
+	return;
+
+
 def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5, 
-	title1='', title2='', scalelabel='LOS Velocity', units='mm/yr', flip_sign=False):
+	title1='', title2='', scalelabel='LOS Velocity', units='mm/yr', flip_sign1=False, flip_sign2=False):
 	"""
 	A basic function that takes two co-registered grids and subtracts them, showing residuals in the third panel
 	and histogram of residuals in separate plot. 
 	"""
 	data1 = netcdf_read_write.read_grd(file1);
 	data2 = netcdf_read_write.read_grd(file2);
-	if flip_sign:
+	if flip_sign1:
 		data1 = -1 * data1;
+	if flip_sign2:
 		data2 = -1 * data2;
 	residuals = np.subtract(data1, data2);
 	residuals_vector = np.reshape(residuals, (np.shape(residuals)[0]*np.shape(residuals)[1],));
@@ -72,43 +94,69 @@ def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
 	return;
 
 
-def plot_two_nonregistered_grids(file1, file2, plotname, vmin=-20, vmax=5, flip_sign1=False, flip_sign2=False,
-	title1='', title2='', scalelabel='Velocity (mm/yr)'):
+def plot_two_general_grids(file1, file2, plotname, 
+	vmin1=-20,  vmax1=5,    flip_sign1=False, title1='',scalelabel1='Velocity (mm/yr)',
+	vmin2=None, vmax2=None, flip_sign2=False, title2='',scalelabel2='Velocity (mm/yr)',
+	readfile=True, invert_yaxis=True, cmap='rainbow'):
 	"""
 	A little function that plots two grid files in subplots side by side
 	(they don't have to have the same registration, so no need to compute residuals)
+	If readfile=True: then we read files. Otherwise, those two arguments are actually data
 	"""
-	data1 = netcdf_read_write.read_grd(file1);
-	data2 = netcdf_read_write.read_grd(file2);
+	if readfile:
+		data1 = netcdf_read_write.read_grd(file1);
+		data2 = netcdf_read_write.read_grd(file2);
+	else:
+		data1=file1; 
+		data2=file2;
 	if flip_sign1:
 		data1 = -1*data1;
 	if flip_sign2:
 		data2 = -1*data2;
+	if vmin2==None:
+		vmin2=vmin1;
+	if vmax2==None:
+		vmax2=vmax1;
 	
+	# First figure
 	fig,axarr = plt.subplots(1,2,sharey=False, figsize=(15, 8), dpi=300);
-	axarr[0].imshow(data1, vmin=vmin, vmax=vmax, cmap='rainbow');
+	axarr[0].imshow(data1, vmin=vmin1, vmax=vmax1, cmap=cmap);
 	axarr[0].tick_params(labelsize=16);
 	axarr[0].set_title(title1,fontsize=20);
-	axarr[0].invert_yaxis()
+	if invert_yaxis:
+		axarr[0].invert_yaxis()
 
-	axarr[1].imshow(data2, vmin=vmin, vmax=vmax, cmap='rainbow');
+	# Second figure
+	axarr[1].imshow(data2, vmin=vmin2, vmax=vmax2, cmap=cmap);
 	axarr[1].tick_params(labelsize=16);
 	axarr[1].set_title(title2,fontsize=20);
-	axarr[1].invert_yaxis()	
+	if invert_yaxis:
+		axarr[1].invert_yaxis()	
 
-	cbarax = fig.add_axes([0.85, 0.08, 0.1, 0.9],visible=False);
-	color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
-	custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
-	custom_cmap.set_array(np.arange(vmin, vmax, 0.1));
-	cb = plt.colorbar(custom_cmap,aspect=12,fraction=0.2, orientation='vertical');
-	cb.set_label(scalelabel, fontsize=18);
+	# Colorbar #1
+	cbarax = fig.add_axes([0.15, 0.06, 0.1, 0.9],visible=False);
+	color_boundary_object = matplotlib.colors.Normalize(vmin=vmin1, vmax=vmax1);
+	custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap);
+	custom_cmap.set_array(np.arange(vmin1, vmax1, 0.1));
+	cb = plt.colorbar(custom_cmap,aspect=12,fraction=0.2, orientation='horizontal');
+	cb.set_label(scalelabel1, fontsize=18);
 	cb.ax.tick_params(labelsize=16);
+
+	# Colorbar #2
+	cbarax = fig.add_axes([0.58, 0.06, 0.1, 0.9],visible=False);
+	color_boundary_object = matplotlib.colors.Normalize(vmin=vmin2, vmax=vmax2);
+	custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap);
+	custom_cmap.set_array(np.arange(vmin2, vmax2, 0.1));
+	cb = plt.colorbar(custom_cmap,aspect=12,fraction=0.2, orientation='horizontal');
+	cb.set_label(scalelabel2, fontsize=18);
+	cb.ax.tick_params(labelsize=16);
+
 	plt.savefig(plotname);
 	plt.close();	
 	return;
 
 
-def histogram_of_grd_file_values(filename, varname=Deviation, plotname=histogram_values.png):
+def histogram_of_grd_file_values(filename, varname='Deviation', plotname='histogram_values.png'):
 	"""
 	simple plot to make a histogram of a grid file
 	"""
@@ -124,6 +172,25 @@ def histogram_of_grd_file_values(filename, varname=Deviation, plotname=histogram
 	plt.close();
 	return;
 
+
+def scatterplot_of_grd_values(data1, data2, plotname='scatter.png', xlabel='', ylabel=''):
+	"""
+	One-to-one scatter plot
+	"""
+	xy = np.shape(data1);
+	length = xy[0]*xy[1];
+	data1 = data1.reshape((length,));
+	data2 = data2.reshape((length,));
+
+	plt.figure(figsize=(10,10),dpi=300);
+	plt.plot(data1, data2,'.',markersize=0.5);
+	plt.xlabel(xlabel);
+	plt.ylabel(ylabel);
+	plt.xlim([0,100])
+	plt.grid(True);
+	plt.savefig(plotname);
+	plt.close();
+	return;
 
 
 
