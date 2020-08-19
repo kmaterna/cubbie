@@ -69,6 +69,23 @@ def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
     return mydata;
 
 
+def reader_simple_format(file_names):
+    """
+    An earlier reading function, works fast, useful for things like coherence statistics
+    """
+    [xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
+    data_all=[];
+    for ifile in file_names:  # this happens to be in date order on my mac
+        data = netcdf_read_write.read_grd(ifile);
+        data_all.append(data);
+    date_pairs=[];
+    for name in file_names:
+        pairname=name.split('/')[-2][0:15];
+        date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
+        print(pairname)
+    return [xdata, ydata, data_all, date_pairs];
+
+
 def reader_isce(filepathslist, band=1):
     import isce_read_write
 

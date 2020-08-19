@@ -12,6 +12,17 @@ import matplotlib.cm as cm
 import netcdf_read_write 
 
 
+def produce_min_max(filename,xyz=False):
+	if xyz==False:
+		x, y, z = netcdf_read_write.read_netcdf4_variables(filename,'lon','lat','z');
+	else:
+		x, y, z = netcdf_read_write.read_grd_xyz(filename);
+	print("File:",filename);
+	print("Max: ", np.nanmax(z));
+	print("Min: ", np.nanmin(z));
+	print("Shape: ",np.shape(z));
+	return;
+
 
 def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
 	# Make a mask that is ones and nans
@@ -193,4 +204,52 @@ def scatterplot_of_grd_values(data1, data2, plotname='scatter.png', xlabel='', y
 	return;
 
 
+
+def all_gridded_histograms(data_all,date_pairs):
+	"""
+	Here, we make a series of 12-panel plots that histogram the values in each interferogram
+	data_all is a list of 2d array data for each intf
+	date_pairs is a list of strings like '2016292_2016316' for each intf
+	"""
+	num_plots_x=4;
+	num_plots_y=3;
+
+	for i in range(len(data_all)):
+		if np.mod(i,num_plots_y*num_plots_x)==0:
+			count=i;
+			fignum=i/(num_plots_y*num_plots_x);
+			f,axarr = plt.subplots(num_plots_y, num_plots_x,figsize=(10,10));
+			for k in range(num_plots_y):
+				for m in range(num_plots_x):
+					if count==len(data_all):
+						break;
+
+					# How many days separate this interferogram? 
+					day1=date_pairs[count].split('_')[0];
+					day2=date_pairs[count].split('_')[1];
+					dt1=dt.datetime.strptime(day1,'%Y%j');
+					dt2=dt.datetime.strptime(day2,'%Y%j');
+					deltat=dt2-dt1;
+					daysdiff=deltat.days;
+
+					numelements=np.shape(data_all[count]);
+					mycorrs=np.reshape(data_all[count],(numelements[0]*numelements[1],1));
+					nonans=mycorrs[~np.isnan(mycorrs)];
+					above_threshold=mycorrs[np.where(mycorrs>0.2)];
+					above_threshold=int(len(above_threshold)/1000);
+
+					axarr[k][m].hist(nonans);
+
+					axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8);
+					axarr[k][m].set_yscale('log');
+					axarr[k][m].set_xlim([0,1]);
+					axarr[k][m].set_ylim([1,1000*1000]);
+					axarr[k][m].plot([0.1,0.1],[0,1000*1000],'--r');
+					axarr[k][m].text(0.75,200*1000,str(above_threshold)+'K',fontsize=8);
+
+					count=count+1;
+			plt.savefig("corr_hist_"+str(fignum)+".eps");
+			plt.close();
+			print("writing corr_hist_"+str(fignum)+".eps");
+	return;
 

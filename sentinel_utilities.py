@@ -329,14 +329,9 @@ def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
 
 
 def read_corr_results(corr_file):
-    stem1=[]; stem2=[]; mean_corr=[];
-    ifile=open(corr_file,'r');
-    for line in ifile:
-        temp=line.split();
-        if len(temp)==4:
-            stem1.append(temp[1].split('.')[0]);  # format: S1A20171215
-            stem2.append(temp[2].split('.')[0]);
-            mean_corr.append(float(temp[3]));
+    [stem1, stem2, mean_corr] = np.loadtxt(corr_file,unpack=True,usecols=(1,2,3),dtype={'names':('stem1','stem2','mean_corr'),'formats':('U22','U22',float)})
+    stem1=[x.split('.')[0] for x in stem1]; # format: S1_20181025_ALL_F1
+    stem2=[x.split('.')[0] for x in stem2]; # format: S1_20181025_ALL_F1
     return [stem1, stem2, mean_corr];
 
 

@@ -1,7 +1,7 @@
 # The purpose of this script is to run some diagnostics on the mean coherence. 
 # How did the coherence vary with other things, like perpendicular baseline and season? 
 # What do histograms of coherence look like? 
-# A little messy, could use a little TLC, but passable for now. 
+# Run from the F1 directory, for example
 
 import numpy as np 
 import matplotlib.pyplot as plt 
@@ -11,39 +11,46 @@ import glob as glob
 from subprocess import call, check_output
 import sentinel_utilities
 import netcdf_read_write
+import readmytupledata as rwr
+import stack_metrics_tools
 
 # ------------- DRIVERS ------------------ # 
 
 def analyze_coherence_function():
-	corr_file='corr_results.txt';
-	baseline_table = 'raw/baseline_table.dat';
+	[corr_file, baseline_table, corr_dirlist, plotname] = correlation_config();
 
 	# Correlation vs. Other Things. 
-	write_corr_results(corr_file);
+	calc_write_corr_results(corr_dirlist, corr_file);  # ONLY NEED TO DO AT THE BEGINNING
 	[stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results(corr_file);
 	[stems_blt,tbaseline,xbaseline,mission_days]=sentinel_utilities.read_baseline_table(baseline_table);
-	make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline);
+	make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline, plotname);
 
-	# Histograms
-	[file_names]=configure_histograms();
-	[xdata,ydata,corr_all,date_pairs]=inputs(file_names);
-	make_histograms(xdata,ydata,corr_all,date_pairs); 
+	# # Histograms, in 12-panel figures, one small panel for each interferogram
+	# [file_names]=configure_histograms();
+	# [xdata,ydata,corr_all,date_pairs]=rwr.reader_simple_format(file_names);
+	# stack_metrics_tools.all_gridded_histograms(corr_all,date_pairs);
 	return;
 
-# ------------ CORR vs STUFF -------------- # 
+# ------------ CORR vs OTHER STUFF -------------- # 
 
-def write_corr_results(filename):
+def correlation_config():
+	corr_file='corr_results.txt';
+	baseline_table='raw/baseline_table.dat';
+	corr_dirlist = glob.glob('intf_all/2*');
+	plotname="coherence_stats.eps";
+	print("Config for analysis of coherence versus other quantities: %s, %s, %s" % (corr_file, baseline_table, plotname) );
+	return [corr_file, baseline_table, corr_dirlist, plotname];
+
+def calc_write_corr_results(dir_list, filename):
 	ifile=open(filename,'w');
-
-	dir_list=glob.glob('intf_all/2*'); # get a list of all the directories
 	for item in dir_list:
 		directname = item.split('/')[-1];  # format: 2015153_2015177
 		call("gmt grdmath "+item+"/corr.grd MEAN = "+item+"/out.grd",shell=True);
 		corr = check_output("gmt grdinfo "+item+"/out.grd | grep z | awk \'{print $3}\'", shell=True);
-		corr = corr.split()[0];
-		SLCs=check_output("ls "+item+"/*.SLC",shell=True); # THIS WILL BREAK IF USING PYTHON3.  USE PYTHON2. PROBLEM WITH BYTES vs STRING. 
-		# IN CHECK OUTPUT, THE RETURN VALUE IS A BYTES OBJECT IN PYTHON3. OOPS. 
-		# CAN I FIX THIS NOW? 
+		corr = float(corr.split()[0]);
+		print("Computing for %s with mean coherence %f " % (directname, corr) );
+		SLCs=check_output("ls "+item+"/*.SLC",shell=True); 
+		SLCs=SLCs.decode('utf-8')
 		slc1=SLCs.split('\n')[0];
 		slc1=slc1.split('/')[-1];
 		slc2=SLCs.split()[1];
@@ -55,22 +62,22 @@ def write_corr_results(filename):
 	return;
 
 
-def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
+def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline, plotname):
 
 	b_perp_baseline   = [];
 	temporal_baseline = [];
 	season = [];
 	for i in range(len(mean_corr)):  # define a bunch of things for each interferogram.
 		# How long in time? 
-		temp1=stem1[i].split('_')[0];
-		date1=dt.datetime.strptime(temp1[3:12],'%Y%m%d');
-		temp2=stem2[i].split('_')[0];
-		date2=dt.datetime.strptime(temp2[3:12],'%Y%m%d');
+		datestr1=stem1[i].split('_')[1];  # stem1 has format "S1_20180615_ALL_F1"
+		date1=dt.datetime.strptime(datestr1,'%Y%m%d');
+		datestr2=stem2[i].split('_')[1];
+		date2=dt.datetime.strptime(datestr2,'%Y%m%d');
 		temporal_baseline.append(abs((date1-date2).days));
 
 		# Perpendicular Baseline?
-		myindex1 = int(np.where(stems_blt == stem1[i])[0])
-		myindex2 = int(np.where(stems_blt == stem2[i])[0])
+		myindex1 = stems_blt.index(stem1[i]);
+		myindex2 = stems_blt.index(stem2[i]);
 		bl1=xbaseline[myindex1];
 		bl2=xbaseline[myindex2];
 		b_perp_baseline.append(abs(bl1-bl2));
@@ -82,7 +89,7 @@ def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
 	summer1=300;
 
 	f, axarr = plt.subplots(3, figsize=(15, 15));
-	axarr[0].set_title('Mean Coherence of Sentinel-1A Interferograms in Mendocino',fontsize=24)
+	axarr[0].set_title('Mean Coherence of Sentinel-1 Interferograms',fontsize=24)
 	axarr[0].plot(temporal_baseline, mean_corr,'.',markersize=13);
 	axarr[0].set_xlabel('Time (days)',fontsize=20)
 	axarr[0].set_ylabel('Mean Coherence',fontsize=20)
@@ -90,13 +97,19 @@ def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
 
 	for i in range(len(season)):
 		if season[i]>summer0 and season[i]<summer1:
-			line1, = axarr[1].plot(b_perp_baseline[i], mean_corr[i],'.',color='red',markersize=13, label='summer');
+			if temporal_baseline[i]>300:
+				line1a, = axarr[1].plot(b_perp_baseline[i], mean_corr[i],'*',color='red',markersize=13, label='summer, 1+yr');
+			else:
+				line1, = axarr[1].plot(b_perp_baseline[i], mean_corr[i],'.',color='red',markersize=13, label='summer');
 		else:
-			line2, = axarr[1].plot(b_perp_baseline[i], mean_corr[i],'.',color='blue',markersize=13, label='not summer');
+			if temporal_baseline[i]>300:
+				line2a, = axarr[1].plot(b_perp_baseline[i], mean_corr[i],'*',color='blue',markersize=13, label='not summer, 1+yr');
+			else:
+				line2, = axarr[1].plot(b_perp_baseline[i], mean_corr[i],'.',color='blue',markersize=13, label='not summer');
 	axarr[1].set_xlabel('Baseline (m)',fontsize=20)
 	axarr[1].set_ylabel('Mean Coherence',fontsize=20)
 	axarr[1].tick_params(axis='both',labelsize=20)
-	axarr[1].legend(handles=[line1, line2], loc=1, fontsize=18);
+	axarr[1].legend(handles=[line1, line2, line1a, line2a], loc=1, fontsize=16);
 
 
 	for i in range(len(season)):
@@ -110,13 +123,15 @@ def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline):
 	axarr[2].set_ylabel('Mean Coherence',fontsize=20)
 	axarr[2].legend(handles=[line1, line2],loc=2, fontsize=18)	
 	axarr[2].tick_params(axis='both',labelsize=20)
-	plt.savefig('coherence_stats.eps')
+	print("Saving figure as %s " % plotname);
+	plt.savefig(plotname);
 
 	return;
 
 
-
 # ------------- HISTOGRAMS ------------ # 
+# This makes a bunch of 12-panel figures with the coherence of each interferogram as a histogram
+# Not particularly interesting if there's great coherence everywhere. 
 
 def configure_histograms():
 	file_dir="intf_all";
@@ -127,64 +142,6 @@ def configure_histograms():
 		print("Error! No files matching search pattern."); sys.exit(1);
 	print("Reading "+str(len(file_names))+" files.");
 	return [file_names];
-
-
-# ------------- INPUTS ------------ # 
-def inputs(file_names):
-	[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
-	data_all=[];
-	for ifile in file_names:  # this happens to be in date order on my mac
-		data = netcdf_read_write.read_grd(ifile);
-		data_all.append(data);
-	date_pairs=[];
-	for name in file_names:
-		pairname=name.split('/')[-2][0:15];
-		date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf
-		print(pairname)
-	return [xdata, ydata, data_all, date_pairs];
-
-# -------- OUTPUT --------------- # 
-def make_histograms(xdata,ydata,data_all,date_pairs):
-	num_plots_x=4;
-	num_plots_y=3;
-
-	for i in range(len(data_all)):
-		if np.mod(i,num_plots_y*num_plots_x)==0:
-			count=i;
-			fignum=i/(num_plots_y*num_plots_x);
-			f,axarr = plt.subplots(num_plots_y, num_plots_x,figsize=(10,10));
-			for k in range(num_plots_y):
-				for m in range(num_plots_x):
-					if count==len(data_all):
-						break;
-
-					# How many days separate this interferogram? 
-					day1=date_pairs[count].split('_')[0];
-					day2=date_pairs[count].split('_')[1];
-					dt1=dt.datetime.strptime(day1,'%Y%j');
-					dt2=dt.datetime.strptime(day2,'%Y%j');
-					deltat=dt2-dt1;
-					daysdiff=deltat.days;
-
-					numelements=np.shape(data_all[count]);
-					mycorrs=np.reshape(data_all[count],(numelements[0]*numelements[1],1));
-					nonans=mycorrs[~np.isnan(mycorrs)];
-					above_threshold=mycorrs[np.where(mycorrs>0.2)];
-					above_threshold=int(len(above_threshold)/1000);
-
-					axarr[k][m].hist(nonans);
-
-					axarr[k][m].set_title(str(date_pairs[count])+'   '+str(daysdiff)+' days',fontsize=8);
-					axarr[k][m].set_yscale('log');
-					axarr[k][m].set_xlim([0,1]);
-					axarr[k][m].set_ylim([1,1000*1000]);
-					axarr[k][m].plot([0.1,0.1],[0,1000*1000],'--r');
-					axarr[k][m].text(0.75,200*1000,str(above_threshold)+'K',fontsize=8);
-
-					count=count+1;
-			plt.savefig("corr_hist_"+str(fignum)+".eps");
-			plt.close();
-	return;
 
 
 if __name__=="__main__":
