@@ -1,7 +1,7 @@
 # Function that reads GPS field, 
 # projects into LOS relative to a reflon and reflat
 # And writes an output text file that can be used later for 
-# plotting expected GPS LOS values. 
+# plotting in GMT, etc. 
 
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -10,9 +10,10 @@ import datetime as dt
 import collections
 from scipy import interpolate
 import netcdf_read_write
+import gps_io_functions
+import los_projection_math
 
 Velfield = collections.namedtuple("Velfield",['name','nlat','elon','n','e','u','sn','se','su','first_epoch','last_epoch']);
-
 
 
 def top_level_driver(config_params, rowref, colref):
@@ -35,8 +36,7 @@ def configure(config_params):
 	# bounds=[-125, -115, 35, 46]; # Good for WUS
 	nominal_boundary=0.4;
 	bounds_ref=[-nominal_boundary, nominal_boundary, -nominal_boundary, nominal_boundary]; # in Longitude/Latitude units away from the reference pixel. 
-	# I have found that it is very important to restrict the spline's domain. 
-	# Otherwise it can get very unstable. 
+	# I have found that it is very important to restrict the spline's domain. Otherwise it can get very unstable. 
 	type_of_interp='linear';
 
 	return [gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, bounds_latlon, bounds_ref, outfile];
@@ -45,15 +45,14 @@ def configure(config_params):
 # ------------------ INPUTS --------------------- # 
 
 def inputs(gps_file, veldir, velfile, rowref, colref, bounds_latlon, bounds_ref):
-	[gps_velfield]=read_unr_vel_file(gps_file, bounds_latlon);
-	[gps_velfield]=remove_duplicates(gps_velfield);
-	[reflon, reflat]=generate_reflon_reflat(velfile, veldir, rowref, colref);
+	[gps_velfield]=gps_io_functions.read_unr_vel_file(gps_file, bounds_latlon);
+	[gps_velfield]=gps_io_functions.remove_duplicates(gps_velfield);
+	[reflon, reflat]=gps_io_functions.generate_reflon_reflat(velfile, veldir, rowref, colref);
 	[gps_velfield_removed]=remove_farfield(gps_velfield, reflon, reflat, bounds_ref);
 	return [gps_velfield, gps_velfield_removed, reflon, reflat];
 
 def generate_reflon_reflat(velfile, veldir, rowref, colref):
-	# In this part, I sometimes need to flip the x-axis of the input array to make sense with the geographic 
-	# coordinates.
+	# In this part, I sometimes need to flip the x-axis of the input array to make sense with the geographic coordinates.
 	# I suspect that for ascending orbits, this may not be necessary. 
 	# Worth checking if it introduces bugs. 
 
@@ -103,123 +102,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
 
 	return [lonref, latref];
 
-def read_unr_vel_file(infile,bounds):
-	name=[]; nlat=[]; elon=[]; n=[]; e=[]; u=[]; sn=[]; se=[]; su=[]; first_epoch=[]; last_epoch=[];
-	ifile=open(infile,'r');
-	for line in ifile:
-		temp=line.split();
-		if temp[0]=="#":
-			continue;
-		name_temp=temp[-1];
-		nlat_temp=float(temp[1]);
-		elon_temp=float(temp[0]);
-		if elon_temp>bounds[0] and elon_temp<bounds[1]:
-			if nlat_temp>bounds[2] and nlat_temp<bounds[3]:
-				name.append(name_temp);
-				nlat.append(nlat_temp);
-				elon.append(elon_temp);
-				n.append(float(temp[3]));
-				e.append(float(temp[2]));
-				u.append(float(temp[4]));
-				sn.append(float(temp[6]));
-				se.append(float(temp[5]));
-				su.append(float(temp[7]));
-				first_epoch.append(dt.datetime.strptime(temp[-3],'%Y%m%d'));
-				last_epoch.append(dt.datetime.strptime(temp[-2],'%Y%m%d'));
-	ifile.close();
-	myVelfield = Velfield(name=name, nlat=nlat, elon=elon, n=n, e=e, u=u, sn=sn, se=sn, su=su, first_epoch=first_epoch, last_epoch=last_epoch);
-	return [myVelfield]; 
 
-def read_pbo_vel_file(infile, bounds):
-# Meant for reading velocity files from the PBO/UNAVCO website. 
-# Returns a Velfield collections object. 
-	start=0;
-	ifile=open(infile,'r');
-	name=[]; nlat=[]; elon=[]; n=[]; e=[]; u=[]; sn=[]; se=[]; su=[]; first_epoch=[]; last_epoch=[];
-	for line in ifile:
-		if start==1:
-			temp=line.split();
-			name_temp=temp[0];
-			nlat_temp=float(temp[7]);
-			elon_temp=float(temp[8]);
-
-			if elon_temp>180:
-				elon_temp=elon_temp-360.0;
-
-			if elon_temp>bounds[0] and elon_temp<bounds[1]:
-				if nlat_temp>bounds[2] and nlat_temp<bounds[3]:
-					name.append(name_temp);
-					nlat.append(nlat_temp);
-					elon.append(elon_temp);
-					n.append(float(temp[19])*1000.0);
-					e.append(float(temp[20])*1000.0);
-					u.append(float(temp[21])*1000.0);
-					sn.append(float(temp[22])*1000.0);
-					se.append(float(temp[23])*1000.0);
-					su.append(float(temp[24])*1000.0);
-					t1=temp[-2];
-					t2=temp[-1];
-					first_epoch.append(dt.datetime.strptime(t1[0:8],'%Y%m%d'));
-					last_epoch.append(dt.datetime.strptime(t2[0:8],'%Y%m%d'));
-		if "*" in line:
-			start=1;
-	ifile.close();
-	myVelfield = Velfield(name=name, nlat=nlat, elon=elon, n=n, e=e, u=u, sn=sn, se=sn, su=su, first_epoch=first_epoch, last_epoch=last_epoch);
-	return [myVelfield];
-
-def remove_duplicates(velfield):
-	name=[]; nlat=[]; elon=[]; n=[]; e=[]; u=[]; sn=[]; se=[]; su=[]; first_epoch=[]; last_epoch=[];
-	# These are the arrays that are growing. 
-	
-	for i in range(len(velfield.n)):
-		is_duplicate = 0;
-		for j in range(len(name)):
-			# if abs(nlat[j]-velfield.nlat[i])<0.0005 and abs(elon[j]-velfield.elon[i])<0.0005:
-			if velfield.name[i] in name:
-				# we found a duplicate measurement. 
-				is_duplicate = 1;
-				# Right now assuming all entries at the same lat/lon have the same velocity values. 
-			if velfield.name[i]=='P323':
-				is_duplicate = 1; # A BAD STATION. 
-
-
-		if is_duplicate == 0:
-			name.append(velfield.name[i]);
-			nlat.append(velfield.nlat[i]);
-			elon.append(velfield.elon[i]);
-			n.append(velfield.n[i]);
-			sn.append(velfield.sn[i]);
-			e.append(velfield.e[i]);
-			se.append(velfield.se[i]);
-			u.append(velfield.u[i]);
-			su.append(velfield.su[i]);			
-			first_epoch.append(velfield.first_epoch[i]);
-			last_epoch.append(velfield.last_epoch[i]);
-
-	myVelfield = Velfield(name=name, nlat=nlat, elon=elon, n=n, e=e, u=u, sn=sn, se=sn, su=su, first_epoch=first_epoch, last_epoch=last_epoch);	
-	return [myVelfield];
-
-def remove_farfield(velfield, reflon, reflat, bounds):
-	# Expects the bounds here to be relative to the reference pixel (in degrees away)
-	new_name=[]; new_nlat=[]; new_elon=[]; new_n=[]; new_e=[]; new_u=[]; new_sn=[]; new_se=[]; new_su=[]; new_first_epoch=[]; new_last_epoch=[];
-	for i in range(len(velfield.name)):
-		if velfield.nlat[i]>reflat+bounds[2] and velfield.nlat[i]<reflat+bounds[3]:
-			if velfield.elon[i]>reflon+bounds[0] and velfield.elon[i]<reflon+bounds[1]:
-				# The station is within the box.
-				new_name.append(velfield.name[i]);
-				new_nlat.append(velfield.nlat[i]);
-				new_elon.append(velfield.elon[i]);
-				new_n.append(velfield.n[i]);
-				new_e.append(velfield.e[i]);
-				new_u.append(velfield.u[i]);
-				new_sn.append(velfield.sn[i]);
-				new_se.append(velfield.se[i]);
-				new_su.append(velfield.su[i]);
-				new_first_epoch.append(velfield.first_epoch[i]);
-				new_last_epoch.append(velfield.last_epoch[i]);
-	print("Restricting velfield of %d GPS points to only nearby %d points. " % (len(velfield.name), len(new_name)) );
-	myVelfield=Velfield(name=new_name, nlat=new_nlat, elon=new_elon, n=new_n, e=new_e, u=new_u, sn=new_sn, se=new_se, su=new_su, first_epoch=new_first_epoch, last_epoch=new_last_epoch);
-	return [myVelfield];
 
 # ------------------ COMPUTE --------------- # 
 
@@ -235,12 +118,12 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
 	# Transform each field into the LOS fields 
 	# Assuming zero vertical velocity. 
 	U_u=np.zeros(np.shape(vel_tuple.e));  # only for 2D case
-	LOS_array=project_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
+	LOS_array=los_projection_math.project_ENU_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
 
 	# Take the reference point and transform its velocity into LOS. 
 	velref_e=f_east(reflon,reflat);
 	velref_n=f_north(reflon,reflat);
-	LOS_reference=project_to_LOS(velref_e,velref_n,0,flight_angle,look_angle)[0];
+	LOS_reference=los_projection_math.project_ENU_to_LOS(velref_e,velref_n,0,flight_angle,look_angle)[0];
 
 	print("Reference e: %f" % velref_e)
 	print("Reference n: %f" % velref_n)
@@ -258,31 +141,6 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
 		sn=vel_tuple.sn, se=vel_tuple.se, su=vel_tuple.su, first_epoch=vel_tuple.first_epoch, last_epoch=vel_tuple.last_epoch);
 
 	return [los_tuple];
-
-
-
-def project_to_LOS(U_e,U_n,U_u,flight_angle,incidence_angle):
-	# Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
-	# [U_e, U_n, U_u] are the east, north, and up components of the deformation. 
-	# phi   = azimuth of satellite heading vector, positive clockwise from north.
-	# lamda = local incidence angle at the reflector.
-
-
-	phi=np.deg2rad(flight_angle); 
-	lamda=np.deg2rad(incidence_angle);
-
-	if np.size(U_e)>1:  # processing a 1D array of values
-		d_los = [0*i for i in U_e];
-		for i in range(len(U_e)):
-			d_los[i] = ( (U_n[i]*np.sin(phi) - U_e[i]*np.cos(phi) )*np.sin(lamda)  + U_u[i]*np.cos(lamda) );
-
-	else:               # processing a single value
-		d_los = (U_n*np.sin(phi) - U_e*np.cos(phi) )*np.sin(lamda)  + U_u*np.cos(lamda) ;
-
-	# Flipping by negative one, because the convention is positive when moving away from the satellite. 
-	d_los=np.array(d_los)*-1;
-
-	return d_los
 
 
 
