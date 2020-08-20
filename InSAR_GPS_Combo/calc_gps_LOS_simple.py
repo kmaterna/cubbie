@@ -1,7 +1,8 @@
 # Function that reads GPS field, 
-# projects into LOS relative to a reflon and reflat
-# And writes an output text file that can be used later for 
-# plotting in GMT, etc. 
+# projects very simply into LOS, and subtracts a reflon and reflat
+# Writes an output text file that can be plotted in GMT, etc. 
+# For this driver, the reference point is a lat/lon pixel, not a particular GPS station 
+# (sometimes the situation isn't ideal and you have to do that!)
 
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -17,9 +18,9 @@ Velfield = collections.namedtuple("Velfield",['name','nlat','elon','n','e','u','
 
 
 def top_level_driver(config_params, rowref, colref):
-	[gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, bounds_latlon, bounds_ref, outfile]=configure(config_params);
-	[gps_velfield, gps_velfield_removed, reflon, reflat] = inputs(gps_file, veldir, velfile, rowref, colref, bounds_latlon, bounds_ref);
-	[LOS_velfield] = compute(gps_velfield, gps_velfield_removed, reflon, reflat, flight_angle, look_angle, type_of_interp, bounds_ref);
+	[gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, coordbox_gps, coordbox_nearref, outfile]=configure(config_params);
+	[gps_velfield, gps_velfield_removed, reflon, reflat] = inputs(gps_file, veldir, velfile, rowref, colref, coordbox_gps, coordbox_nearref);
+	[LOS_velfield] = compute(gps_velfield, gps_velfield_removed, reflon, reflat, flight_angle, look_angle, type_of_interp, coordbox_nearref);
 	outputs(gps_velfield, LOS_velfield, reflon, reflat, outfile);
 	return;
 
@@ -32,24 +33,32 @@ def configure(config_params):
 	flight_angle=config_params.flight_angle;
 	look_angle=config_params.look_angle;
 	outfile=veldir+'/gps_ll_enu_los.txt';
-	bounds_latlon=[-125, -121, 38, 42.5]; # Good for Mendocino
+	coordbox_gps=[-125, -121, 38, 42.5]; # Good for Mendocino
 	# bounds=[-125, -115, 35, 46]; # Good for WUS
 	nominal_boundary=0.4;
 	bounds_ref=[-nominal_boundary, nominal_boundary, -nominal_boundary, nominal_boundary]; # in Longitude/Latitude units away from the reference pixel. 
-	# I have found that it is very important to restrict the spline's domain. Otherwise it can get very unstable. 
+	coordbox_nearref = [reflon+bounds_ref[0], reflon+bounds_ref[1], reflat+bounds_ref[2], reflat+bounds_ref[3]];	
+	# For interpolating around the reference, I have found that it is very important to restrict the spline's domain. Otherwise it can get very unstable. 
 	type_of_interp='linear';
 
-	return [gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, bounds_latlon, bounds_ref, outfile];
+	return [gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, coordbox_gps, coordbox_nearref, outfile];
 
 
 # ------------------ INPUTS --------------------- # 
 
-def inputs(gps_file, veldir, velfile, rowref, colref, bounds_latlon, bounds_ref):
-	[gps_velfield]=gps_io_functions.read_unr_vel_file(gps_file, bounds_latlon);
+def inputs(gps_file, veldir, velfile, rowref, colref, coordbox_gps, coordbox_nearref):
+	[reflon, reflat]=generate_reflon_reflat(velfile, veldir, rowref, colref);
+
+	# The velocities within the latlon box. 
+	[gps_velfield]=gps_io_functions.read_unr_vel_file(gps_file);
 	[gps_velfield]=gps_io_functions.remove_duplicates(gps_velfield);
-	[reflon, reflat]=gps_io_functions.generate_reflon_reflat(velfile, veldir, rowref, colref);
-	[gps_velfield_removed]=remove_farfield(gps_velfield, reflon, reflat, bounds_ref);
+	[gps_velfield]=gps_io_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
+
+	# A small range near the reference pixel for interpolating later. 
+	[gps_velfield_removed]=gps_io_functions.clean_velfield(gps_velfield, coord_box=coordbox_nearref);
+	
 	return [gps_velfield, gps_velfield_removed, reflon, reflat];
+
 
 def generate_reflon_reflat(velfile, veldir, rowref, colref):
 	# In this part, I sometimes need to flip the x-axis of the input array to make sense with the geographic coordinates.
@@ -112,30 +121,14 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
 	f_east = interpolate.interp2d(vel_tuple_removed.elon, vel_tuple_removed.nlat, vel_tuple_removed.e, kind=type_of_interp);
 	f_north = interpolate.interp2d(vel_tuple_removed.elon, vel_tuple_removed.nlat, vel_tuple_removed.n, kind=type_of_interp);
 
-	plot_bounds=[reflon+bounds[0], reflon+bounds[1], reflat+bounds[2], reflat+bounds[3]]
-	make_interp_checking_plot(vel_tuple_removed, plot_bounds, reflon, reflat, f_east, f_north);
-	
-	# Transform each field into the LOS fields 
-	# Assuming zero vertical velocity. 
-	U_u=np.zeros(np.shape(vel_tuple.e));  # only for 2D case
-	LOS_array=los_projection_math.project_ENU_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
+	make_interp_checking_plot(vel_tuple_removed, bounds, reflon, reflat, f_east, f_north);	
 
 	# Take the reference point and transform its velocity into LOS. 
-	velref_e=f_east(reflon,reflat);
-	velref_n=f_north(reflon,reflat);
-	LOS_reference=los_projection_math.project_ENU_to_LOS(velref_e,velref_n,0,flight_angle,look_angle)[0];
+	velref_e, velref_n, velref_u = los_projection_math.get_point_enu_interp([reflon, reflat], f_east=f_east, f_north=f_north)
+	LOS_reference=los_projection_math.simple_project_ENU_to_LOS(velref_e,velref_n,0,flight_angle,look_angle)[0];
 
-	print("Reference e: %f" % velref_e)
-	print("Reference n: %f" % velref_n)
-	print("Reference LOS: " + str(LOS_reference))
-	print("-----------------------")
-
-	print("Nearby: Station lat lon LOS east north")
-	for i in range(len(vel_tuple.name)):
-		if vel_tuple.elon[i]>-124 and vel_tuple.elon[i]<-123.0:
-			if vel_tuple.nlat[i]>40.0 and vel_tuple.nlat[i]<40.7:
-				print("%s %f %f %f %f %f" % (vel_tuple.name[i], vel_tuple.nlat[i], vel_tuple.elon[i], LOS_array[i]-LOS_reference, vel_tuple.e[i], vel_tuple.n[i]) )
-
+	# Transform GPS field into LOS field
+	LOS_array=los_projection_math.simple_project_ENU_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
 
 	los_tuple=Velfield(name=vel_tuple.name, nlat=vel_tuple.nlat, elon=vel_tuple.elon, e=LOS_array-LOS_reference, n=0*LOS_array, u=0*LOS_array, 
 		sn=vel_tuple.sn, se=vel_tuple.se, su=vel_tuple.su, first_epoch=vel_tuple.first_epoch, last_epoch=vel_tuple.last_epoch);
@@ -173,13 +166,11 @@ def make_interp_checking_plot(vel_tuple, bounds, reflon, reflat, f_east, f_north
 			new_x.append(X[i,j]);
 			new_y.append(Y[i,j]);
 
-
 	# Evaluate the linear or cubic interpolation function at new points
 	for i in range(len(new_x)):
 		new_east.append(f_east(new_x[i],new_y[i]))  # only want to give the functions one point at a time. 
 		new_north.append(f_north(new_x[i],new_y[i]));
 		new_vertical.append(0.0); # there's no vertical deformation in this field by construction. 
-
 
 	velref_e=f_east(reflon,reflat);
 	velref_n=f_north(reflon,reflat);
@@ -203,6 +194,10 @@ def make_interp_checking_plot(vel_tuple, bounds, reflon, reflat, f_east, f_north
 	my_plot_formatting(axarr[1],bounds,"East Velocity Interpolated from GPS",vel_tuple);
 	plt.savefig("East_North_GPS_interp.png");
 	plt.close();
+
+	print("Reference e: %f" % velref_e)
+	print("Reference n: %f" % velref_n)	
+	print("Are these reasonable values?");
 
 	return; 
 

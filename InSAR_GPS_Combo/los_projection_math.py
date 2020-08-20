@@ -10,7 +10,7 @@
 import numpy as np 
 
 
-def project_ENU_to_LOS(U_e,U_n,U_u,flight_angle,incidence_angle):
+def simple_project_ENU_to_LOS(U_e,U_n,U_u,flight_angle,incidence_angle):
 	# Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
 	# [U_e, U_n, U_u] are the east, north, and up components of the deformation. 
 	# phi   = azimuth of satellite heading vector, positive clockwise from north.
@@ -32,3 +32,36 @@ def project_ENU_to_LOS(U_e,U_n,U_u,flight_angle,incidence_angle):
 	d_los=np.array(d_los)*-1;
 
 	return d_los
+
+
+def get_point_enu_interp(reference_point, f_east=None, f_north=None, f_up=None):
+	# Useful for reference points, for example
+	# reference point is [lon, lat]
+	# Interpolated functions are required if the reference isn't located at a gps station. 
+	velref_e=f_east(reference_point[0],reference_point[1]);
+	velref_n=f_north(reference_point[0],reference_point[1]);
+	if f_up is None:
+		velref_u=0;
+	else:
+		velref_u=f_up(reference_point[0], reference_point[1]);
+	return velref_e, velref_n, velref_u;
+
+def get_point_enu_veltuple(reference_point, vel_tuple=None, zero_vertical=True):
+	# If the reference is co-located with a GPS station, we find it within the tuple.
+	for i in range(len(vel_tuple.elon)):
+		if vel_tuple.elon[i]==reference_point[0] and vel_tuple.nlat[i]==reference_point[1]:  # should I make these tolerances? 
+			velref_e=vel_tuple.e[i];
+			velref_n=vel_tuple.n[i];
+			if zero_vertical:
+				velref_u=0;
+			else:
+				velref_u=vel_tuple.u[i];
+	return velref_e, velref_n, velref_u;
+
+
+def misfit_gps_geocoded_insar():
+	# A function I'd like to write to calculate the difference between a GNSS velocity field and an InSAR result. 
+	return 0;
+
+
+
