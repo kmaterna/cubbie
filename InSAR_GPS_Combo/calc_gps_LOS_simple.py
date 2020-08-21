@@ -3,18 +3,16 @@
 # Writes an output text file that can be plotted in GMT, etc. 
 # For this driver, the reference point is a lat/lon pixel, not a particular GPS station 
 # (sometimes the situation isn't ideal and you have to do that!)
+# This script has been partly re-written but is still a bit dependent on earlier parts of my processing pipeline
 
 import numpy as np
 import matplotlib.pyplot as plt 
 import subprocess, sys
 import datetime as dt 
-import collections
 from scipy import interpolate
 import netcdf_read_write
 import gps_io_functions
-import los_projection_math
-
-Velfield = collections.namedtuple("Velfield",['name','nlat','elon','n','e','u','sn','se','su','first_epoch','last_epoch']);
+import los_projection_tools
 
 
 def top_level_driver(config_params, rowref, colref):
@@ -124,13 +122,13 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
 	make_interp_checking_plot(vel_tuple_removed, bounds, reflon, reflat, f_east, f_north);	
 
 	# Take the reference point and transform its velocity into LOS. 
-	velref_e, velref_n, velref_u = los_projection_math.get_point_enu_interp([reflon, reflat], f_east=f_east, f_north=f_north)
-	LOS_reference=los_projection_math.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,flight_angle,look_angle)[0];
+	velref_e, velref_n, velref_u = los_projection_tools.get_point_enu_interp([reflon, reflat], f_east=f_east, f_north=f_north)
+	LOS_reference=los_projection_tools.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,flight_angle,look_angle)[0];
 
 	# Transform GPS field into LOS field
-	LOS_array=los_projection_math.simple_project_ENU_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
+	LOS_array=los_projection_tools.simple_project_ENU_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
 
-	los_tuple=Velfield(name=vel_tuple.name, nlat=vel_tuple.nlat, elon=vel_tuple.elon, e=LOS_array-LOS_reference, n=0*LOS_array, u=0*LOS_array, 
+	los_tuple=los_projection_tools.Velfield(name=vel_tuple.name, nlat=vel_tuple.nlat, elon=vel_tuple.elon, e=LOS_array-LOS_reference, n=0*LOS_array, u=0*LOS_array, 
 		sn=vel_tuple.sn, se=vel_tuple.se, su=vel_tuple.su, first_epoch=vel_tuple.first_epoch, last_epoch=vel_tuple.last_epoch);
 
 	return [los_tuple];

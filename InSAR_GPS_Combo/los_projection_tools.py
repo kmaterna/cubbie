@@ -9,6 +9,27 @@
 
 import numpy as np 
 import numpy.linalg
+import collections
+
+# A useful structure to hold GPS velocity fields and their LOS-projected versions
+# In the LOS-projected case, we use 'e' as the LOS velocity and the other columns are zeros
+Velfield = collections.namedtuple("Velfield",['name','nlat','elon','n','e','u','sn','se','su','first_epoch','last_epoch']);
+
+
+# Math and Trig Functions
+# -------------------------------- # 
+
+def cartesian_to_heading(cartesian_angle):
+	# Take a cartesian angle in degrees (CCW from east)
+	# Convert to heading angle in degrees (CW from north)
+	return 90 - cartesian_angle;
+
+def closest_index(lst, K): 
+	# Given list lst, and target K, which element is closest? 
+	index = min(range(len(lst)), key=lambda i: abs(lst[i]-K));
+	deg_distance = lst[index] - K;
+	return index, deg_distance;
+
 
 def simple_project_ENU_to_LOS(U_e,U_n,U_u,flight_angle,incidence_angle):
 	# Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
@@ -97,15 +118,41 @@ def look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u):
 	flight_angle = heading_deg + 90;  # satellite flies 90 degrees away from look vector direction
 	return [flight_angle,incidence_angle];
 
-def cartesian_to_heading(cartesian_angle):
-	# Take a cartesian angle in degrees (CCW from east)
-	# Convert to heading angle in degrees (CW from north)
-	return 90 - cartesian_angle;
 
 
-def misfit_gps_geocoded_insar():
-	# A function I'd like to write to calculate the difference between a GNSS velocity field and an InSAR result. 
-	return 0;
+def misfit_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, window_pixels=5):
+	# A function to calculate the RMS between a GNSS velocity field and an InSAR result. 
+	misfit_array = [];
+	distance_tolerance = 0.01;  # degrees (approximately 1 km)
+	for i in range(len(gps_los_velfield.elon)):
+		xi, deg_distance_x = closest_index(xarray, gps_los_velfield.elon[i]);
+		yi, deg_distance_y = closest_index(yarray, gps_los_velfield.nlat[i]);
+		if deg_distance_x < distance_tolerance and deg_distance_y < distance_tolerance: 
+			target_array = LOS_array[yi-window_pixels:yi+window_pixels,xi-window_pixels:xi+window_pixels]
+			# default tolerance is about 1 km, and it shows whether or not we are accidentally outside of the InSAR domain
+			InSAR_LOS_value = np.nanmean(target_array);
+			if ~np.isnan(InSAR_LOS_value):
+				misfit_array.append(InSAR_LOS_value - gps_los_velfield.e[i]);
+	return np.array(misfit_array);
+
+
+
+# A little bit of IO for working with GPS velocity fields in LOS geometries
+# -------------------------------- # 
+def input_gps_as_los(filename):
+	print("Reading file %s " % filename);
+	[elon, nlat, los_vel, name] = np.loadtxt(filename,usecols=(0,1,5,6),unpack=True,dtype={'names':('elon','nlat','los_vel','station_name'), 'formats':(np.float, np.float, np.float, 'U4')});
+	gps_velfield = Velfield(name=name, elon=elon, nlat=nlat, e=los_vel, n=0*los_vel, u=0*los_vel, se=0*los_vel, sn=0*los_vel, su=0*los_vel, first_epoch=0*los_vel, last_epoch=0*los_vel);
+	return [gps_velfield];
+
+
+def output_gps_as_los(gps_velfield, LOS_velfield, outfile):
+	ofile=open(outfile,'w');
+	for i in range(len(LOS_velfield.e)):
+		ofile.write("%f %f %f %f %f %f %s \n" % (LOS_velfield.elon[i], LOS_velfield.nlat[i], gps_velfield.e[i], gps_velfield.n[i], gps_velfield.u[i], LOS_velfield.e[i], LOS_velfield.name[i]) );
+	ofile.close();
+	print("-->Outputs printed to %s" % outfile);
+	return;
 
 
 

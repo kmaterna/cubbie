@@ -14,11 +14,10 @@ import matplotlib.path as path
 import collections
 from scipy import interpolate
 import gps_io_functions
-import los_projection_math
+import los_projection_tools
 import haversine
 
 param_collection = collections.namedtuple("param_collection",['input_file','ca_file','or_file','type_of_interp','ascending_flight_angle','descending_flight_angle','incidence_angle','bounds','point1', 'point2', 'reference_point']);
-Velfield = collections.namedtuple("Velfield",['name','nlat','elon','n','e','u','sn','se','su','first_epoch','last_epoch']); 
 
 def do_interpolation():
 	my_param_collection = configure();
@@ -120,31 +119,31 @@ def compute(vel_tuple,my_param_collection, ca_border, or_border):
 		new_vertical.append(0.0);  # there's no vertical deformation in this field by construction. 
 
 	# Get the reference velocity in ENU
-	velref_e, velref_n, velref_u = los_projection_math.get_point_enu_interp(my_param_collection.reference_point, f_east, f_north);
+	velref_e, velref_n, velref_u = los_projection_tools.get_point_enu_interp(my_param_collection.reference_point, f_east, f_north);
 
 	# Transform each field into LOS fields with respect to a given pixel
-	ascending_LOS_array=los_projection_math.simple_project_ENU_to_LOS(new_east,new_north,new_vertical,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle);
-	ascending_LOS_reference=los_projection_math.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle)[0];
-	los_ascending_velfield=Velfield(name=[], elon=x_for_interp, nlat=y_for_interp, e=ascending_LOS_array - ascending_LOS_reference,
+	ascending_LOS_array=los_projection_tools.simple_project_ENU_to_LOS(new_east,new_north,new_vertical,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle);
+	ascending_LOS_reference=los_projection_tools.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle)[0];
+	los_ascending_velfield=los_projection_tools.Velfield(name=[], elon=x_for_interp, nlat=y_for_interp, e=ascending_LOS_array - ascending_LOS_reference,
 		n=0*ascending_LOS_array, u=0*ascending_LOS_array, se=[], sn=[], su=[], first_epoch=[], last_epoch=[]);
 	
 	# Descending
-	descending_LOS_array=los_projection_math.simple_project_ENU_to_LOS(new_east,new_north,new_vertical,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle);
-	descending_LOS_reference=los_projection_math.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle)[0];
-	los_descending_velfield=Velfield(name=[], elon=x_for_interp, nlat=y_for_interp, e=descending_LOS_array - descending_LOS_reference,
+	descending_LOS_array=los_projection_tools.simple_project_ENU_to_LOS(new_east,new_north,new_vertical,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle);
+	descending_LOS_reference=los_projection_tools.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle)[0];
+	los_descending_velfield=los_projection_tools.Velfield(name=[], elon=x_for_interp, nlat=y_for_interp, e=descending_LOS_array - descending_LOS_reference,
 		n=0*descending_LOS_array, u=0*descending_LOS_array, se=[], sn=[], su=[], first_epoch=[], last_epoch=[]);
 
 	# Packing up an object for returning
-	eastnorthfield = Velfield(name=[], elon=x_for_interp, nlat=y_for_interp, e=new_east,
+	eastnorthfield = los_projection_tools.Velfield(name=[], elon=x_for_interp, nlat=y_for_interp, e=new_east,
 		n=new_north, u=0*descending_LOS_array, se=[], sn=[], su=[], first_epoch=[], last_epoch=[]);
 
 	# Here I want to evaluate gradients at two hard-coded points. 
-	e_def1, n_def1, u_def1 = los_projection_math.get_point_enu_interp(my_param_collection.point1, f_east, f_north);
-	e_def2, n_def2, u_def2 = los_projection_math.get_point_enu_interp(my_param_collection.point2, f_east, f_north);
-	ascending1=los_projection_math.simple_project_ENU_to_LOS(e_def1,n_def1,u_def1,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle);
-	ascending2=los_projection_math.simple_project_ENU_to_LOS(e_def2,n_def2,u_def2,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle);
-	descending1=los_projection_math.simple_project_ENU_to_LOS(e_def1,n_def1,u_def1,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle);
-	descending2=los_projection_math.simple_project_ENU_to_LOS(e_def2,n_def2,u_def2,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle);
+	e_def1, n_def1, u_def1 = los_projection_tools.get_point_enu_interp(my_param_collection.point1, f_east, f_north);
+	e_def2, n_def2, u_def2 = los_projection_tools.get_point_enu_interp(my_param_collection.point2, f_east, f_north);
+	ascending1=los_projection_tools.simple_project_ENU_to_LOS(e_def1,n_def1,u_def1,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle);
+	ascending2=los_projection_tools.simple_project_ENU_to_LOS(e_def2,n_def2,u_def2,my_param_collection.ascending_flight_angle,my_param_collection.incidence_angle);
+	descending1=los_projection_tools.simple_project_ENU_to_LOS(e_def1,n_def1,u_def1,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle);
+	descending2=los_projection_tools.simple_project_ENU_to_LOS(e_def2,n_def2,u_def2,my_param_collection.descending_flight_angle,my_param_collection.incidence_angle);
 	evaluate_gradients(my_param_collection.point1, my_param_collection.point2, ascending1, ascending2, descending1, descending2);
 
 	return los_ascending_velfield, los_descending_velfield, eastnorthfield;

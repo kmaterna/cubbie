@@ -1,6 +1,6 @@
 # S1_batches/InSAR_GPS_Combo
 
-This set of functions helps one to compare GNSS and INSAR velocities.  To read GNSS velocities, it depends on a GNSS repo (currently called Mendocino_Geodesy), so please find that and put it on your path. 
+When you're ready to compare your InSAR with GNSS velocities, this set of functions can help.  To read GNSS velocities, it depends on a GNSS repo (currently called Mendocino_Geodesy), so make sure to find that and put it on your path. 
 
 ## Description
 
