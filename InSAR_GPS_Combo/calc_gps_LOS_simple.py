@@ -125,7 +125,7 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
 
 	# Take the reference point and transform its velocity into LOS. 
 	velref_e, velref_n, velref_u = los_projection_math.get_point_enu_interp([reflon, reflat], f_east=f_east, f_north=f_north)
-	LOS_reference=los_projection_math.simple_project_ENU_to_LOS(velref_e,velref_n,0,flight_angle,look_angle)[0];
+	LOS_reference=los_projection_math.simple_project_ENU_to_LOS(velref_e,velref_n,velref_u,flight_angle,look_angle)[0];
 
 	# Transform GPS field into LOS field
 	LOS_array=los_projection_math.simple_project_ENU_to_LOS(vel_tuple.e,vel_tuple.n,vel_tuple.u,flight_angle,look_angle);
