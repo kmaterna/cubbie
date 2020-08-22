@@ -12,16 +12,24 @@ if [[ "$#" -eq 0 ]]; then
   echo " -s start_time [yyyy-mm-dd or NOW]"
   echo " -e end_time [yyyy-mm-dd or NOW]"
   echo " -r region_box [lonW/lonE/latS/latN]"
-  echo " -p point [lon/lat]"
+  echo " -c coordinate [lon/lat]"
   echo " -o orbit_number [0-175]"
   echo " -d direction [Ascending/Descending]"
   echo " -z output_file"
+  echo " -u username"
+  echo " -p password"
   echo ""
   echo "  outputs:"
   echo "    search_results.txt or specified output_file (contains xml-style information on 0-100 results)"
   echo ""
-  echo "  Note: The scihub system will only print a maximum of 100 results to a file."
-  echo "    If you want to see more than 100 results, this script will cat them, but only up to a few hundred."
+  echo " Note: To use Scihub, you will generally need a Scihub Copernicus login."
+  echo "    You can type them directly into the callstring with -u and -p, or "
+  echo "    You can put your credentials into a file called ~/.wget_cred with format:"
+  echo "    scihub_username: your_username"
+  echo "    scihub_password: your_password"
+  echo ""
+  echo " Note: The scihub system will only print a maximum of 100 results to a file."
+  echo "    If you want to see more than 100 results, this script will cat them, but only up to a three hundred right now."
   echo "    More details at https://scihub.copernicus.eu/twiki/do/view/SciHubUserGuide/5APIsAndBatchScripting#URI_components"
   echo ""
   exit 1
@@ -31,7 +39,7 @@ fi
 output_file=search_results.txt
 
 # Parse arguments (:after options means it expects an argument)
-while getopts :s:e:r:p:o:d:b:z: opt; do
+while getopts :s:e:r:c:o:d:b:z:u:p: opt; do
   case $opt in
   	s)  # the start time
       echo "-s was triggered, Parameter: $OPTARG" >&2
@@ -67,7 +75,7 @@ while getopts :s:e:r:p:o:d:b:z: opt; do
       	exit 1
       fi
       ;;
-    p)  # the point 
+    c)  # the coordinate 
       echo "-p was triggered, parameter: $OPTARG" >&2
       point=$OPTARG
       components=$(echo $point | tr "/" "\n")  # the '/' symbol is the delimiter
@@ -99,6 +107,14 @@ while getopts :s:e:r:p:o:d:b:z: opt; do
       echo "-z was triggered, parameter: $OPTARG" >&2
       output_file=$OPTARG
       ;; 
+    u)  # username
+      echo "-u was triggered, parameter: $OPTARG" >&2
+      username=$OPTARG
+      ;;
+    p)  # password
+      echo "-p was triggered, parameter: $OPTARG" >&2
+      password=$OPTARG
+      ;;        
     \?)
       echo "Invalid option: -$OPTARG" >&2
       ;;
@@ -109,6 +125,27 @@ while getopts :s:e:r:p:o:d:b:z: opt; do
   esac
 done
 
+# Extracting scihub username and password from ~/.wget_cred in case they weren't provided
+if [ -z "$username" ]; then
+  echo "No Scihub username provided in callstring; finding your Scihub username in ~/.wget_cred"
+  username=`grep 'scihub_username' ~/.wget_cred | awk {'print $2'}`
+  echo "Scihub username found: "$username
+fi
+if [ -z "$password" ]; then
+  echo "No Scihub password provided in callstring; finding your Scihub password in ~/.wget_cred"
+  password=`grep 'scihub_password' ~/.wget_cred | awk {'print $2'}`
+  echo "Scihub password found."
+fi
+
+# Get the username and password from the user
+if [ -z "$username" ]; then
+  echo "No Scihub username has been found. Please read the documentation of this script for details. Exiting..."
+  exit 1
+fi
+if [ -z "$password" ]; then
+  echo "No Scihub password has been found. Please read the documentation of this script for details. Exiting..."
+  exit 1
+fi
 
 
 
@@ -159,24 +196,22 @@ search_query0=$search_query"&start=0&rows=100"
 echo $search_query0
 
 echo "Input options:" $@ > $output_file
-echo "wget --no-check-certificate --user=kmaterna --password=access_data "$search_query0 >> $output_file
-
+echo "wget --no-check-certificate --user="$username" --password= "$search_query0 >> $output_file
 # Execute the search using wget
-wget --no-check-certificate --auth-no-challenge --user=kmaterna --password=access_data "$search_query0" -O ->> $output_file
+wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query0" -O ->> $output_file
 num_results=`grep 'title>S1' $output_file | wc -l`
-
 
 # Execute again if we think there's more search results to be found (100-200 and 200-300 range). 
 if [ $num_results -eq "100" ]; then
   echo "We have 100 results... automatically searching for results #100-200"
   search_query1=$search_query"&start=100&rows=100"
-  wget --no-check-certificate --auth-no-challenge --user=kmaterna --password=access_data "$search_query1" -O ->> $output_file
+  wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query1" -O ->> $output_file
 fi
 num_results=`grep 'title>S1' $output_file | wc -l`
 if [ $num_results -eq "200" ]; then
   echo "We have 100 results... automatically searching for results #200-300"
   search_query2=$search_query"&start=200&rows=100"
-  wget --no-check-certificate --auth-no-challenge --user=kmaterna --password=access_data "$search_query2" -O ->> $output_file
+  wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query2" -O ->> $output_file
 fi
 
 
