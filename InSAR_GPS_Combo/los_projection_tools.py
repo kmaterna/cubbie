@@ -120,9 +120,13 @@ def look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u):
 
 
 
-def misfit_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, window_pixels=5):
-	# A function to calculate the RMS between a GNSS velocity field and an InSAR result. 
-	misfit_array = [];
+def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, window_pixels=5):
+	# A function to extract the paired LOS InSAR and GPS velocities
+	# at pixels given by lons/lats in gps_los_velfield
+	# It averages over a window of pixels whose width is given by an input parameter
+	# It only returns non-nan values
+	insar_los_array = [];
+	gps_los_array = [];
 	distance_tolerance = 0.01;  # degrees (approximately 1 km)
 	for i in range(len(gps_los_velfield.elon)):
 		xi, deg_distance_x = closest_index(xarray, gps_los_velfield.elon[i]);
@@ -132,8 +136,9 @@ def misfit_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
 			# default tolerance is about 1 km, and it shows whether or not we are accidentally outside of the InSAR domain
 			InSAR_LOS_value = np.nanmean(target_array);
 			if ~np.isnan(InSAR_LOS_value):
-				misfit_array.append(InSAR_LOS_value - gps_los_velfield.e[i]);
-	return np.array(misfit_array);
+				insar_los_array.append(InSAR_LOS_value);
+				gps_los_array.append(gps_los_velfield.e[i]);
+	return np.array(insar_los_array), np.array(gps_los_array);
 
 
 
