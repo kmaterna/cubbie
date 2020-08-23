@@ -110,39 +110,6 @@ def read_phase_data_no_isce(filename, nx, ny):
     phase = phase.reshape(final_shape);
     return phase;
 
-# If you don't have ISCE
-def read_unw_data_from_xml(filename):
-    # For the unw format produced by isce (one minor change from that format)
-    # (BIL scheme assumed)
-    # There must be a matching xml in this directory
-    # --------------------
-
-    # Parse xml in a slightly manual fashion, looking for length and width
-    xml_file = filename+".xml";
-    tree = ET.parse(xml_file);
-    root = tree.getroot();  # open xml file
-    for element in root:  # we can index through the root
-        if element.attrib['name']=="coordinate1":
-            for subE in element:
-                if len(subE)>0:
-                    if subE.attrib['name']=='size':
-                        ncols = int(subE[0].text);
-        if element.attrib['name']=="coordinate2":
-            for subE in element:
-                if len(subE)>0:
-                    if subE.attrib['name']=='size':
-                        nrows = int(subE[0].text);
-
-    # Open the binary file
-    f = open(filename,'rb');
-    final_shape=(nrows,ncols*2);  # unw has two bands with BIL scheme
-    num_data = final_shape[0]*final_shape[1];
-    rawnum = f.read();
-    floats = np.array(struct.unpack('f'*num_data, rawnum))
-    data = floats.reshape(final_shape); 
-    f.close();
-    return data;
-
 # ----------- WRITING FUNCTIONS ------------- # 
 
 def write_isce_data(data, nx, ny, dtype, filename, 
@@ -151,8 +118,7 @@ def write_isce_data(data, nx, ny, dtype, filename,
     # Plus creating an associated .vrt and .xml file
     # If DTYPE=="FLOAT": you're writing scalar data (float32)
     # IF DTYPE=="CFLOAT": you're writing complex data (float32 + j*float32)
-    import isce
-    import isceobj    
+    from isce.components import isceobj
     from osgeo import gdal
     print("Writing data as file %s " % filename);
     out = isceobj.createImage()
@@ -182,9 +148,8 @@ def write_isce_unw(data1, data2, nx, ny, dtype, filename,
     firstLat=None, firstLon=None, deltaLon=None, deltaLat=None,Xmin=None, Xmax=None):
     # ISCE uses band=2 for the unwrapped phase of .unw files
     # Writes to float32
-    import isce
-    import isceobj
-    from osgeo import gdal    
+    from isce.components import isceobj
+    from osgeo import gdal
     print("Writing data as file %s " % filename);
     out = isceobj.Image.createUnwImage()     
     out.setFilename(filename)
