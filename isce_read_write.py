@@ -119,7 +119,6 @@ def write_isce_data(data, nx, ny, dtype, filename,
     # If DTYPE=="FLOAT": you're writing scalar data (float32)
     # IF DTYPE=="CFLOAT": you're writing complex data (float32 + j*float32)
     from isce.components import isceobj
-    from osgeo import gdal
     print("Writing data as file %s " % filename);
     out = isceobj.createImage()
     out.setFilename(filename)
@@ -149,7 +148,6 @@ def write_isce_unw(data1, data2, nx, ny, dtype, filename,
     # ISCE uses band=2 for the unwrapped phase of .unw files
     # Writes to float32
     from isce.components import isceobj
-    from osgeo import gdal
     print("Writing data as file %s " % filename);
     out = isceobj.Image.createUnwImage()     
     out.setFilename(filename)
