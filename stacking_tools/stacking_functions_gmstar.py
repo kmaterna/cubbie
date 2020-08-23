@@ -1,44 +1,42 @@
 import collections
-import os,sys,shutil,argparse,time,configparser, glob
+import os, sys, glob
 import numpy as np
 from subprocess import call, check_output
 import stacking_utilities
-import aps 
+import aps
 import detrend_atm_topo
-import flattentopo_driver
 import phasefilt_plot
 import sbas
-import nsbas
 import nsbas_accessing
-import gps_into_LOS
 import Super_Simple_Stack as sss
+import coseismic_stack
 import netcdf_read_write as rwr
 import stack_corr
 
 
 # --------------- STEP 0: Setting up ------------ # 
 def set_up_output_directories(config_params):
-    if config_params.startstage>0:  
+    if config_params.startstage > 0:
         return;
-    if config_params.endstage<0:   
+    if config_params.endstage < 0:
         return;
     print("Stage 0 - Setting up output directories within %s." % config_params.ts_parent_dir);
-    call(['mkdir','-p',config_params.ts_parent_dir],shell=False);
+    call(['mkdir', '-p', config_params.ts_parent_dir], shell=False);
     # call(['mkdir','-p',config_params.ref_dir],shell=False);
-    call(['mkdir','-p',config_params.ts_output_dir],shell=False);
-    call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
-    call(['cp',config_params.skip_file, config_params.ts_output_dir],shell=False);
+    call(['mkdir', '-p', config_params.ts_output_dir], shell=False);
+    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
+    call(['cp', config_params.skip_file, config_params.ts_output_dir], shell=False);
     print("Setting up output directory at %s " % config_params.ts_output_dir);
     return;
 
 
 # --------------- STEP 1: Make corrections ------------ # 
 def make_corrections(config_params):
-    if config_params.startstage>1:  # if we're starting after, we don't do this. 
+    if config_params.startstage > 1:  # if we're starting after, we don't do this.
         return;
-    if config_params.endstage<1:   # if we're ending at intf, we don't do this. 
-        return;  
-    print("Stage 1 - Doing optional atm corrections");  
+    if config_params.endstage < 1:  # if we're ending at intf, we don't do this.
+        return;
+    print("Stage 1 - Doing optional atm corrections");
     # This is where we would implement GACOS, detrending, other atmospheric corrections, or unwrapping errors. 
     # Step 3A: Solve or exclude unwrapping errors
     # Step 3B: Try APS-based atmospheric correction
@@ -55,70 +53,72 @@ def make_corrections(config_params):
 # --------------- STEP 2: Get Reference Pixel ------------ # 
 
 def get_ref(config_params):
-    if config_params.startstage>2:  # if we're starting after, we don't do this. 
+    if config_params.startstage > 2:  # if we're starting after, we don't do this.
         return;
-    if config_params.endstage<2:   # if we're ending at intf, we don't do this. 
+    if config_params.endstage < 2:  # if we're ending at intf, we don't do this.
         return;
 
     print("Stage 2 - Finding Reference Information.");
 
     # Very general, takes all files and doesn't discriminate. 
-    intf_files=stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files = stacking_utilities.get_list_of_intf_all(config_params);
 
     # Here we need to get ref_idx if we don't have it already
-    rowref, colref = stacking_utilities.get_ref_index_merged(config_params.ref_loc, config_params.ref_idx, intf_files); 
+    rowref, colref = stacking_utilities.get_ref_index_merged(config_params.ref_loc, config_params.ref_idx, intf_files);
 
     return;
 
 
 # --------------- STEP 3: Velocities and Time Series! ------------ # 
 def vels_and_ts(config_params):
-    if config_params.startstage>3:  # if we're starting after, we don't do this. 
+    if config_params.startstage > 3:  # if we're starting after, we don't do this.
         return;
-    if config_params.endstage<3:   # if we're ending at intf, we don't do this. 
+    if config_params.endstage < 3:  # if we're ending at intf, we don't do this.
         return;
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     intfs = stacking_utilities.make_selection_of_intfs(config_params);
 
     # Plumbing stuff
-    rowref=int(config_params.ref_idx.split('/')[0]);
-    colref=int(config_params.ref_idx.split('/')[1]);
-    call(['cp','stacking.config',config_params.ts_output_dir],shell=False);
+    rowref = int(config_params.ref_idx.split('/')[0]);
+    colref = int(config_params.ref_idx.split('/')[1]);
+    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # Make signal_spread here. Can be commented if you already have it. 
     # corr_files = [i.replace("unwrap.grd","corr.grd") for i in intfs];
     # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
- 
-    if config_params.ts_type=="STACK":
+
+    if config_params.ts_type == "STACK":
         print("Running velocities by simple stack.")
         sss.drive_velocity_simple_stack(intfs, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-    if config_params.ts_type=="COSEISMIC":
+    if config_params.ts_type == "COSEISMIC":
         print("Making a simple coseismic stack");
-        coseismic_stack.drive_coseismic_stack_gmtsar(intfs, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
-    if config_params.ts_type=="SBAS":
+        coseismic_stack.drive_coseismic_stack_gmtsar(intfs, config_params.wavelength, rowref, colref,
+                                                     config_params.ts_output_dir);
+    if config_params.ts_type == "SBAS":
         print("Running velocities and time series by SBAS: SBAS currently broken. ");
-    if config_params.ts_type=="NSBAS":
+    if config_params.ts_type == "NSBAS":
         print("Running velocities and time series by NSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
         # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir); 
+        nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+                                             config_params.wavelength, rowref, colref, config_params.ts_output_dir);
         # nsbas_accessing.make_vels_from_ts(config_params.ts_output_dir);
-    if config_params.ts_type=="WNSBAS":
+    if config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by WNSBAS");
         # coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intfs);
         # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
         # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
         # nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files); 
-    return; 
+    return;
 
 
 # --------------- STEP 4: Geocoding Velocities ------------ # 
 def geocode_vels(config_params):
-    if config_params.startstage>4:  # if we're starting after, we don't do this. 
+    if config_params.startstage > 4:  # if we're starting after, we don't do this.
         return;
-    if config_params.endstage<4:   # if we're ending at intf, we don't do this. 
-        return; 
+    if config_params.endstage < 4:  # if we're ending at intf, we don't do this.
+        return;
 
     directory = config_params.ts_output_dir
     # vel_name = "velo_nsbas"
@@ -138,14 +138,10 @@ def geocode_vels(config_params):
     filelist = glob.glob("/Volumes/Ironwolf/Track_71/stacking/no_smoothing_shortintfs/combined/*.grd");
     datestrs = get_datestrs();
     for i in range(len(datestrs)):
-        call(["quick_geocode.csh","stacking/no_smoothing_shortintfs/combined","merged",datestrs[i]+".grd",datestrs[i]+"_ll"],shell=False);    
-    
-    return; 
+        call(["quick_geocode.csh", "stacking/no_smoothing_shortintfs/combined", "merged", datestrs[i] + ".grd",
+              datestrs[i] + "_ll"], shell=False);
 
+    return;
 
     # For later plotting, we want to project available GPS into LOS. 
     # gps_into_LOS.top_level_driver(config_params, rowref, colref);
-
-
-
-

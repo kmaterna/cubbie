@@ -5,14 +5,14 @@
 """
 
 import stacking_configparser
-import stacking_main_functions
+import stacking_functions_gmstar
 import stacking_functions_isce
 
 if __name__=="__main__":
 	config_params = stacking_configparser.read_config_isce();
 
 	# Step 0: set up output directories
-	stacking_main_functions.set_up_output_directories(config_params); 
+	stacking_functions_gmstar.set_up_output_directories(config_params);
 
 	# Step 1: make atmospheric corrections, etc. prior to TS
 	stacking_functions_isce.make_corrections_isce(config_params); 
