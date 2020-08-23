@@ -209,8 +209,8 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
 
 def main_function(rlks, alks, filt, xbounds, ybounds, coherence_cutoff):
 	# # For making all interferograms in their unwrapped form. 
-	xbounds=[float(xbounds.split(',')[0]),float(xbounds.split(',')[1])];
-	ybounds=[float(ybounds.split(',')[0]),float(ybounds.split(',')[1])];
+	xbounds = [float(xbounds.split(',')[0]),float(xbounds.split(',')[1])];
+	ybounds = [float(ybounds.split(',')[0]),float(ybounds.split(',')[1])];
 	igrams = glob.glob("../Igrams/????????_????????"); # **** this may change depending on where you are
 	for i in igrams:
 		date_string = i.split('/')[-1];
@@ -221,8 +221,8 @@ def main_function(rlks, alks, filt, xbounds, ybounds, coherence_cutoff):
 
 
 if __name__=="__main__":
-	rlks=20
-	alks=18
+	rlks = 20
+	alks = 18
 	filt = 1.5
 	xbounds = [0.4, 1.0]; # These are fractional units
 	ybounds = [0.15, 0.7];

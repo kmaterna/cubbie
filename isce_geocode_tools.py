@@ -7,7 +7,7 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 import sys, glob
-from subprocess import call, check_output
+from subprocess import call
 import isce_read_write
 import jpl_uav_read_write
 import mask_and_interpolate
