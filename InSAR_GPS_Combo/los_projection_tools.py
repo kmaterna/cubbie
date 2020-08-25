@@ -8,22 +8,14 @@
 # from Fialko et al., 2001. 
 
 import numpy as np
-import numpy.linalg
 import collections
 
-# A useful structure to hold GPS velocity fields and their LOS-projected versions
-# In the LOS-projected case, we use 'e' as the LOS velocity and the other columns are zeros
+
+
 Velfield = collections.namedtuple("Velfield", ['name', 'nlat', 'elon', 'n', 'e', 'u', 'sn', 'se', 'su', 'first_epoch',
                                                'last_epoch']);
-
-
-# Math and Trig Functions
-# -------------------------------- # 
-
-def cartesian_to_heading(cartesian_angle):
-    # Take a cartesian angle in degrees (CCW from east)
-    # Convert to heading angle in degrees (CW from north)
-    return 90 - cartesian_angle;
+# A useful structure to hold GPS velocity fields and their LOS-projected versions
+# In the LOS-projected case, we use 'e' as the LOS velocity and the other columns are zeros
 
 
 def closest_index(lst, K):
@@ -101,25 +93,6 @@ def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_poi
                 else:
                     velref_u = vel_tuple.u[i];
         return velref_e, velref_n, velref_u;
-
-
-def look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u):
-    """
-    lkv_e, lkv_n, lkv_u are the components of the look vector from ground to satellite
-    incidence angle is angle between look vector and vertical in degrees
-    Flight angle is clockwise from north in degrees
-    """
-    unit_lkv = [lkv_e, lkv_n, lkv_u]
-    unit_lkv = unit_lkv / np.linalg.norm(unit_lkv);
-    vert_vector = [0, 0, 1]
-    dotproduct = np.dot(unit_lkv, vert_vector);
-    incidence_angle = np.rad2deg(np.arccos(dotproduct));
-
-    lkv_horiz_angle = np.arctan2(lkv_n,
-                                 lkv_e);  # the cartesian angle of the horizontal look vector (negative small # for DESC)
-    heading_deg = cartesian_to_heading(np.rad2deg(lkv_horiz_angle));
-    flight_angle = heading_deg + 90;  # satellite flies 90 degrees away from look vector direction
-    return [flight_angle, incidence_angle];
 
 
 def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, window_pixels=5):

@@ -2,11 +2,11 @@
 # Using a grid of look vector components. 
 # The incidence angle of the look vector varies across the scene! 
 # The reference pixel must be a GPS station in the Velfield
-
 import numpy as np
 import netcdf_read_write
 import gps_io_functions
 import los_projection_tools
+import lkv_trig_math
 
 
 def top_level_driver(config_params):
@@ -56,7 +56,7 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
     for i in range(len(gps_velfield.elon)):
         lkv_e, lkv_n, lkv_u = get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up,
                                                               gps_velfield.elon[i], gps_velfield.nlat[i]);
-        [flight_angle_i, look_angle_i] = los_projection_tools.look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u);
+        [flight_angle_i, look_angle_i] = lkv_trig_math.look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u);
         LOS_array_i = los_projection_tools.simple_project_ENU_to_LOS(gps_velfield.e[i], gps_velfield.n[i],
                                                                      gps_velfield.u[i], flight_angle_i, look_angle_i);
         LOS_array.append(LOS_array_i);
@@ -67,8 +67,8 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
                                                                                                reference_point_name=reference_gps);
     lkv_e_ref, lkv_n_ref, lkv_u_ref = get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up,
                                                                       reflon, reflat);
-    [flight_angle_ref, look_angle_ref] = los_projection_tools.look_vector2flight_incidence_angles(lkv_e_ref, lkv_n_ref,
-                                                                                                  lkv_u_ref);
+    [flight_angle_ref, look_angle_ref] = lkv_trig_math.look_vector2flight_incidence_angles(lkv_e_ref, lkv_n_ref,
+                                                                                           lkv_u_ref);
     LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u, flight_angle_ref,
                                                                    look_angle_ref);
 
