@@ -187,35 +187,9 @@ def create_isce_stack_unw_geo(geocoded_dir, W, E, S, N):
         isce_read_write.plot_scalar_data(filename, colormap='rainbow', datamin=-50, datamax=200,
                                          outname='test_after_geocode.png', band=2);
 
-        print("DANGER! DO NOT CONTINUE WITHOUT FIXING THE CODE BELOW!")
-        sys.exit(0);
-
-        # ------------------ NOTE ----------------- #
-        # UNW IMAGES SHOULD HAVE TWO BANDS
-        # IF I EVER COME BACK TO THIS, I NEED TO RE-PLACE THIS WHOLE SECTION WITH A REGULAR WRITE COMMAND.
-
-        # THIS WHOLE SECTION COULD EVENTUALLY BE REMOVED NOW THAT I HAVE BETTER ISCE WRITE FUNCTIONS
-        # REPLACED WITH A SINGLE LINE CALL TO ISCE WRITE FUNCTIONS.
-        nlat = 508
-        nlon = 1325  # obviously will have to change depending on the situation.
-        disp = np.memmap(filename, dtype='<f4').reshape(nlat * 2, nlon)  # The right way to read this file.
-        band1 = disp[0:nlat, :];
-        band2 = disp[nlat:, :];
-
-        # Places the two images side by side . This is necessary for reading by Kite
-        properdata = np.hstack((band1, band2));
-        f2 = plt.plot();
-        plt.imshow(properdata)
-        plt.savefig('after_rearranging.png')
-        plt.close();
-        properdata.tofile(filename);
-
-        # There's a bit of a metadata problem when I do this, but hey, as long as it works in Kite, right?
-        # If you read this as a normal two-band ISCE file, it'll get messed up.
-        # But Kite is fine.  Oh well.
-        isce_read_write.plot_scalar_data(filename, colormap='rainbow', datamin=-50, datamax=200,
-                                         outname='test_after_geocode_band2.png', band=2);
+        print("DANGER! PLEASE FIGURE OUT A SIMPLE WRITE FUNCTION FOR THIS");
         i = i + 1;
+        sys.exit(0);
     return;
 
 
