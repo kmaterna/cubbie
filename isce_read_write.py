@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 import struct
 
 
-# ----------- READING FUNCTIONS ------------- # 
+# ----------- READING FUNCTIONS ------------- #
+
 
 def read_complex_data(GDALfilename):
     # Reads data into a 2D array where each element is a complex number. 
@@ -113,6 +114,19 @@ def read_phase_data_no_isce(filename, nx, ny):
     phase = np.arctan2(imag, real);
     phase = phase.reshape(final_shape);
     return phase;
+
+
+def read_isce_unw_geo(filename):
+    # Read the isce unwrapped geocoded product.
+    # Return the x and y axes too, in lon/lat
+    # Part of public-facing part of this project
+    xml_file = filename+'.xml'
+    data = read_scalar_data(filename, band=2);
+    (y, x) = np.shape(data);
+    firstLon, firstLat, dE, dN, _, _ = get_xmin_xmax_xinc_from_xml(xml_file);
+    xarray = np.arange(firstLon, firstLon+x*dE, dE);
+    yarray = np.arange(firstLat, firstLat+y*dN, dN);
+    return xarray, yarray, data;
 
 
 # ----------- WRITING FUNCTIONS ------------- #
@@ -285,3 +299,52 @@ def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbo
         fig.savefig(outname);
 
     return;
+
+
+def get_xmin_xmax_xinc_from_xml(xml_file):
+    isce_xml = ISCEXMLParser(xml_file)
+
+    coord_lon = getProperty(isce_xml, 'coordinate1')
+    coord_lat = getProperty(isce_xml, 'coordinate2')
+    dN = coord_lat['delta']
+    dE = coord_lon['delta']
+    nlon = int(coord_lon['size'])
+    nlat = int(coord_lat['size'])
+    firstLat = coord_lat['startingvalue']
+    firstLon = coord_lon['startingvalue']
+    xmin = firstLon;
+    xmax = coord_lon['startingvalue'] + (nlon * coord_lon['delta'])
+    return firstLon, firstLat, dE, dN, xmin, xmax;
+
+
+def ISCEXMLParser(filename):
+    import xml.etree.ElementTree as ET
+    root = ET.parse(filename).getroot()
+    return root;
+
+
+def type_convert(value):
+    for t in (float, int, str):
+        try:
+            return t(value)
+        except ValueError:
+            continue
+    raise ValueError('Could not convert value')
+
+
+def getProperty(root, name):
+    name = name.lower()
+    values = {}
+
+    for child in root.iter():
+        child_name = child.get('name')
+        if isinstance(child_name, str):
+            child_name = child_name.lower()
+        if child_name == name.lower():
+            if child.tag == 'property':
+                return type_convert(child.find('value').text)
+            elif child.tag == 'component':
+                values = {}
+                for prop in child.iter('property'):
+                    values[prop.get('name')] = type_convert(prop.find('value').text)
+    return values

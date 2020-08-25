@@ -13,8 +13,9 @@ import jpl_uav_read_write
 import mask_and_interpolate
 import netcdf_read_write as rwr
 import haversine
+from isce_read_write import get_xmin_xmax_xinc_from_xml
 from lkv_trig_math import bearing_to_cartesian, complement_angle, cartesian_to_ccw_from_north, rotate_vector_by_angle, \
-    normalize_look_vector, calc_azimuth_incidence_from_lkv
+    normalize_look_vector, calc_rdr_azimuth_incidence_from_lkv_plane_down
 
 
 # ------------ UTILITY FUNCTIONS -------------- #
@@ -108,7 +109,7 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     lkvn_array = np.reshape(lkv_n, (llh_pixels_azimuth, llh_pixels_range));
     lkvu_array = np.reshape(lkv_u, (llh_pixels_azimuth, llh_pixels_range));
     lkve_array, lkvn_array, lkvu_array = normalize_look_vector(lkve_array, lkvn_array, lkvu_array);
-    azimuth, incidence = calc_azimuth_incidence_from_lkv(lkve_array, lkvn_array, lkvu_array);
+    azimuth, incidence = calc_rdr_azimuth_incidence_from_lkv_plane_down(lkve_array, lkvn_array, lkvu_array);
 
     # # write the data into a GDAL format.
     isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT",
@@ -254,54 +255,6 @@ def inspect_isce(geocoded_dir):
         isce_read_write.plot_scalar_data(datafile, colormap="rainbow", datamin=-50, datamax=200,
                                          outname=folder_i + "/geocoded_data.png");
     return;
-
-
-def get_xmin_xmax_xinc_from_xml(xml_file):
-    isce_xml = ISCEXMLParser(xml_file)
-
-    coord_lon = getProperty(isce_xml, 'coordinate1')
-    coord_lat = getProperty(isce_xml, 'coordinate2')
-    dN = coord_lat['delta']
-    dE = coord_lon['delta']
-    nlon = int(coord_lon['size'])
-    nlat = int(coord_lat['size'])
-    firstLat = coord_lat['startingvalue']
-    firstLon = coord_lon['startingvalue']
-    xmin = firstLon;
-    xmax = coord_lon['startingvalue'] + (nlon * coord_lon['delta'])
-    return firstLon, firstLat, dE, dN, xmin, xmax;
-
-
-def ISCEXMLParser(filename):
-    import xml.etree.ElementTree as ET
-    root = ET.parse(filename).getroot()
-    return root;
-
-
-def type_convert(value):
-    for t in (float, int, str):
-        try:
-            return t(value)
-        except ValueError:
-            continue
-    raise ValueError('Could not convert value')
-
-
-def getProperty(root, name):
-    name = name.lower()
-
-    for child in root.iter():
-        child_name = child.get('name')
-        if isinstance(child_name, str):
-            child_name = child_name.lower()
-        if child_name == name.lower():
-            if child.tag == 'property':
-                return type_convert(child.find('value').text)
-            elif child.tag == 'component':
-                values = {}
-                for prop in child.iter('property'):
-                    values[prop.get('name')] = type_convert(prop.find('value').text)
-    return values
 
 
 def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):

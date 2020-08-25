@@ -43,21 +43,36 @@ def normalize_look_vector(lkve, lkvn, lkvu):
     return norm_lkve, norm_lkvn, norm_lkvu;
 
 
-def calc_azimuth_incidence_from_lkv(lkve, lkvn, lkvu):
+def calc_rdr_azimuth_incidence_from_lkv_plane_down(lkve, lkvn, lkvu):
     # lkve, lkvn, lkvu describe vector from plane to ground
-    # Convention: Azimuth angle measured from North in Anti-clockwise direction, in degrees, from ground to plane (I think)
+    # Convention: Azimuth angle measured from North in Anti-clockwise direction, in degrees, from ground to plane
     # Convention: Incidence angle measured from vertical at target (aka degrees from vertical at satellite) (always +ve), in degrees
     east_sq = np.square(lkve);
     north_sq = np.square(lkvn);
     sumarray = np.add(east_sq, north_sq);
     magnitude = np.sqrt(sumarray);
-    azimuth_standard = np.arctan2(-lkvn, -lkve);
+    azimuth_standard = np.arctan2(-lkvn, -lkve);   # azimuth is negative the direction of the look vector from plane down
     azimuth_standard = np.rad2deg(azimuth_standard);
     azimuth = np.add(azimuth_standard, -90);
 
     incidence = np.arctan2(magnitude, -lkvu);
     incidence = np.rad2deg(incidence);
     return azimuth, incidence;
+
+
+def calc_lkv_from_rdr_azimuth_incidence(azimuth, incidence):
+    # Convention: Azimuth angle measured from North in Anti-clockwise direction, in degrees, from ground to plane
+    # Convention: Incidence angle measured from vertical at target (aka degrees from vertical at satellite) (always +ve), in degrees
+    # lkve, lkvn, lkvu describe vector from ground to plane
+
+    azimuth_standard = np.add(azimuth, 90);  # turning the CCW from N into CCW from East
+    azimuth_rad = np.deg2rad(azimuth_standard);
+    incidence_rad = np.deg2rad(incidence);
+    lkv_u = np.cos(incidence_rad);
+    lkv_n = np.sin(incidence_rad) * np.sin(azimuth_rad);
+    lkv_e = np.sin(incidence_rad) * np.cos(azimuth_rad);
+
+    return lkv_e, lkv_n, lkv_u;
 
 
 def look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u):
