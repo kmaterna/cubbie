@@ -34,7 +34,10 @@ def configure(config_params):
 # ------------------ INPUTS --------------------- #
 def inputs_gps(gps_file, coordbox_gps):
     # The velocities within the latlon box.
-    [gps_velfield] = gps_io_functions.read_pbo_vel_file(gps_file);
+    if '.vel' in gps_file:
+        [gps_velfield] = gps_io_functions.read_gamit_velfile(gps_file);
+    else:
+        [gps_velfield] = gps_io_functions.read_pbo_vel_file(gps_file);
     [gps_velfield] = gps_io_functions.remove_duplicates(gps_velfield);
     [gps_velfield] = gps_io_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
     return [gps_velfield];
