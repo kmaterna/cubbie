@@ -22,7 +22,7 @@ def make_corrections_isce(config_params):
         return;
     if config_params.endstage < 1:  # if we're ending before, we don't do this.
         return;
-    print("Stage 1 - Doing optional corrections");
+    print("Start Stage 1 - optional atm corrections");
 
     # For ISCE, we might want to re-make all the interferograms and unwrap them in custom fashion.
     # This operates on files in the Igram directory, no need to move directories yourself.
@@ -42,6 +42,7 @@ def make_corrections_isce(config_params):
                             'Signal Spread above cor=' + str(cor_value),
                             config_params.ts_output_dir + '/signalspread_full.png',
                             'Percentage of coherence', aspect=1 / 4, invert_yaxis=False);
+    print("End Stage 1 - optional atm corrections\n");
 
     return;
 
@@ -171,11 +172,11 @@ def get_ref(config_params):
     if config_params.endstage < 2:  # if we're ending at intf, we don't do this.
         return;
 
-    print("Stage 2 - Collecting referenced unwrapped.");
+    print("Start Stage 2 - Collecting referenced unwrapped");
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # Very general, takes all files and doesn't discriminate. 
-    intf_files = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files,_ = stacking_utilities.get_list_of_intf_all(config_params);
 
     # If we are starting manually, we find reference pixel by using 100% pixels...
     if config_params.ref_idx == "" and config_params.ref_loc == "":
@@ -193,6 +194,8 @@ def get_ref(config_params):
 
     stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir)
 
+    print("End Stage 2 - Collecting referenced unwrapped\n");
+
     return;
 
 
@@ -203,13 +206,15 @@ def vels_and_ts(config_params):
         return;
     if config_params.endstage < 3:  # if we're ending at intf, we don't do this.
         return;
+    
+    print("Start Stage 3 - Velocities and Time Series");
+    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);    
 
     # This is where the hand-picking takes place.
     # Ex: manual excludes, manual selects, long intfs only, ramp-removed, etc.
-    intf_files = stacking_utilities.make_selection_of_intfs(config_params);
+    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
-    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # Make signal_spread here. Can be commented if you already have it.
     # stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
@@ -230,10 +235,11 @@ def vels_and_ts(config_params):
                                            config_params.wavelength, rowref, colref, config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by WNSBAS");
-        coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intf_files);
         nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
                                            config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-                                           coh_files);
+                                           corr_files);
+
+    print("End Stage 3 - Velocities and Time Series\n");
     return;
 
 
@@ -243,6 +249,7 @@ def geocode_vels(config_params):
         return;
     if config_params.endstage < 4:  # if we're ending before, we don't do this.
         return;
+    print("Start Stage 4 - Geocoding");
     if config_params.SAT == "UAVSAR":
         geocode_directory = config_params.ts_output_dir + "/isce_geocode";
         # Deleting the contents of this folder would be a good automatic step in the future.
@@ -253,4 +260,5 @@ def geocode_vels(config_params):
         isce_geocode_tools.create_isce_stack_unw_geo(geocode_directory, W, E, S, N);
         isce_geocode_tools.create_isce_stack_rdr_geo(geocode_directory, W, E, S, N);
         isce_geocode_tools.inspect_isce(geocode_directory);
+    print("End Stage 4 - Geocoding");    
     return;

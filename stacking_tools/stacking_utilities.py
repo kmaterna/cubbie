@@ -30,16 +30,22 @@ def write_super_master_batch_config(masterid):
 
 def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
-    # The smarter selection takes place in make_selection_of_intfs. 
-    # This is where the directory tree is coded. 
+    # It is designed to work with both ISCE and GMTSAR files
+    # The more advanced selection takes place in make_selection_of_intfs. 
     if config_params.SAT == "S1":
-        total_intf_list = glob.glob(config_params.intf_dir + "/???????_???????/unwrap.grd");
+        total_intf_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.intf_filename);
+        total_corr_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.corr_filename);
     elif config_params.SAT == "UAVSAR":
         # Specific to the case of UAVSAR stacks with alt-unwrapped taking place
         total_intf_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.uwrappedphase");
+        total_corr_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.cor");
     print("Identifying all unwrapped intfs in %s: " % config_params.intf_dir);
-    print("Found %d interferograms for stacking. " % (len(total_intf_list)));
-    return total_intf_list;
+    print("  Found %d interferograms for stacking. " % (len(total_intf_list)));
+    print("  Found %d coherence files for stacking. " % (len(total_corr_list)));
+    if len(total_intf_list) != len(total_corr_list):
+        print("ERROR!  Length of interferograms does match length of coherence files!  Please fix this before proceeding. \n");
+        sys.exit(1);
+    return total_intf_list, total_corr_list;
 
 
 def get_xdates_from_intf_tuple(intf_tuple):
@@ -55,30 +61,30 @@ def get_xdates_from_intf_tuple(intf_tuple):
     return xdates;
 
 
-def get_ref_index_merged(ref_loc, ref_idx, intf_files):
-    # Using merged files, get the index of the reference pixel. 
+def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
+    # Get the index of the reference pixel (generally using merged-subswath files)
     # If you don't have the reference pixel in the config file, 
     # the program will stop execution so you can write it there.
     print("Identifying reference pixel:");
-    if ref_idx != "":
+    if ref_idx != "":  # First preference: Get the reference pixel index from the config file
         rowref = int(ref_idx.split('/')[0])
         colref = int(ref_idx.split('/')[1])
-        print("Returning rowref, colref %d, %d from config file" % (rowref, colref));
+        print("  Found rowref, colref = %d, %d from config file" % (rowref, colref));
     else:
         lon = float(ref_loc.split('/')[0])
         lat = float(ref_loc.split('/')[1])
-        print("Finding coordinate %.3f, %.3f in grd file" % (lon, lat))
-        trans_dat = "merged/trans.dat";
-        example_grd = intf_files[0];
-        rowref, colref = get_index_merged(lon, lat, trans_dat, example_grd);
-        print("Found reference coordinate at row, col %d, %d " % (rowref, colref));
-        print("Please write this into your config file. ")
-        sys.exit(0);
+        if geocoded_flag:   # Second preference: Extract the lat/lon from already-geocoded intf_files
+            rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0]);
+        else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
+            trans_dat = "merged/trans.dat";
+            rowref, colref = get_index_merged(lon, lat, trans_dat, itnf_files[0]);
+        print("\nSTOP! Please write the reference row/col into your config file. \n")
+        sys.exit(1);
     return rowref, colref;
 
 
 def get_index_merged(lon, lat, trans_dat, example_grd):
-    print("Finding coordinate %.3f, %.3f in grd file" % (lon, lat))
+    print("  Finding coordinate %.3f, %.3f in grd file" % (lon, lat))
     [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, example_grd, lon, lat);
     if np.isnan(ra) or np.isnan(az):
         print("WARNING: Cannot Find %f %f in file." % (lon, lat));
@@ -86,40 +92,52 @@ def get_index_merged(lon, lat, trans_dat, example_grd):
         colref = np.nan;
     else:
         [rowref, colref] = get_ra_rc_from_ll.get_nearest_row_col(example_grd, ra, az);
-        print("Found Coordinate at row, col %d, %d " % (rowref, colref));
+        print("  Found Coordinate at row, col %d, %d " % (rowref, colref));
     return rowref, colref;
 
 
+def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
+    # Find the nearest pixel to a reference point in a geocoded grid
+    print("  Finding reference pixel of %.4f, %.4f in geocoded interferograms." % (ref_lon, ref_lat) );
+    [xdata, ydata, _] = netcdf_read_write.read_netcdf4_variables(ifile, "lon","lat", "z");
+    if xdata[0] > 180:   # If numbers are in the range above 180, turn them into -180 to 180
+        xdata = [i-360 for i in xdata];
+    row_idx = np.argmin(np.abs(np.array(ydata) - ref_lat));
+    col_idx = np.argmin(np.abs(np.array(xdata) - ref_lon));
+    print("  Found reference pixel's coordinates at row/col: %d/%d " % (rowref, colref));    
+    return row_idx, col_idx;
+
+
 # Turn interferograms into date-date-filename tuples
-def get_intf_dates_gmtsar(total_intf_list):
+def get_intf_datetuple_gmtsar_swath(total_intf_list, total_corr_list):
     intf_tuple_list = [];
-    for item in total_intf_list:
-        datesplit = item.split('/')[-1];  # example: 2015157_2018177_unwrap.grd
+    for i in range(len(total_intf_list)):
+        datesplit = total_intf_list[i].split('/')[-1];  # example: 2015157_2018177_unwrap.grd
         date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1), "%Y%j");
         date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1),
                                      "%Y%j");  # adding 1 to the date because 000 = January 1
-        intf_tuple_list.append((date1, date2, item))
+        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]))
     return intf_tuple_list;
 
 
-def get_intf_dates_gmtsar_merged(total_intf_list):
+def get_intf_datetuple_gmtsar_merged(total_intf_list, total_corr_list):
     intf_tuple_list = [];
-    for item in total_intf_list:
-        datesplit = item.split('/')[-2];  # example: merged/2015133_2015157/unwrap.grd
+    for i in range(len(total_intf_list)):
+        datesplit = total_intf_list[i].split('/')[-2];  # example: merged/2015133_2015157/unwrap.grd
         date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1), "%Y%j");
         date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1),
                                      "%Y%j");  # adding 1 to the date because 000 = January 1
-        intf_tuple_list.append((date1, date2, item));
+        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
     return intf_tuple_list;
 
 
-def get_intf_dates_isce(total_intf_list):
+def get_intf_datetuple_isce(total_intf_list, total_corr_list):
     intf_tuple_list = [];
-    for item in total_intf_list:
-        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", item)[0];  # example: 20100402_20140304
+    for i in range(len(total_intf_list)):
+        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", total_intf_list[i])[0];  # example: 20100402_20140304
         date1 = dt.datetime.strptime(datesplit[0:8], "%Y%m%d");
         date2 = dt.datetime.strptime(datesplit[9:17], "%Y%m%d");
-        intf_tuple_list.append((date1, date2, item))
+        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
     return intf_tuple_list;
 
 
@@ -155,7 +173,7 @@ def exclude_intfs_manually(total_intf_tuple, skip_file):
     return select_intf_tuple;
 
 
-def include_coseismic_intfs(total_intf_tuple, coseismic):
+def include_only_coseismic_intfs(total_intf_tuple, coseismic):
     # Implements a filter for spanning a coseismic interval, if you include one. 
     select_intf_tuple = [];
     if coseismic == "":
@@ -173,90 +191,82 @@ def include_coseismic_intfs(total_intf_tuple, coseismic):
 def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
     # Here, we look for each interferogram that falls totally within the time range 
     # given in the config file.
-    print("Including only interferograms in time range %s to %s ." % (dt.datetime.strftime(start_time, "%Y-%m-%d"),
+    if start_time == "" and end_time == "":
+        return total_intf_tuple;
+    print("Including only interferograms in time range %s to %s." % (dt.datetime.strftime(start_time, "%Y-%m-%d"),
                                                                       dt.datetime.strftime(end_time, "%Y-%m-%d")));
     print(" Starting with %d interferograms " % len(total_intf_tuple))
     select_intf_tuple = [];
     for mytuple in total_intf_tuple:
-        if mytuple[0] >= start_time and mytuple[0] <= end_time:
-            if mytuple[1] >= start_time and mytuple[1] <= end_time:
+        if start_time <= mytuple[0] <= end_time:
+            if start_time <= mytuple[1] <= end_time:
                 select_intf_tuple.append(mytuple);  # in the case of no coseismic constraint
     print(" Returning %d interferograms " % len(select_intf_tuple));
     return select_intf_tuple;
 
 
-def exclude_timeinterval_intfs(total_intf_tuple, days=300, criterion="longer"):
-    # Exclude interferograms of a certain time interval (such as shorter than one year, or longer than one year);
+def include_timeinterval_intfs(total_intf_tuple, intf_timespan):
+    # Only include interferograms of a certain time interval (such as shorter than one year, or longer than one year);
+    # intf_timespan is a string with the format '300+' for longer than 300 days etc.
+    if intf_timespan == "":
+        return total_intf_tuple;
     select_intf_tuple = [];
-    print("Excluding interferograms %s than %d days " % (criterion, days));
+    if intf_timespan[-1] == '+':
+        criterion = 'longer'
+    else:
+        criterion = 'shorter'
+    days = int(intf_timespan[0:-1]);
+    print("Only including interferograms %s than %d days " % (criterion, days));
     for mytuple in total_intf_tuple:
         datedelta = (mytuple[1] - mytuple[0]).days;
         if criterion == "longer":
-            if datedelta < days:
+            if datedelta > days:
                 select_intf_tuple.append(mytuple);
         else:
-            if datedelta > days:
+            if datedelta < days:
                 select_intf_tuple.append(mytuple);
     print(" Returning %d interferograms " % len(select_intf_tuple));
     return select_intf_tuple;
 
 
-def make_selection_of_intfs(config_params):
-    # Get the right intf files
-    # The working internal format is a tuple of (d1, d2, filename)
-    total_intf_list = get_list_of_intf_all(config_params);
-    if config_params.SAT == "S1":
-        intf_tuples = get_intf_dates_gmtsar_merged(total_intf_list);
-    elif config_params.SAT == "UAVSAR":
-        intf_tuples = get_intf_dates_isce(total_intf_list);
+def write_intf_record(intf_tuple_list, record_file):
+    print("Writing out list of %d interferograms used in this run to %s" % (len(intf_tuple_list), record_file));
+    ofile = open(record_file, 'w');
+    ofile.write("List of %d interferograms used in this run:\n" % (len(intf_tuple_list)));
+    for mytuple in intf_tuple_list:
+        ofile.write("%s\n" % (mytuple[2]));
+    ofile.close();
+    return;
 
+
+def make_selection_of_intfs(config_params):
     # ------------------------------ # 
     # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
     # WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT. 
     # THIS DEPENDS ON YOUR CONFIG SETTINGS
-    # ------------------------------ #         
+    # ------------------------------ # 
+    # The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
+    total_intf_list, total_corr_list = get_list_of_intf_all(config_params);
+    if config_params.SAT == "S1":
+        intf_tuples = get_intf_datetuple_gmtsar_merged(total_intf_list, total_corr_list);
+    elif config_params.SAT == "UAVSAR":
+        intf_tuples = get_intf_datetuple_isce(total_intf_list, total_corr_list);
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
     select_intf_tuples = include_intfs_by_time_range(intf_tuples, config_params.start_time, config_params.end_time);
-    select_intf_tuples = include_coseismic_intfs(select_intf_tuples, config_params.coseismic);
+    select_intf_tuples = include_only_coseismic_intfs(select_intf_tuples, config_params.coseismic);
 
-    # Employing the Manual Removes
+    # Do you only want to include long or short interferograms? 
+    select_intf_tuples = include_timeinterval_intfs(select_intf_tuples, config_params.intf_timespan);
+
+    # Manual Excludes? 
     select_intf_tuples = exclude_intfs_manually(select_intf_tuples, config_params.skip_file);
 
-    # Do you want to exclude long or short interferograms?  Manual here. 
-    select_intf_tuples = exclude_timeinterval_intfs(select_intf_tuples, days=300, criterion="longer");
-
-    if config_params.ts_type == "STACK":
-        # If STACK, then we are stacking only the long interferograms. 
-        print("Selecting interferograms for long-intf stacking and velocity formation.");
-        select_intf_tuples = exclude_timeinterval_intfs(select_intf_tuples, days=300, criterion="shorter");
-
-    # Writing the exact interferograms used in this run. 
-    record_file = config_params.ts_output_dir + "/" + "intf_record.txt";
-    print("Writing out list of %d interferograms used in this run to %s" % (len(select_intf_tuples), record_file));
-    ofile = open(record_file, 'w');
-    ofile.write("List of %d interferograms used in this run:\n" % (len(select_intf_tuples)));
-    for mytuple in select_intf_tuples:
-        ofile.write("%s\n" % (mytuple[2]));
-    ofile.close();
+    # Writing the exact interferograms used in this run, and returning file names. 
+    write_intf_record(select_intf_tuples, config_params.ts_output_dir+"/intf_record.txt")
     select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
-    return select_intf_list;
-
-
-def make_selection_of_coh_files(config_params, intf_files):
-    # Selecting coherence information for each intf_file we've already determined. 
-    coh_files = [];
-    for i in range(len(intf_files)):
-        if config_params.SAT == "UAVSAR":
-            datestring = intf_files[i].split('/')[-1][5:22];
-            print(datestring)
-            coh_file = "../Igrams/" + datestring + "/alt_unwrapped/filt_" + datestring + "_cut.cor";
-            coh_files.append(coh_file);
-        if config_params.SAT == "S1":
-            coh_file = intf_files[i].replace("unwrap.grd", "corr.grd");
-            coh_files.append(coh_file);
-    print("Returning %d files with coherence information " % (len(coh_files)))
-    return coh_files;
+    select_corr_list = [mytuple[3] for mytuple in select_intf_tuples]
+    return select_intf_list, select_corr_list;
 
 
 # Functions to get TS points in row/col coordinates
