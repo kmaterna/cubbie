@@ -9,12 +9,12 @@ import nsbas
 
 
 # LET'S GET A VELOCITY FIELD
-def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
+def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, rowref, colref, outdir, coh_files=None):
     # GMTSAR DRIVING VELOCITIES
     signal_spread_file = outdir + "/signalspread.nc"
     intf_tuple = rmd.reader(intf_files);
-    coh_tuple = [];
-    if coh_files != []:
+    coh_tuple = None;
+    if coh_files is not None:
         coh_tuple = rmd.reader(coh_files);
     signal_spread_data = rwr.read_grd(signal_spread_file);
     velocities = nsbas.Velocities(intf_tuple, nsbas_min_intfs, smoothing, wavelength, rowref, colref,
@@ -25,7 +25,7 @@ def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, ro
 
 
 # LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
-def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
+def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, rowref, colref, outdir, coh_files=None):
     # For general use, please provide a file with [lon, lat, row, col, name]
     lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file);
     if len(lons) == 0:
@@ -46,15 +46,15 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 
 
 # LET'S GET THE FULL TS FOR EVERY PIXEL
-def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
+def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=None):
     # SETUP. 
     start_index = 0;
     end_index = 7000000;
     signal_spread_file = outdir + "/signalspread.nc"
 
     intf_tuple = rmd.reader(intf_files);
-    coh_tuple = [];
-    if coh_files != []:
+    coh_tuple = None;
+    if coh_files is not None:
         coh_tuple = rmd.reader(coh_files);
     xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
     signal_spread_data = rwr.read_grd(signal_spread_file);
@@ -82,18 +82,19 @@ def make_vels_from_ts(ts_dir, geocoded=False):
 
 
 # LET'S GET THE FULL TS FOR UAVSAR/ISCE FILES.
-def drive_full_TS_isce(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=[]):
+def drive_full_TS_isce(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, coh_files=None):
     # SETUP. 
     signal_spread_file = outdir + "/signalspread_cut.nc"
     intf_tuple = rmd.reader_isce(intf_files);
-    coh_tuple = [];
-    if coh_files != []:
+    coh_tuple = None;
+    if coh_files is not None:
         coh_tuple = rmd.reader_isce(coh_files);
     xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
     signal_spread_data = rwr.read_grd(signal_spread_file);
 
     # TIME SERIES
-    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple=coh_tuple);
+    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data,
+                       coh_tuple=coh_tuple);
 
     # OUTPUTS
     TS_NC_file = outdir + "/TS.nc";

@@ -8,7 +8,7 @@ import stacking_configparser
 import stacking_functions_gmstar
 import stacking_functions_isce
 
-if __name__=="__main__":
+if __name__ == "__main__":
 	config_params = stacking_configparser.read_config_isce();
 
 	# Step 0: set up output directories

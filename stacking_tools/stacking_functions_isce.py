@@ -1,7 +1,7 @@
-import os, sys, configparser, glob
+import sys, glob
 import numpy as np
 import matplotlib.pyplot as plt
-from subprocess import call, check_output
+from subprocess import call
 import stacking_utilities
 import readmytupledata
 import stack_corr
@@ -77,7 +77,7 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
                 xpixels_good.append(j);
                 ypixels_good.append(i);
                 # Here we will adjust parameters until we find a reference pixel that we like.
-                if j > 280 and j < 300 and i > 2500 and i < 2700:
+                if 280 < j < 300 and 2500 < i < 2700:
                     xpixels_options.append(j);
                     ypixels_options.append(i);
 
@@ -176,7 +176,7 @@ def get_ref(config_params):
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # Very general, takes all files and doesn't discriminate. 
-    intf_files,_ = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files, _ = stacking_utilities.get_list_of_intf_all(config_params);
 
     # If we are starting manually, we find reference pixel by using 100% pixels...
     if config_params.ref_idx == "" and config_params.ref_loc == "":

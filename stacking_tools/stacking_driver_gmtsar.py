@@ -6,7 +6,7 @@
 import stacking_configparser
 import stacking_functions_gmstar
 
-if __name__=="__main__":
+if __name__ == "__main__":
 	config_params = stacking_configparser.read_config();
 
 	# Step 0: set up output directories

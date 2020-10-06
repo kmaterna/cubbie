@@ -2,13 +2,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import collections
-import glob, sys, math
+import sys, math
 import datetime as dt
 from subprocess import call
 import sentinel_utilities
 import stacking_utilities
-import readmytupledata as rmd
 import netcdf_read_write as rwr
 import stack_corr
 
@@ -29,7 +27,7 @@ def make_stack_corr_custom(mydata, signal_spread_file):
 # The point here is to loop through each pixel, determine if there's enough data to use, and then
 # make an NSBAS matrix describing each image that's a real number (not nan).
 
-def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple=[]):
+def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple=None):
     # This is how you access velocity solutions from NSBAS
     retval = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
     datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct);
@@ -45,7 +43,7 @@ def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colre
 
 
 def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index=0,
-            end_index=10e6, coh_tuple=[]):
+            end_index=10e6, coh_tuple=None):
     # This is how you access Time Series solutions from NSBAS
     datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct);
     # Establishing the return array
@@ -74,7 +72,7 @@ def Velocities_from_TS(ts_tuple):
     return retval;
 
 
-def iterator_func(intf_tuple, func, retval, start_index=[], end_index=[]):
+def iterator_func(intf_tuple, func, retval, start_index=0, end_index=None):
     # This iterator performs a for loop. It assumes the return value can be stored in an array of ixj
     # if np.shape(retval) != np.shape(signal_spread_data):
     # 	print("ERROR: signal spread does not match input data. Stopping immediately. ");
@@ -87,9 +85,7 @@ def iterator_func(intf_tuple, func, retval, start_index=[], end_index=[]):
     previous_time = dt.datetime.now();
     c = 0;
     true_count = 1;
-    if start_index == []:
-        start_index = 0;
-    if end_index == []:
+    if end_index is None:
         end_index = len(intf_tuple.yvalues) * len(intf_tuple.xvalues);
     it = np.nditer(intf_tuple.zvalues[0, :, :], flags=['multi_index'],
                    order='F');  # iterate through the 3D array of data
@@ -120,12 +116,12 @@ def iterator_func(intf_tuple, func, retval, start_index=[], end_index=[]):
 
 
 def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
-                x_axis_days, coh_tuple=[]):
+                x_axis_days, coh_tuple=None):
     signal_spread = signal_spread_data[i, j];
     pixel_value = intf_tuple.zvalues[:, i, j];
     reference_pixel_value = intf_tuple.zvalues[:, rowref, colref];
-    if coh_tuple == []:
-        coh_value = [];
+    if coh_tuple is None:
+        coh_value = None;
     else:
         coh_value = coh_tuple.zvalues[:, i, j];
     if signal_spread > nsbas_good_perc:
@@ -140,15 +136,15 @@ def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref
 
 
 def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
-               x_axis_days, coh_tuple=[]):
+               x_axis_days, coh_tuple=None):
     # For a given iteration, what's the right time series?
     empty_vector = np.empty(np.shape(x_axis_days));  # Length of the TS model
     empty_vector[:] = np.nan;
     signal_spread = signal_spread_data[i, j];
     pixel_value = intf_tuple.zvalues[:, i, j];
     reference_pixel_value = intf_tuple.zvalues[:, rowref, colref];
-    if coh_tuple == []:
-        coh_value = [];
+    if coh_tuple is None:
+        coh_value = None;
     else:
         coh_value = coh_tuple.zvalues[:, i, j];
     if signal_spread > nsbas_good_perc:
@@ -194,7 +190,7 @@ def get_TS_dates(date_pairs):
     return datestrs, x_axis_datetimes, x_axis_days;
 
 
-def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=[]):
+def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=None):
     # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram.
     # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
     # This solves Gm = d for the movement of the pixel with smoothing.
@@ -216,7 +212,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
             d = np.append(d, pixel_value[i]);  # removes the nans from the computation.
             date_pairs_used.append(
                 date_pairs[i]);  # might be a slightly shorter array of which interferograms actually got used.
-            if coh_value != []:
+            if coh_value is not None:
                 diagonals.append(np.power(coh_value[i], 2));  # using coherence squared as the weighting.
             else:
                 diagonals.append(1);
@@ -254,7 +250,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
             d = np.append(d, 0);
 
     # solving the SBAS linear least squares equation for displacement between each epoch.
-    if coh_value != []:
+    if coh_value is not None:
         GTWG = np.dot(np.transpose(G), np.dot(W, G))
         GTWd = np.dot(np.transpose(G), np.dot(W, d))
         m = np.dot(np.linalg.inv(GTWG), GTWd)

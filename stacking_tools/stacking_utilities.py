@@ -77,7 +77,7 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
             rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0]);
         else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
             trans_dat = "merged/trans.dat";
-            rowref, colref = get_index_merged(lon, lat, trans_dat, itnf_files[0]);
+            rowref, colref = get_index_merged(lon, lat, trans_dat, intf_files[0]);
         print("\nSTOP! Please write the reference row/col into your config file. \n")
         sys.exit(1);
     return rowref, colref;
@@ -104,7 +104,7 @@ def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
         xdata = [i-360 for i in xdata];
     row_idx = np.argmin(np.abs(np.array(ydata) - ref_lat));
     col_idx = np.argmin(np.abs(np.array(xdata) - ref_lon));
-    print("  Found reference pixel's coordinates at row/col: %d/%d " % (rowref, colref));    
+    print("  Found reference pixel's coordinates at row/col: %d/%d " % (row_idx, col_idx));
     return row_idx, col_idx;
 
 
@@ -182,7 +182,7 @@ def include_only_coseismic_intfs(total_intf_tuple, coseismic):
         print("Returning only interferograms that cross coseismic event at %s " % (
             dt.datetime.strftime(coseismic, "%Y-%m-%d")))
         for mytuple in total_intf_tuple:
-            if mytuple[0] < coseismic and mytuple[1] > coseismic:
+            if mytuple[0] < coseismic < mytuple[1]:
                 select_intf_tuple.append(mytuple);  # in the case of a coseismic constraint    
         print(" Returning %d interferograms " % len(select_intf_tuple));
         return select_intf_tuple;

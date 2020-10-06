@@ -67,7 +67,7 @@ def read_netcdf4_xyz(filename):
     yvar = rootgrp.variables[ykey];
     ydata = yvar[:]
     zvar = rootgrp.variables[zkey];
-    zdata = zvar[:,:];
+    zdata = zvar[:, :];
     return [xdata, ydata, zdata];
 
 
@@ -111,7 +111,6 @@ def read_3D_netcdf(filename):
     zdata0 = netcdf.netcdf_file(filename, 'r').variables['z'][:, :, :];
     zdata = zdata0.copy();
     return [tdata, xdata, ydata, zdata];
-
 
 
 # --------------- WRITING ------------------- # 
@@ -180,7 +179,7 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, in
     # Make a plot
     fig = plt.figure(figsize=(7, 10));
     ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
-    if vmin != None:
+    if vmin is not None:
         plt.imshow(zread, aspect=aspect, cmap=cmap, vmin=vmin, vmax=vmax);
     else:
         plt.imshow(zread, aspect=aspect, cmap=cmap);
@@ -188,7 +187,7 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, in
         plt.gca().invert_yaxis()  # for imshow, rows get labeled in the downward direction
     # plt.gca().get_xaxis().set_ticks([]);
     # plt.gca().get_yaxis().set_ticks([]);
-    if dot_points != None:
+    if dot_points is not None:
         plt.plot(dot_points[0], dot_points[1], color='black', marker='*', markersize=10);
     plt.title(plottitle);
     plt.gca().set_xlabel("Range", fontsize=16);
@@ -282,9 +281,3 @@ def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname
     f.close();
     return;
 
-
-def produce_output_text_file(infile):
-    # Write text files that can be used in a slippy inversion.
-    # Format: Lon, lat, LOS, e, n, u
-
-    return;
