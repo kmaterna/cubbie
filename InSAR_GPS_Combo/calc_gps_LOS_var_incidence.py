@@ -39,7 +39,7 @@ def inputs_gps(gps_file, coordbox_gps):
     else:
         [gps_velfield] = gps_io_functions.read_pbo_vel_file(gps_file);
     [gps_velfield] = gps_io_functions.remove_duplicates(gps_velfield);
-    [gps_velfield] = gps_io_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
+    [gps_velfield] = gps_io_functions.clean_velfield(gps_velfield, max_sigma=2, max_vert_sigma=5, coord_box=coordbox_gps);
     return [gps_velfield];
 
 
