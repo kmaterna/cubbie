@@ -21,10 +21,7 @@ def set_up_output_directories(config_params):
     if config_params.endstage < 0:
         return;
     print("\nStart Stage 0 - Setting up output directories");
-    dir_parts = config_params.ts_output_dir.split('/')
-    dir_parts = [i+'/' for i in dir_parts];
-    for i in range(1,len(dir_parts)+1):
-        call(['mkdir', '-p', "".join(dir_parts[0:i])], shell=False);
+    call(['mkdir','-p',config_params.ts_output_dir],shell=False);
     print('calling: mkdir -p %s' % config_params.ts_output_dir);
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
     print('calling: cp stacking.config %s' % config_params.ts_output_dir);
@@ -40,10 +37,7 @@ def make_corrections(config_params):
     if config_params.endstage < 1:  # if we're ending at intf, we don't do this.
         return;
     print("Start Stage 1 - optional atm corrections");
-    # This is where we would implement GACOS, detrending, other atmospheric corrections, or unwrapping errors. 
-    # Step 1A: Solve or exclude unwrapping errors
-    # Step 1B: Try APS-based atmospheric correction
-    # Step 1C: Detrend topo-correlated atmosphere 
+    # This is where we would implement GACOS, APS, topo-detrending, or unwrapping errors if we had them. 
     print("End Stage 1 - optional atm corrections\n");
     return;
 
@@ -89,29 +83,27 @@ def vels_and_ts(config_params):
     # Make signal_spread here. Can be commented if you already have it. 
     # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
 
-    sys.exit(0);
-
     if config_params.ts_type == "STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
     if config_params.ts_type == "COSEISMIC":
         print("Making a simple coseismic stack");
-        coseismic_stack.drive_coseismic_stack_gmtsar(intfs, config_params.wavelength, rowref, colref,
+        coseismic_stack.drive_coseismic_stack_gmtsar(intf_files, config_params.wavelength, rowref, colref,
                                                      config_params.ts_output_dir);
     if config_params.ts_type == "SBAS":
         print("Running velocities and time series by SBAS: SBAS currently broken. ");
     if config_params.ts_type == "NSBAS":
         print("Running velocities and time series by NSBAS");
-        # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
                                              config_params.wavelength, rowref, colref, config_params.ts_output_dir);
         # nsbas_accessing.make_vels_from_ts(config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by WNSBAS");
-        # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
-        # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
-        # nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files); 
+        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
+        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
+        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files); 
 
     print("End Stage 3 - Velocities and Time Series\n");
     return;

@@ -37,7 +37,7 @@ def inputs(file_names, skip_file):
 	try:
 		[xdata, ydata] = netcdf_read_write.read_grd_xy(file_names[0]);  # can read either netcdf3 or netcdf4.
 	except TypeError:
-		[xdata, ydata] = netcdf_read_write.read_netcdf4_xy(file_names[0]);
+		[xdata, ydata,_] = netcdf_read_write.read_netcdf4_xyz(file_names[0]);
 	data_all = [];
 	date_pairs = [];
 
@@ -47,7 +47,7 @@ def inputs(file_names, skip_file):
 		try:
 			data = netcdf_read_write.read_grd(ifile);
 		except TypeError: 
-			data = netcdf_read_write.read_netcdf4(ifile);
+			[_,_,data] = netcdf_read_write.read_netcdf4_xyz(ifile);
 		data_all.append(data);
 		pairname = ifile.split('/')[-2][0:15];
 		date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf

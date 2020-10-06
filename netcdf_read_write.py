@@ -6,6 +6,7 @@ import scipy.io.netcdf as netcdf
 import datetime as dt
 import matplotlib.pyplot as plt
 import subprocess
+from netCDF4 import Dataset
 
 
 # --------------- READING ------------------- #
@@ -55,36 +56,18 @@ def read_grd_variables(filename, var1, var2, var3):
     return [xdata, ydata, zdata];
 
 
-def read_netcdf4_xy(filename):
-    netcdf4file = filename;
-    netcdf3file = filename + 'nc3';
-    subprocess.call('nccopy -k classic ' + netcdf4file + ' ' + netcdf3file, shell=True);
-    [xdata, ydata] = read_grd_xy(netcdf3file);
-    return [xdata, ydata];
-
-
-def read_netcdf4(filename):
-    netcdf4file = filename;
-    netcdf3file = filename + 'nc3';
-    subprocess.call('nccopy -k classic ' + netcdf4file + ' ' + netcdf3file, shell=True);
-    data = read_grd(netcdf3file);
-    return data;
-
-
 def read_netcdf4_xyz(filename):
-    netcdf4file = filename;
-    netcdf3file = filename + 'nc3';
-    subprocess.call('nccopy -k classic ' + netcdf4file + ' ' + netcdf3file, shell=True);
-    zdata = read_grd(netcdf3file);
-    [xdata, ydata] = read_grd_xy(netcdf3file);
-    return [xdata, ydata, zdata];
-
-
-def read_netcdf4_variables(filename, var1, var2, var3):
-    netcdf4file = filename;
-    netcdf3file = filename + 'nc3';
-    subprocess.call('nccopy -k classic ' + netcdf4file + ' ' + netcdf3file, shell=True);
-    [xdata, ydata, zdata] = read_grd_variables(netcdf3file, var1, var2, var3);
+    # Reading a generalized netCDF4 file with 3 variables, using netCDF4 library
+    # Example: x, y, z
+    # Example: lon, lat, z
+    rootgrp = Dataset(filename, "r");
+    [xkey, ykey, zkey] = rootgrp.variables.keys()
+    xvar = rootgrp.variables[xkey];
+    xdata = xvar[:]
+    yvar = rootgrp.variables[ykey];
+    ydata = yvar[:]
+    zvar = rootgrp.variables[zkey];
+    zdata = zvar[:,:];
     return [xdata, ydata, zdata];
 
 
@@ -102,7 +85,7 @@ def read_any_grd_variables(filename, var1, var2, var3):
     try:
         [xdata, ydata, zdata] = read_grd_variables(filename, var1, var2, var3);
     except TypeError:
-        [xdata, ydata, zdata] = read_netcdf4_variables(filename, var1, var2, var3);
+        [xdata, ydata, zdata] = read_netcdf4_xyz(filename);
     return [xdata, ydata, zdata];
 
 
@@ -128,6 +111,7 @@ def read_3D_netcdf(filename):
     zdata0 = netcdf.netcdf_file(filename, 'r').variables['z'][:, :, :];
     zdata = zdata0.copy();
     return [tdata, xdata, ydata, zdata];
+
 
 
 # --------------- WRITING ------------------- # 
