@@ -15,7 +15,7 @@ import netcdf_read_write
 
 def produce_min_max(filename, xyz=False):
     if xyz == False:
-        x, y, z = netcdf_read_write.read_netcdf4_variables(filename, 'lon', 'lat', 'z');
+        x, y, z = netcdf_read_write.read_netcdf4_xyz(filename);
     else:
         x, y, z = netcdf_read_write.read_grd_xyz(filename);
     print("File:", filename);

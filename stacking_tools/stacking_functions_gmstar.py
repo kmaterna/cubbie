@@ -20,13 +20,13 @@ def set_up_output_directories(config_params):
         return;
     if config_params.endstage < 0:
         return;
-    print("Stage 0 - Setting up output directories within %s." % config_params.ts_parent_dir);
-    call(['mkdir', '-p', config_params.ts_parent_dir], shell=False);
-    # call(['mkdir','-p',config_params.ref_dir],shell=False);
-    call(['mkdir', '-p', config_params.ts_output_dir], shell=False);
+    print("\nStart Stage 0 - Setting up output directories");
+    call(['mkdir','-p',config_params.ts_output_dir],shell=False);
+    print('calling: mkdir -p %s' % config_params.ts_output_dir);
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
+    print('calling: cp stacking.config %s' % config_params.ts_output_dir);
     call(['cp', config_params.skip_file, config_params.ts_output_dir], shell=False);
-    print("Setting up output directory at %s " % config_params.ts_output_dir);
+    print("End Stage 0 - Setting up output directories (%s) \n" % config_params.ts_output_dir);
     return;
 
 
@@ -36,17 +36,9 @@ def make_corrections(config_params):
         return;
     if config_params.endstage < 1:  # if we're ending at intf, we don't do this.
         return;
-    print("Stage 1 - Doing optional atm corrections");
-    # This is where we would implement GACOS, detrending, other atmospheric corrections, or unwrapping errors. 
-    # Step 3A: Solve or exclude unwrapping errors
-    # Step 3B: Try APS-based atmospheric correction
-    # Step 3C: Detrend topo-correlated atmosphere   
-    # if config_params.gacos:
-    #     #gacos.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
-    # if config_params.aps:
-    #     # aps.main_function(prior_staging_directory, post_staging_directory, rowref, colref,'');
-    # if config_params.detrend_atm_topo:
-    #     detrend_atm_topo.main_function(prior_staging_directory, post_staging_directory, rowref, colref);
+    print("Start Stage 1 - optional atm corrections");
+    # This is where we would implement GACOS, APS, topo-detrending, or unwrapping errors if we had them. 
+    print("End Stage 1 - optional atm corrections\n");
     return;
 
 
@@ -58,13 +50,15 @@ def get_ref(config_params):
     if config_params.endstage < 2:  # if we're ending at intf, we don't do this.
         return;
 
-    print("Stage 2 - Finding Reference Information.");
+    print("Start Stage 2 - Finding Files and Reference Pixel");
 
     # Very general, takes all files and doesn't discriminate. 
-    intf_files = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files,_ = stacking_utilities.get_list_of_intf_all(config_params);
 
     # Here we need to get ref_idx if we don't have it already
-    rowref, colref = stacking_utilities.get_ref_index_merged(config_params.ref_loc, config_params.ref_idx, intf_files);
+    rowref, colref = stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs, intf_files);
+
+    print("End Stage 2 - Finding Files and Reference Pixel\n");
 
     return;
 
@@ -76,40 +70,42 @@ def vels_and_ts(config_params):
     if config_params.endstage < 3:  # if we're ending at intf, we don't do this.
         return;
 
+    print("Start Stage 3 - Velocities and Time Series");
+    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
+
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
-    intfs = stacking_utilities.make_selection_of_intfs(config_params);
+    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
 
     # Plumbing stuff
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
-    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # Make signal_spread here. Can be commented if you already have it. 
-    # corr_files = [i.replace("unwrap.grd","corr.grd") for i in intfs];
     # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
 
     if config_params.ts_type == "STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intfs, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
     if config_params.ts_type == "COSEISMIC":
         print("Making a simple coseismic stack");
-        coseismic_stack.drive_coseismic_stack_gmtsar(intfs, config_params.wavelength, rowref, colref,
+        coseismic_stack.drive_coseismic_stack_gmtsar(intf_files, config_params.wavelength, rowref, colref,
                                                      config_params.ts_output_dir);
     if config_params.ts_type == "SBAS":
         print("Running velocities and time series by SBAS: SBAS currently broken. ");
     if config_params.ts_type == "NSBAS":
         print("Running velocities and time series by NSBAS");
-        # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
                                              config_params.wavelength, rowref, colref, config_params.ts_output_dir);
         # nsbas_accessing.make_vels_from_ts(config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by WNSBAS");
-        # coh_files = stacking_utilities.make_selection_of_coh_files(config_params, intfs);
-        # nsbas_accessing.drive_velocity_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
-        # nsbas_accessing.drive_point_ts_gmtsar(intfs, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
-        # nsbas_accessing.drive_full_TS_gmtsar(intfs, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files); 
+        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
+        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
+        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files); 
+
+    print("End Stage 3 - Velocities and Time Series\n");
     return;
 
 
@@ -119,6 +115,8 @@ def geocode_vels(config_params):
         return;
     if config_params.endstage < 4:  # if we're ending at intf, we don't do this.
         return;
+
+    print("Start Stage 4 - Geocoding");
 
     directory = config_params.ts_output_dir
     # vel_name = "velo_nsbas"
@@ -140,6 +138,8 @@ def geocode_vels(config_params):
     for i in range(len(datestrs)):
         call(["quick_geocode.csh", "stacking/no_smoothing_shortintfs/combined", "merged", datestrs[i] + ".grd",
               datestrs[i] + "_ll"], shell=False);
+
+    print("End Stage 4 - Geocoding");
 
     return;
 

@@ -45,9 +45,9 @@ def inputs_gps(gps_file, coordbox_gps):
 
 def inputs_lkv(look_vector_files):
     print("-->Reading files ", look_vector_files);
-    [xarray, yarray, lkv_e] = netcdf_read_write.read_netcdf4_variables(look_vector_files[0], 'lon', 'lat', 'z');
-    [xarray, yarray, lkv_n] = netcdf_read_write.read_netcdf4_variables(look_vector_files[1], 'lon', 'lat', 'z');
-    [xarray, yarray, lkv_u] = netcdf_read_write.read_netcdf4_variables(look_vector_files[2], 'lon', 'lat', 'z');
+    [xarray, yarray, lkv_e] = netcdf_read_write.read_netcdf4_xyz(look_vector_files[0]);
+    [xarray, yarray, lkv_n] = netcdf_read_write.read_netcdf4_xyz(look_vector_files[1]);
+    [xarray, yarray, lkv_u] = netcdf_read_write.read_netcdf4_xyz(look_vector_files[2]);
     return [xarray, yarray, lkv_e, lkv_n, lkv_u];
 
 

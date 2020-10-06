@@ -47,7 +47,7 @@ def inputs(file_names, start_time, end_time, run_type):
 	try:
 		[xdata,ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
 	except TypeError:
-		[xdata,ydata] = netcdf_read_write.read_netcdf4_xy(file_names[0]);
+		[xdata,ydata,_] = netcdf_read_write.read_netcdf4_xyz(file_names[0]);
 
 	data_all=[];
 	date_pairs=[];
@@ -75,7 +75,7 @@ def inputs(file_names, start_time, end_time, run_type):
 				try:
 					data = netcdf_read_write.read_grd(ifile);
 				except TypeError:
-					data = netcdf_read_write.read_netcdf4(ifile);
+					[_,_,data] = netcdf_read_write.read_netcdf4_xyz(ifile);
 				if run_type=="test":
 					data_all.append(data*-0.0555/4/np.pi);  # mcandis preprocessing involves changing to LOS distances. 
 					print("Converting phase to LOS (mm) with 55.5mm wavelength");

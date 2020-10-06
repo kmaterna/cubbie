@@ -24,7 +24,7 @@ def multiply_by_minus1_multiple(filelist):
 
 def multiply_file_by_minus1(filename, new_filename):
 	print("multiplying %s by -1 " % filename);
-	x, y, z = netcdf_read_write.read_netcdf4_variables(filename, 'lon', 'lat', 'z');
+	x, y, z = netcdf_read_write.read_netcdf4_xyz(filename);
 	z = np.multiply(z, -1);
 	filestem = filename.split('.grd')[0];
 	netcdf_read_write.produce_output_netcdf(x, y, z, "mm/yr", new_filename, dtype=np.float32);
