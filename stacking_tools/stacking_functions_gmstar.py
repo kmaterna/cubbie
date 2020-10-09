@@ -68,36 +68,36 @@ def vels_and_ts(config_params):
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
-    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
+    intf_files, coh_files = stacking_utilities.make_selection_of_intfs(config_params);
 
     # Plumbing stuff
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
 
-    # Make signal_spread here. Can be commented if you already have it. 
+    # Make signal_spread here. Should do this for real, now that excludes have taken place
     # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
 
     if config_params.ts_type == "STACK":
-        print("Running velocities by simple stack.")
+        print("\nRunning velocities by simple stack.")
         sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref,
                                         config_params.ts_output_dir);
     if config_params.ts_type == "COSEISMIC":
-        print("Making a simple coseismic stack");
+        print("\nMaking a simple coseismic stack");
         coseismic_stack.drive_coseismic_stack_gmtsar(intf_files, config_params.wavelength, rowref, colref,
                                                      config_params.ts_output_dir);
     if config_params.ts_type == "SBAS":
-        print("Running velocities and time series by SBAS: SBAS currently broken. ");
+        print("\nRunning velocities and time series by SBAS: SBAS currently broken. ");
     if config_params.ts_type == "NSBAS":
-        print("Running velocities and time series by NSBAS");
+        print("\nRunning velocities and time series by NSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                             config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        # nsbas_accessing.make_vels_from_ts(config_params.ts_output_dir);
+        nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+                                             # config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        # nsbas_accessing.make_vels_from_ts_grids(config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
-        print("Running velocities and time series by WNSBAS");
+        print("\nRunning velocities and time series by WNSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
-        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
+        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
         # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files); 
 
     print("End Stage 3 - Velocities and Time Series\n");

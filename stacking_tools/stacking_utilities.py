@@ -105,24 +105,12 @@ def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
 
 
 # Turn interferograms into date-date-filename tuples
-def get_intf_datetuple_gmtsar_swath(total_intf_list, total_corr_list):
+def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
     intf_tuple_list = [];
     for i in range(len(total_intf_list)):
-        datesplit = total_intf_list[i].split('/')[-1];  # example: 2015157_2018177_unwrap.grd
+        datesplit = re.findall(r"\d\d\d\d\d\d\d_\d\d\d\d\d\d\d", total_intf_list[i])[0];  # example: 2010040_2014064
         date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1), "%Y%j");
-        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1),
-                                     "%Y%j");  # adding 1 to the date because 000 = January 1
-        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]))
-    return intf_tuple_list;
-
-
-def get_intf_datetuple_gmtsar_merged(total_intf_list, total_corr_list):
-    intf_tuple_list = [];
-    for i in range(len(total_intf_list)):
-        datesplit = total_intf_list[i].split('/')[-2];  # example: merged/2015133_2015157/unwrap.grd
-        date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1), "%Y%j");
-        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1),
-                                     "%Y%j");  # adding 1 to the date because 000 = January 1
+        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1), "%Y%j");  # adding 1 because 000 = January 1
         intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
     return intf_tuple_list;
 
@@ -244,7 +232,7 @@ def make_selection_of_intfs(config_params):
     # The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
     total_intf_list, total_corr_list = get_list_of_intf_all(config_params);
     if config_params.SAT == "S1":
-        intf_tuples = get_intf_datetuple_gmtsar_merged(total_intf_list, total_corr_list);
+        intf_tuples = get_intf_datetuple_gmtsar(total_intf_list, total_corr_list);
     elif config_params.SAT == "UAVSAR":
         intf_tuples = get_intf_datetuple_isce(total_intf_list, total_corr_list);
 
@@ -277,7 +265,7 @@ def drive_cache_ts_points(ts_points_file):
     else:
         print(
             "Error! You are asking for points but there's not ts_points_file %s . No points computed. " % ts_points_file);
-        return [], [], [], [], [];
+        return None, None, None, None, None;
     return lons, lats, names, rows, cols;
 
 
@@ -318,6 +306,19 @@ def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
     for i in range(len(lons)):
         ofile.write("%.5f %.5f %s %s %s\n" % (lons[i], lats[i], str(rows[i]), str(cols[i]), names[i]));
     ofile.close();
+    return;
+
+
+def write_testing_pixel(intf_tuple, pixel_value, coh_value, filename):
+    # Outputting a specific pixel for using its values later in testing
+    print("Writing %s " % filename);
+    ofile=open(filename, 'w');
+    for i in range(len(intf_tuple.filepaths)):
+        if coh_value is not None:
+            ofile.write("%s %s %.4f %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i], coh_value[i]) );
+        else:
+            ofile.write("%s %s %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i]) );
+    ofile.close()
     return;
 
 

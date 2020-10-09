@@ -27,21 +27,30 @@ def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, ro
 def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, rowref, colref, outdir, coh_files=None):
     # For general use, please provide a file with [lon, lat, row, col, name]
     lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file);
-    if len(lons) == 0:
+    if lons is None:
         return;
     outdir = outdir + "/ts";
     print("TS OUTPUT DIR IS: " + outdir);
     call(['mkdir', '-p', outdir], shell=False);
+    print("Computing TS for %d pixels" % len(lons));
     intf_tuple = rmd.reader(intf_files);
+    coh_tuple = None; 
+    coh_value = None;
+    if coh_files is not None:
+        coh_tuple = rmd.reader(coh_files);    
     datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.date_pairs_julian);
     reference_pixel_vector = intf_tuple.zvalues[:, rowref, colref];
+
     for i in range(len(rows)):
         pixel_value = intf_tuple.zvalues[:, rows[i], cols[i]];
         pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
-        vel, m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength,
-                                                 datestrs, x_axis_days);
+        if coh_tuple is not None:
+            coh_value = coh_tuple.zvalues[:, rows[i], cols[i]];
+        # stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, 'testing_pixel_'+str(i)+'.txt');
+        m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength,
+                                                 datestrs, x_axis_days, coh_value);
         m_cumulative = [i * -1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
-        nsbas.nsbas_ts_outputs(x_dts, m_cumulative, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
+        nsbas.nsbas_ts_points_outputs(x_dts, m_cumulative, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;
 
 
@@ -66,7 +75,7 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
     return;
 
 
-def make_vels_from_ts(ts_dir, geocoded=False):
+def make_vels_from_ts_grids(ts_dir, geocoded=False):
     if geocoded:
         filelist = glob.glob(ts_dir + "/????????_ll.grd");
         mydata = rmd.reader_from_ts(filelist, "lon", "lat", "z");  # put these if using geocoded values
@@ -102,8 +111,3 @@ def drive_full_TS_isce(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, 
     return;
 
 
-def drive_point_ts_isce():
-    # Select a single pixel and look at its time series. 
-    # For the future, when I do this, I need a file with pixels and row/col (don't mix code and data). 
-    # I haven't written this yet. 
-    return;

@@ -27,17 +27,6 @@ def get_TS_dates(date_julstrings):
     return datestrs, x_axis_datetimes, x_axis_days;
 
 
-# Before velocities, might want to make stack_corr_custom if you have excluded significant data.
-def make_stack_corr_custom(mydata, signal_spread_file):
-    # Stack corr for this exact calculation (given right inputs and outputs). 
-    a = stack_corr.stack_corr(mydata, np.nan);
-    titlestr = "Signal Spread of " + str(len(mydata.date_deltas)) + " files";
-    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, a, 'Percentage', signal_spread_file);
-    rwr.produce_output_plot(signal_spread_file, titlestr, signal_spread_file + '.png',
-                            'Percentage of coherence', aspect=1 / 4, invert_yaxis=False)
-    return;
-
-
 # ------------ COMPUTE ------------ #
 # The point here is to loop through each pixel, determine if there's enough data to use, and then
 # make an NSBAS matrix describing each image that's a real number (not nan).
@@ -135,17 +124,14 @@ def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref
                 x_axis_days, coh_tuple=None):
     TS, nanflag = compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref,
                              signal_spread_data, datestrs, x_axis_days, coh_tuple);
-    if not nanflag:
-        vel = np.polyfit(x_axis_days, TS, 1);
-        vel = vel[0] * 365.24;
-    else:
-        vel = np.nan;
+    vel = compute_velocity_math(TS, x_axis_days, nanflag);
     return vel, nanflag;
 
 
 def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
                x_axis_days, coh_tuple=None):
-    # For a given iteration, what's the right time series?
+    # For a given stack, what are the SBAS time series? 
+    # Returns TS in mm
     empty_vector = np.empty(np.shape(x_axis_days));  # Length of the TS model
     empty_vector[:] = np.nan;
     signal_spread = signal_spread_data[i, j];
@@ -157,9 +143,9 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
         coh_value = coh_tuple.zvalues[:, i, j];
     if signal_spread > nsbas_good_perc:
         pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel.
-        vel, vector = do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
+        ts_vector = do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
                                      x_axis_days, coh_value);
-        TS = [vector];
+        TS = [ts_vector];
         nanflag = False;
     else:
         TS = [empty_vector];
@@ -168,20 +154,26 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
 
 
 def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
-    # What is the velocity of bunch of dates and displacements? in mm/yr.
+    # What is the velocity of bunch of dates and displacements? ts_tuple in mm; velocity in mm/yr.
+    nanflag=0;
     ts_values = ts_tuple.zvalues[:, i, j];
     if sum(np.isnan(ts_values)) > 30:
         nanflag = 1;
-        vel = np.nan;
-    else:
-        vel = np.polyfit(x_axis_days, ts_values, 1);
-        vel = vel[0] * 365.24;
-        nanflag = 0;
+    vel = compute_velocity_math(ts_values, x_axis_days, nanflag);
     return vel, nanflag;
 
 
+def compute_velocity_math(TS, x_axis_days, nanflag):
+    if nanflag:
+        vel=np.nan;
+    else:
+        vel = np.polyfit(x_axis_days, TS, 1);
+        vel = vel[0] * 365.24;  # conversion from mm/day to mm/yr    
+    return vel;
+
+
 def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=None):
-    # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram, already referenced to reference.
+    # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram
     # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
     # This solves Gm = d for the movement of the pixel with smoothing.
     # If coh_value is an array, we do weighted least squares.
@@ -249,31 +241,10 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
     if smoothing > 0:
         m_cumulative = temporal_smoothing_ts(m_cumulative, smoothing);
 
-    # Solving for linear velocity
-    x = np.zeros([len(x_axis_days), 2]);
-    y = np.array([]);
-    for i in range(len(x_axis_days)):
-        x[i][0] = x_axis_days[i];
-        x[i][1] = 1;
-        y = np.append(y, [m_cumulative[i]]);
-    model_slopes = np.linalg.lstsq(x, y)[0];  # units: phase per day.
-
-    # Velocity conversion: units in mm / year
-    vel = model_slopes[0];  # in radians per day
-    vel = vel * wavelength * 365.24 / 2.0 / (2 * np.pi);
-
+    # Conversion from radians to mm
     disp_ts = [i * wavelength / (4 * np.pi) for i in m_cumulative];
-    # plt.figure();
-    # model_line = [model_slopes[1] + x * model_slopes[0] for x in x_axis_days];
-    # plt.plot(x_axis_days[0:-1],m,'b.');
-    # plt.plot(x_axis_days,m_cumulative,'g.');
-    # plt.plot(x_axis_days, model_line,'--g');
-    # plt.xlabel("days");
-    # plt.ylabel("cumulative phase");
-    # plt.text(0,0,str(vel)+"mm/yr slope");
-    # plt.savefig('m_model.eps');
 
-    return vel, disp_ts;
+    return disp_ts;
 
 
 def temporal_smoothing_ts(LOS_phase, smoothing):
@@ -300,9 +271,8 @@ def temporal_smoothing_ts(LOS_phase, smoothing):
 
 # ------------ OUTPUTS ------------ #
 
-def nsbas_ts_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
+def nsbas_ts_points_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
     # This outdir is expected to be something like "stacking/nsbas/ts".
-    # It must exist before the function is called.
 
     mean_disp = np.nanmean(m_cumulative);
     plotting_ts = [i - mean_disp for i in m_cumulative];
