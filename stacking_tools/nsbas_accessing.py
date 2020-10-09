@@ -1,7 +1,6 @@
 from subprocess import call
 import numpy as np
 import sys, glob
-import datetime as dt
 import stacking_utilities
 import readmytupledata as rmd
 import netcdf_read_write as rwr
@@ -34,12 +33,13 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
     print("TS OUTPUT DIR IS: " + outdir);
     call(['mkdir', '-p', outdir], shell=False);
     intf_tuple = rmd.reader(intf_files);
-    datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.dates_correct);
+    datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.date_pairs_julian);
     reference_pixel_vector = intf_tuple.zvalues[:, rowref, colref];
     for i in range(len(rows)):
         pixel_value = intf_tuple.zvalues[:, rows[i], cols[i]];
         pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
-        vel, m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs, x_axis_days);
+        vel, m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength,
+                                                 datestrs, x_axis_days);
         m_cumulative = [i * -1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
         nsbas.nsbas_ts_outputs(x_dts, m_cumulative, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;
@@ -62,8 +62,6 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
     # TIME SERIES
     TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data,
                        start_index=start_index, end_index=end_index, coh_tuple=coh_tuple);
-    # TS_NC_file = outdir+"/TS.nc";
-    # rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', TS_NC_file);
     rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', outdir);
     return;
 

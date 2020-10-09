@@ -1,12 +1,9 @@
-import os, sys, glob
-import numpy as np
+import sys
 from subprocess import call
 import stacking_utilities
-import sbas
 import nsbas_accessing
 import Super_Simple_Stack as sss
 import coseismic_stack
-import netcdf_read_write as rwr
 import stack_corr
 
 
@@ -17,7 +14,7 @@ def set_up_output_directories(config_params):
     if config_params.endstage < 0:
         return;
     print("\nStart Stage 0 - Setting up output directories");
-    call(['mkdir','-p',config_params.ts_output_dir],shell=False);
+    call(['mkdir', '-p', config_params.ts_output_dir], shell=False);
     print('calling: mkdir -p %s' % config_params.ts_output_dir);
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
     print('calling: cp stacking.config %s' % config_params.ts_output_dir);
@@ -49,10 +46,11 @@ def get_ref(config_params):
     print("Start Stage 2 - Finding Files and Reference Pixel");
 
     # Very general, takes all files and doesn't discriminate. 
-    intf_files,_ = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files, _ = stacking_utilities.get_list_of_intf_all(config_params);
 
     # Here we need to get ref_idx if we don't have it already
-    rowref, colref = stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs, intf_files);
+    rowref, colref = stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx,
+                                                      config_params.geocoded_intfs, intf_files);
 
     print("End Stage 2 - Finding Files and Reference Pixel\n");
 
@@ -81,7 +79,8 @@ def vels_and_ts(config_params):
 
     if config_params.ts_type == "STACK":
         print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref,
+                                        config_params.ts_output_dir);
     if config_params.ts_type == "COSEISMIC":
         print("Making a simple coseismic stack");
         coseismic_stack.drive_coseismic_stack_gmtsar(intf_files, config_params.wavelength, rowref, colref,
@@ -115,8 +114,8 @@ def geocode_vels(config_params):
     print("Start Stage 4 - Geocoding");
 
     directory = config_params.ts_output_dir
-    # vel_name = "velo_nsbas"
 
+    # vel_name = "velo_nsbas"
     # outfile=open("geocoding.txt",'w');
     # outfile.write("#!/bin/bash\n");
     # outfile.write("# Script to geocode velocities.\n\n");
@@ -129,14 +128,13 @@ def geocode_vels(config_params):
 
     # Then, quickly geocode all the time series files. 
     # Call from the processing directory
-    filelist = glob.glob("/Volumes/Ironwolf/Track_71/stacking/no_smoothing_shortintfs/combined/*.grd");
-    datestrs = get_datestrs();
-    for i in range(len(datestrs)):
-        call(["quick_geocode.csh", "stacking/no_smoothing_shortintfs/combined", "merged", datestrs[i] + ".grd",
-              datestrs[i] + "_ll"], shell=False);
+    # filelist = glob.glob("/Volumes/Ironwolf/Track_71/stacking/no_smoothing_shortintfs/combined/*.grd");
+    # datestrs = get_datestrs();
+    # for i in range(len(datestrs)):
+    #     call(["quick_geocode.csh", "stacking/no_smoothing_shortintfs/combined", "merged", datestrs[i] + ".grd",
+    #           datestrs[i] + "_ll"], shell=False);
 
     print("End Stage 4 - Geocoding");
-
     return;
 
     # For later plotting, we want to project available GPS into LOS. 

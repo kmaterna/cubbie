@@ -5,7 +5,8 @@ from datetime import datetime
 import re
 import netcdf_read_write as rwr
 
-data = collections.namedtuple('data', ['filepaths', 'dates_correct', 'date_deltas', 'xvalues', 'yvalues', 'zvalues'])
+data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
+                                       'xvalues', 'yvalues', 'zvalues', 'date_pairs_dt', 'ts_dates']);
 
 
 def reader(filepathslist):
@@ -14,7 +15,7 @@ def reader(filepathslist):
     It splits and returns this data in a named tuple.
     """
     filepaths = []
-    dates_correct, date_deltas = [], []
+    date_pairs_julian, date_deltas, date_pairs = [], [], []
     xvalues, yvalues, zvalues = [], [], []
     for i in range(len(filepathslist)):
         print(filepathslist[i])
@@ -23,10 +24,12 @@ def reader(filepathslist):
         datesplit = re.findall(r"\d\d\d\d\d\d\d_\d\d\d\d\d\d\d", filepathslist[i])[0];  # example: 2010040_2014052
         # adding 1 to both dates because 000 = January 1
         date_new = datesplit.replace(datesplit[0:7], str(int(datesplit[0:7]) + 1))  # replacing first date
-        date_new = date_new.replace(date_new[8:15], str(int(date_new[8:15]) + 1))   # replacing second date
-        dates_correct.append(date_new[0:15])  # example: 2015158_2018178
-        delta = abs(datetime.strptime(dates_correct[i][0:7], '%Y%j') - datetime.strptime(dates_correct[i][8:15],
-                                                                                         '%Y%j'))  # timedelta object
+        date_new = date_new.replace(date_new[8:15], str(int(date_new[8:15]) + 1))  # replacing second date
+        date_pairs_julian.append(date_new[0:15])  # example: 2015158_2018178
+        acq1 = datetime.strptime(date_new[0:7], '%Y%j');
+        acq2 = datetime.strptime(date_new[8:15], '%Y%j');
+        date_pairs.append([acq1, acq2]);
+        delta = abs(acq1 - acq2)  # timedelta object
         date_deltas.append(delta.days / 365.24)  # in years. 
 
         # Read in the data
@@ -35,9 +38,9 @@ def reader(filepathslist):
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...')
 
-    mydata = data(filepaths=np.array(filepaths), dates_correct=np.array(dates_correct),
+    mydata = data(filepaths=np.array(filepaths), date_pairs_julian=np.array(date_pairs_julian),
                   date_deltas=np.array(date_deltas), xvalues=np.array(xdata), yvalues=np.array(ydata),
-                  zvalues=np.array(zvalues))
+                  zvalues=np.array(zvalues), date_pairs_dt=np.array(date_pairs), ts_dates=None);
     return mydata
 
 
@@ -48,23 +51,21 @@ def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
     """
     filepaths = [];
     zvalues = [];
-    dates_correct, date_deltas = [], [];
+    ts_dates = [];
     for i in range(len(filepathslist)):
         print(filepathslist[i])
         # Establish timing and filepath information
         filepaths.append(filepathslist[i]);
         datestr = filepathslist[i].split('/')[-1][0:8];
-        dates_correct.append(datetime.strptime(datestr, "%Y%m%d"));
-        date_deltas.append(0);  # placeholder because these are timesteps, not intfs
-        # Read in the data
-        [xvalues, yvalues, zdata] = rwr.read_any_grd_variables(filepathslist[i], xvar, yvar,
-                                                               zvar);  # can read netcdf3 or netcdf4
+        ts_dates.append(datetime.strptime(datestr, "%Y%m%d"));
+        # Read in the data, either netcdf3 or netcdf4
+        [xvalues, yvalues, zdata] = rwr.read_any_grd_variables(filepathslist[i], xvar, yvar, zvar);
         zvalues.append(zdata);
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...');
-    mydata = data(filepaths=np.array(filepaths), dates_correct=np.array(dates_correct),
-                  date_deltas=np.array(date_deltas), xvalues=np.array(xvalues), yvalues=np.array(yvalues),
-                  zvalues=np.array(zvalues));
+    mydata = data(filepaths=np.array(filepaths), date_pairs_julian=None, date_deltas=None,
+                  xvalues=np.array(xvalues), yvalues=np.array(yvalues), zvalues=np.array(zvalues),
+                  date_pairs_dt=None, ts_dates=np.array(ts_dates));
     return mydata;
 
 
@@ -95,7 +96,7 @@ def reader_isce(filepathslist, band=1):
     """
 
     filepaths = []
-    dates_correct, date_deltas = [], []
+    date_pairs_julian, date_deltas, date_pairs = [], [], []
     xvalues, yvalues, zvalues = [], [], []
     for i in range(len(filepathslist)):
         filepaths.append(filepathslist[i])
@@ -103,9 +104,10 @@ def reader_isce(filepathslist, band=1):
         datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", filepathslist[i])[0];  # example: 20100402_20140304
         date1 = datetime.strptime(datesplit[0:8], "%Y%m%d");
         date2 = datetime.strptime(datesplit[9:17], "%Y%m%d");
+        date_pairs.append([date1, date2])
         datestr_julian = datetime.strftime(date1, "%Y%j") + "_" + datetime.strftime(date2,
                                                                                     "%Y%j");  # in order to maintain consistency with GMTSAR formats
-        dates_correct.append(datestr_julian)  # example: 2015158_2018178
+        date_pairs_julian.append(datestr_julian)  # example: 2015158_2018178
         delta = abs(date1 - date2)
         date_deltas.append(delta.days / 365.24)  # in years.
 
@@ -118,8 +120,8 @@ def reader_isce(filepathslist, band=1):
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...')
 
-    mydata = data(filepaths=np.array(filepaths), dates_correct=np.array(dates_correct),
+    mydata = data(filepaths=np.array(filepaths), date_pairs_julian=np.array(date_pairs_julian),
                   date_deltas=np.array(date_deltas), xvalues=np.array(xvalues), yvalues=np.array(yvalues),
-                  zvalues=np.array(zvalues))
+                  zvalues=np.array(zvalues), date_pairs_dt=date_pairs, ts_dates=None);
 
     return mydata;

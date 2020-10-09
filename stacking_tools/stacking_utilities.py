@@ -50,14 +50,10 @@ def get_list_of_intf_all(config_params):
 
 def get_xdates_from_intf_tuple(intf_tuple):
     total_dates = [];
-    for item in intf_tuple.dates_correct:
-        date1 = dt.datetime.strptime(item[0:7], "%Y%j");
-        date2 = dt.datetime.strptime(item[8:15], "%Y%j");
-        if date1 not in total_dates:
-            total_dates.append(date1);
-        if date2 not in total_dates:
-            total_dates.append(date2);
-    xdates = sorted(total_dates);
+    for item in intf_tuple.date_pairs_dt:
+        total_dates.append(item[0]);
+        total_dates.append(item[1]);
+    xdates = sorted(set(total_dates));
     return xdates;
 
 

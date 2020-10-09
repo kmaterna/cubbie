@@ -11,6 +11,7 @@ import matplotlib
 import matplotlib.cm as cm
 import datetime as dt
 import netcdf_read_write
+import sentinel_utilities
 
 
 def produce_min_max(filename, xyz=False):
@@ -251,4 +252,61 @@ def all_gridded_histograms(data_all, date_pairs):
             plt.savefig("corr_hist_" + str(fignum) + ".eps");
             plt.close();
             print("writing corr_hist_" + str(fignum) + ".eps");
+    return;
+
+
+
+def some_kind_of_nsbas_outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
+    # Probably hasn't been used in a long time?
+    # Visualizing the velocity field in a few different ways.
+    zdata2 = np.reshape(vel, [len(xdata) * len(ydata), 1])
+    zdata2 = sentinel_utilities.remove_nans_array(zdata2);
+    plt.figure();
+    plt.hist(zdata2, bins=80);
+    plt.gca().set_yscale('log');
+    plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)))
+    plt.ylabel('Number of Pixels');
+    plt.xlabel('LOS velocity (mm/yr)')
+    plt.grid('on');
+    plt.savefig(out_dir + '/velocity_hist_log.png');
+    plt.close();
+
+    plt.figure();
+    plt.gca().set_yscale('linear');
+    plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)))
+    plt.hist(zdata2, bins=80);
+    plt.ylabel('Number of Pixels');
+    plt.xlabel('LOS velocity (mm/yr)')
+    plt.grid('on');
+    plt.savefig(out_dir + '/velocity_hist_lin.png');
+    plt.close();
+
+    plt.figure(figsize=(8, 10));
+    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-30, vmax=30);
+    plt.gca().invert_yaxis()
+    plt.gca().invert_xaxis()
+    plt.gca().get_xaxis().set_ticks([]);
+    plt.gca().get_yaxis().set_ticks([]);
+    plt.title("Velocity");
+    plt.gca().set_xlabel("Range", fontsize=16);
+    plt.gca().set_ylabel("Azimuth", fontsize=16);
+    cb = plt.colorbar();
+    cb.set_label("mm/yr", size=16);
+    plt.savefig(out_dir + "/vel_cutoff.png");
+    plt.close();
+
+    plt.figure(figsize=(8, 10));
+    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-150, vmax=150);
+    plt.gca().invert_yaxis()
+    plt.gca().invert_xaxis()
+    plt.gca().get_xaxis().set_ticks([]);
+    plt.gca().get_yaxis().set_ticks([]);
+    plt.title("Velocity");
+    plt.gca().set_xlabel("Range", fontsize=16);
+    plt.gca().set_ylabel("Azimuth", fontsize=16);
+    cb = plt.colorbar();
+    cb.set_label("mm/yr", size=16);
+    plt.savefig(out_dir + "/vel.png");
+    plt.close();
+
     return;

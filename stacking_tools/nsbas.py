@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys, math
 import datetime as dt
-from subprocess import call
 import sentinel_utilities
 import stacking_utilities
 import netcdf_read_write as rwr
@@ -12,7 +11,23 @@ import stack_corr
 
 
 # ------------ UTILITY FUNCTIONS ------------ #
-# Before velocities, might want to make stack_corr_custom if you have excluded significant data. 
+def get_TS_dates(date_julstrings):
+    # Get me the x axis associated with a certain set of interferograms
+    # Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
+    # Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
+    #   a dt object, and the number of days since first image.
+    dates_total = [];
+    for i in range(len(date_julstrings)):
+        dates_total.append(date_julstrings[i][0:7])
+        dates_total.append(date_julstrings[i][8:15])
+    datestrs = sorted(set(dates_total));
+    x_axis_datetimes = [dt.datetime.strptime(x, "%Y%j") for x in datestrs];
+    x_axis_days = [(x - x_axis_datetimes[0]).days for x in
+                   x_axis_datetimes];  # number of days since first acquisition.
+    return datestrs, x_axis_datetimes, x_axis_days;
+
+
+# Before velocities, might want to make stack_corr_custom if you have excluded significant data.
 def make_stack_corr_custom(mydata, signal_spread_file):
     # Stack corr for this exact calculation (given right inputs and outputs). 
     a = stack_corr.stack_corr(mydata, np.nan);
@@ -30,22 +45,21 @@ def make_stack_corr_custom(mydata, signal_spread_file):
 def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, coh_tuple=None):
     # This is how you access velocity solutions from NSBAS
     retval = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
-    datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct);
+    datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.date_pairs_julian);
 
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables
         return compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data,
                            datestrs, x_axis_days, coh_tuple);
 
-    retval = iterator_func(intf_tuple, nsbas_good_perc, smoothing, wavelength,
-                           signal_spread_data, packager_function, coh_tuple);  # how does it get compute_vels()?
+    retval = iterator_func(intf_tuple, packager_function, retval);
     return retval
 
 
 def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index=0,
             end_index=10e6, coh_tuple=None):
     # This is how you access Time Series solutions from NSBAS
-    datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.dates_correct);
+    datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.date_pairs_julian);
     # Establishing the return array
     empty_vector = [np.empty(np.shape(x_axis_days))];
     retval = [[empty_vector for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
@@ -63,7 +77,7 @@ def Velocities_from_TS(ts_tuple):
     # The easy function to take a timeseries saved on disk and construct velocities
     # This one doesn't have a memory leak.
     retval = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues)]);
-    x_axis_days = [(i - ts_tuple.dates_correct[0]).days for i in ts_tuple.dates_correct];
+    x_axis_days = [(i - ts_tuple.ts_dates[0]).days for i in ts_tuple.ts_dates];
 
     def packager_function(i, j, ts_tuple):
         return compute_velocity_from_ts(i, j, ts_tuple, x_axis_days);
@@ -99,7 +113,7 @@ def iterator_func(intf_tuple, func, retval, start_index=0, end_index=None):
             if np.mod(c, 10000) == 0:
                 print('Done with ' + str(c) + ' out of ' + str(
                     len(intf_tuple.xvalues) * len(intf_tuple.yvalues)) + ' pixels')
-            if nanflag == False:
+            if not nanflag:
                 true_count = true_count + 1;  # how many pixels were actually inverted?
             if np.mod(true_count, 10000) == 0:
                 current_time = dt.datetime.now();
@@ -115,23 +129,17 @@ def iterator_func(intf_tuple, func, retval, start_index=0, end_index=None):
     return retval;
 
 
+# ---------- LOWER LEVEL COMPUTE FUNCTIONS ---------- #
+
 def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
                 x_axis_days, coh_tuple=None):
-    signal_spread = signal_spread_data[i, j];
-    pixel_value = intf_tuple.zvalues[:, i, j];
-    reference_pixel_value = intf_tuple.zvalues[:, rowref, colref];
-    if coh_tuple is None:
-        coh_value = None;
-    else:
-        coh_value = coh_tuple.zvalues[:, i, j];
-    if signal_spread > nsbas_good_perc:
-        pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel.
-        vel, vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs,
-                                     x_axis_days, coh_value);
-        nanflag = False;
+    TS, nanflag = compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref,
+                             signal_spread_data, datestrs, x_axis_days, coh_tuple);
+    if not nanflag:
+        vel = np.polyfit(x_axis_days, TS, 1);
+        vel = vel[0] * 365.24;
     else:
         vel = np.nan;
-        nanflag = True;
     return vel, nanflag;
 
 
@@ -149,8 +157,7 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
         coh_value = coh_tuple.zvalues[:, i, j];
     if signal_spread > nsbas_good_perc:
         pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel.
-        # print(i,j,signal_spread,pixel_value);  # testing code
-        vel, vector = do_nsbas_pixel(pixel_value, intf_tuple.dates_correct, smoothing, wavelength, datestrs,
+        vel, vector = do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
                                      x_axis_days, coh_value);
         TS = [vector];
         nanflag = False;
@@ -173,25 +180,8 @@ def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
     return vel, nanflag;
 
 
-def get_TS_dates(date_pairs):
-    # Get me the x axis associated with a certain set of interferograms
-    # Returns a list of n strings for each satellite pass
-    # Also the dt objects
-    # Also the days since the start of the track.
-    dates_total = [];
-    for i in range(len(date_pairs)):
-        dates_total.append(date_pairs[i][0:7])
-        dates_total.append(date_pairs[i][8:15])
-    dates_total = set(dates_total);
-    datestrs = sorted(dates_total);
-    x_axis_datetimes = [dt.datetime.strptime(x, "%Y%j") for x in datestrs];
-    x_axis_days = [(x - x_axis_datetimes[0]).days for x in
-                   x_axis_datetimes];  # number of days since first acquisition.
-    return datestrs, x_axis_datetimes, x_axis_days;
-
-
 def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=None):
-    # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram.
+    # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram, already referenced to reference.
     # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
     # This solves Gm = d for the movement of the pixel with smoothing.
     # If coh_value is an array, we do weighted least squares.
@@ -324,57 +314,3 @@ def nsbas_ts_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
     ofile.close();
     return;
 
-
-def outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
-    # Visualizing the velocity field in a few different ways.
-    zdata2 = np.reshape(vel, [len(xdata) * len(ydata), 1])
-    zdata2 = sentinel_utilities.remove_nans_array(zdata2);
-    plt.figure();
-    plt.hist(zdata2, bins=80);
-    plt.gca().set_yscale('log');
-    plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)))
-    plt.ylabel('Number of Pixels');
-    plt.xlabel('LOS velocity (mm/yr)')
-    plt.grid('on');
-    plt.savefig(out_dir + '/velocity_hist_log.png');
-    plt.close();
-
-    plt.figure();
-    plt.gca().set_yscale('linear');
-    plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)))
-    plt.hist(zdata2, bins=80);
-    plt.ylabel('Number of Pixels');
-    plt.xlabel('LOS velocity (mm/yr)')
-    plt.grid('on');
-    plt.savefig(out_dir + '/velocity_hist_lin.png');
-    plt.close();
-
-    plt.figure(figsize=(8, 10));
-    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-30, vmax=30);
-    plt.gca().invert_yaxis()
-    plt.gca().invert_xaxis()
-    plt.gca().get_xaxis().set_ticks([]);
-    plt.gca().get_yaxis().set_ticks([]);
-    plt.title("Velocity");
-    plt.gca().set_xlabel("Range", fontsize=16);
-    plt.gca().set_ylabel("Azimuth", fontsize=16);
-    cb = plt.colorbar();
-    cb.set_label("mm/yr", size=16);
-    plt.savefig(out_dir + "/vel_cutoff.png");
-    plt.close();
-
-    plt.figure(figsize=(8, 10));
-    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-150, vmax=150);
-    plt.gca().invert_yaxis()
-    plt.gca().invert_xaxis()
-    plt.gca().get_xaxis().set_ticks([]);
-    plt.gca().get_yaxis().set_ticks([]);
-    plt.title("Velocity");
-    plt.gca().set_xlabel("Range", fontsize=16);
-    plt.gca().set_ylabel("Azimuth", fontsize=16);
-    cb = plt.colorbar();
-    cb.set_label("mm/yr", size=16);
-    plt.savefig(out_dir + "/vel.png");
-    plt.close();
-
-    return;
