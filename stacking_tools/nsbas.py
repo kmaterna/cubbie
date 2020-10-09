@@ -208,18 +208,10 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
                 diagonals.append(1);
     model_num = len(datestrs) - 1;
 
-    # Average weights at the end of the weigting vector
-    Wavg = np.nanmean(diagonals)
-    if smoothing > 0.0:
-        for i in range(model_num - 1):
-            diagonals.append(Wavg)
+    # The weighting vector
     W = np.diag(diagonals);
 
-    if smoothing > 0.0:
-        G = np.zeros([len(date_pairs_used) + model_num - 1, model_num]);  # in one case, 91x35
-    else:
-        G = np.zeros([len(date_pairs_used), model_num]);
-        # print(np.shape(G));
+    G = np.zeros([len(date_pairs_used), model_num]);
 
     # building G matrix line by line.
     for i in range(len(d)):
@@ -231,13 +223,6 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
         for j in range(second_index - first_index):
             G[i][first_index + j] = 1;
 
-    # Building the smoothing matrix with 1, -1 pairs
-    if smoothing > 0.0:
-        for i in range(len(date_pairs_used), len(date_pairs_used) + model_num - 1):
-            position = i - len(date_pairs_used);
-            G[i][position] = 1 * smoothing;
-            G[i][position + 1] = -1 * smoothing;
-            d = np.append(d, 0);
 
     # solving the SBAS linear least squares equation for displacement between each epoch.
     if coh_value is not None:
@@ -253,13 +238,16 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
     # plt.plot(modeled_data,'.--g');
     # plt.savefig('d_vs_m.eps')
     # plt.close();
-    # sys.exit(0);
 
     # Adding up all the displacement.
     m_cumulative = [];
     m_cumulative.append(0);
     for i in range(1, len(m) + 1):
         m_cumulative.append(np.sum(m[0:i]));  # The cumulative phase from start to finish!
+
+    # Smoothing after the time series has been created
+    if smoothing > 0:
+        m_cumulative = temporal_smoothing_ts(m_cumulative, smoothing);
 
     # Solving for linear velocity
     x = np.zeros([len(x_axis_days), 2]);
@@ -269,7 +257,6 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
         x[i][1] = 1;
         y = np.append(y, [m_cumulative[i]]);
     model_slopes = np.linalg.lstsq(x, y)[0];  # units: phase per day.
-    model_line = [model_slopes[1] + x * model_slopes[0] for x in x_axis_days];
 
     # Velocity conversion: units in mm / year
     vel = model_slopes[0];  # in radians per day
@@ -277,6 +264,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
 
     disp_ts = [i * wavelength / (4 * np.pi) for i in m_cumulative];
     # plt.figure();
+    # model_line = [model_slopes[1] + x * model_slopes[0] for x in x_axis_days];
     # plt.plot(x_axis_days[0:-1],m,'b.');
     # plt.plot(x_axis_days,m_cumulative,'g.');
     # plt.plot(x_axis_days, model_line,'--g');
@@ -288,8 +276,29 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
     return vel, disp_ts;
 
 
-# ------------ OUTPUT ------------ #
+def temporal_smoothing_ts(LOS_phase, smoothing):
+    # Implementing temporal smoothing after uncorrected timeseries formation.
+    # I'm doing this as an overconstrained linear inverse problem
+    n_TS = len(LOS_phase);
+    G_top = np.eye(n_TS);  # Constructing the G matrix
+    alpha_array = np.full((n_TS - 1,), smoothing)
+    G_positive_alpha = np.diag(alpha_array);
+    G_negative_alpha = np.diag(-alpha_array[0:-1], 1);
+    G_bottom = np.add(G_positive_alpha, G_negative_alpha);
+    G_last_column = np.zeros((n_TS - 1, 1));
+    G_last_column[-1] = -smoothing;
+    G_bottom = np.hstack((G_bottom, G_last_column))
+    G = np.vstack((G_top, G_bottom))
 
+    # Constructing the data vector
+    d = np.hstack((LOS_phase, np.zeros(n_TS - 1, )));
+
+    # Implementing the smoothing
+    smoothed_los = np.dot(np.dot(np.linalg.inv(np.dot(G.T, G)), G.T), d);
+    return smoothed_los;
+
+
+# ------------ OUTPUTS ------------ #
 
 def nsbas_ts_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
     # This outdir is expected to be something like "stacking/nsbas/ts".
@@ -313,4 +322,3 @@ def nsbas_ts_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
         ofile.write(" %f\n" % (m_cumulative[i]));
     ofile.close();
     return;
-
