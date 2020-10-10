@@ -47,8 +47,8 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
         if coh_tuple is not None:
             coh_value = coh_tuple.zvalues[:, rows[i], cols[i]];
         # stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, 'testing_pixel_'+str(i)+'.txt');
-        m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength,
-                                                 datestrs, x_axis_days, coh_value);
+        m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
+                                            coh_value);
         m_cumulative = [i * -1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
         nsbas.nsbas_ts_points_outputs(x_dts, m_cumulative, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;

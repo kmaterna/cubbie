@@ -153,6 +153,11 @@ def make_data_in(polarization, swath, master_date="00000000"):
 
 
 def read_baseline_table(baselinefilename):
+    # Returns:
+    # stems as string (format: S1_20150514_ALL_F2)
+    # times as float
+    # missiondays as str
+    # baseline as float
     baselineFile = np.genfromtxt(baselinefilename, dtype=str);
     stems = baselineFile[:, 0].astype(str);
     if len(stems[0]) > 60:  # adapting for a different format of baseline_table.dat sometimes happens.
@@ -434,19 +439,19 @@ def reduce_by_start_end_time(intf_pairs, startdate, enddate):
     return intf_all;
 
 
-def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselinefile='raw/baseline_table.dat'):
+def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname):
+    # intf_pairs is a list of strings, has two possible formats
+    # stems is a list of strings, has format "S1_20150514_ALL_F2"
+    # tbaseline is list of floats, as format 2015133.5774740
+    # xbaseline is list of floats, in meters
     print("Printing network plot with %d intfs" % (len(intf_pairs)));
-    if len(stems) == 0 and len(xbaseline) == 0:
-        [stems, times, baselines, missiondays] = read_baseline_table(baselinefile);
     if len(intf_pairs) == 0:
         print("Error! Cannot make network plot because there are no interferograms. ");
         sys.exit(1);
-    xstart = [];
-    xend = [];
-    tstart = [];
-    tend = [];
 
-    # If there's a format like "S1A20160817_ALL_F2:S1A20160829_ALL_F2"
+    xstart, xend, tstart, tend = [], [], [], [];
+
+    # For intf_pairs, if there's a format like "S1A20160817_ALL_F2:S1A20160829_ALL_F2"
     if "S1" in intf_pairs[0]:
         for item in intf_pairs:
             scene1 = item[0:18];  # has some format like S1A20160817_ALL_F2
@@ -464,8 +469,9 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
         dtarray = [];
         im1_dt = [];
         im2_dt = [];
-        for i in range(len(times)):
-            dtarray.append(dt.datetime.strptime(str(times[i])[0:7], '%Y%j'));
+        # Making a list of acquisition dates
+        for i in range(len(tbaseline)):
+            dtarray.append(dt.datetime.strptime( str(int(tbaseline[i]+1)), '%Y%j') );
 
         # Make the list of datetimes for the images. 
         for i in range(len(intf_pairs)):
@@ -478,11 +484,12 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname, baselin
         for i in range(len(intf_pairs)):
             for x in range(len(dtarray)):
                 if dtarray[x] == im1_dt[i]:
-                    xstart.append(baselines[x]);
+                    xstart.append(xbaseline[x]);
                     tstart.append(dtarray[x]);
                 if dtarray[x] == im2_dt[i]:
-                    xend.append(baselines[x]);
+                    xend.append(xbaseline[x]);
                     tend.append(dtarray[x]);
+
 
     plt.figure();
     plt.plot_date(tstart, xstart, '.b');

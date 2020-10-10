@@ -6,8 +6,6 @@ import sys, math
 import datetime as dt
 import sentinel_utilities
 import stacking_utilities
-import netcdf_read_write as rwr
-import stack_corr
 
 
 # ------------ UTILITY FUNCTIONS ------------ #
@@ -48,15 +46,15 @@ def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colre
 def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index=0,
             end_index=10e6, coh_tuple=None):
     # This is how you access Time Series solutions from NSBAS
-    datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.date_pairs_julian);
+    datestrs, x_dts, _ = get_TS_dates(intf_tuple.date_pairs_julian);
     # Establishing the return array
-    empty_vector = [np.empty(np.shape(x_axis_days))];
+    empty_vector = [np.empty(np.shape(datestrs))];
     retval = [[empty_vector for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
 
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables.
         return compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data,
-                          datestrs, x_axis_days, coh_tuple);
+                          datestrs, coh_tuple);
 
     retval = iterator_func(intf_tuple, packager_function, retval, start_index, end_index);
     return retval;
@@ -123,16 +121,16 @@ def iterator_func(intf_tuple, func, retval, start_index=0, end_index=None):
 def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
                 x_axis_days, coh_tuple=None):
     TS, nanflag = compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref,
-                             signal_spread_data, datestrs, x_axis_days, coh_tuple);
+                             signal_spread_data, datestrs, coh_tuple);
     vel = compute_velocity_math(TS, x_axis_days, nanflag);
     return vel, nanflag;
 
 
 def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
-               x_axis_days, coh_tuple=None):
+               coh_tuple=None):
     # For a given stack, what are the SBAS time series? 
     # Returns TS in mm
-    empty_vector = np.empty(np.shape(x_axis_days));  # Length of the TS model
+    empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
     empty_vector[:] = np.nan;
     signal_spread = signal_spread_data[i, j];
     pixel_value = intf_tuple.zvalues[:, i, j];
@@ -144,7 +142,7 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
     if signal_spread > nsbas_good_perc:
         pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel.
         ts_vector = do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
-                                     x_axis_days, coh_value);
+                                   coh_value);
         TS = [ts_vector];
         nanflag = False;
     else:
@@ -155,7 +153,7 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
 
 def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
     # What is the velocity of bunch of dates and displacements? ts_tuple in mm; velocity in mm/yr.
-    nanflag=0;
+    nanflag = 0;
     ts_values = ts_tuple.zvalues[:, i, j];
     if sum(np.isnan(ts_values)) > 30:
         nanflag = 1;
@@ -165,25 +163,32 @@ def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
 
 def compute_velocity_math(TS, x_axis_days, nanflag):
     if nanflag:
-        vel=np.nan;
+        vel = np.nan;
     else:
         vel = np.polyfit(x_axis_days, TS, 1);
         vel = vel[0] * 365.24;  # conversion from mm/day to mm/yr    
     return vel;
 
 
-def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_axis_days, coh_value=None):
+def connected_components(date_pairs, datestrs):
+    # Are we inverting a complete network?
+    # Will remove both 'disconnected networks' and 'bad day' cases.
+    return 1;
+
+
+def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh_value=None):
     # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram
-    # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day, 1-offset corrected)
+    # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day)
+    # datestrs: a list of the dates we want to invert on, in format 2015157
     # This solves Gm = d for the movement of the pixel with smoothing.
-    # If coh_value is an array, we do weighted least squares.
+    # If coh_value is an array, we do weighted least squares
     # This function expects the values in the preferred reference system (i.e. reference pixel already implemented).
 
     # Defensive programming for degenerate cases (happened on coastlines where the water was just coherent enough)
-    empty_vector = np.empty(np.shape(x_axis_days));  # Length of the TS model
+    empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
     empty_vector[:] = np.nan;
     if sum(np.isnan(pixel_value)) > len(pixel_value) * 0.5:
-        return np.nan, empty_vector;
+        return empty_vector;
 
     d = np.array([]);
     diagonals = [];
@@ -192,20 +197,23 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
     for i in range(len(pixel_value)):
         if not math.isnan(pixel_value[i]):
             d = np.append(d, pixel_value[i]);  # removes the nans from the computation.
-            date_pairs_used.append(
-                date_pairs[i]);  # might be a slightly shorter array of which interferograms actually got used.
+            date_pairs_used.append(date_pairs[i]);
+            # might be a slightly shorter array of which interferograms actually got used.
             if coh_value is not None:
                 diagonals.append(np.power(coh_value[i], 2));  # using coherence squared as the weighting.
             else:
                 diagonals.append(1);
     model_num = len(datestrs) - 1;
-
     # The weighting vector
     W = np.diag(diagonals);
 
-    G = np.zeros([len(date_pairs_used), model_num]);
+    # More defensive programming for degenerate cases like disconnected networks
+    cc_num = connected_components(date_pairs_used, datestrs);
+    if cc_num > 1:
+        return empty_vector;
 
     # building G matrix line by line.
+    G = np.zeros([len(date_pairs_used), model_num]);
     for i in range(len(d)):
         ith_intf = date_pairs_used[i];
         first_image = ith_intf.split('_')[0];  # in format '2017082'
@@ -215,12 +223,15 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, x_a
         for j in range(second_index - first_index):
             G[i][first_index + j] = 1;
 
-
     # solving the SBAS linear least squares equation for displacement between each epoch.
     if coh_value is not None:
         GTWG = np.dot(np.transpose(G), np.dot(W, G))
         GTWd = np.dot(np.transpose(G), np.dot(W, d))
-        m = np.dot(np.linalg.inv(GTWG), GTWd)
+        try:
+            m = np.dot(np.linalg.inv(GTWG), GTWd)
+        except np.linalg.LinAlgError as err:
+            print("SINGULAR MATRIX ENCOUNTERED IN WEIGHTED NSBAS. RETURNING VECTOR OF NANS.");
+            return empty_vector;
     else:
         m = np.linalg.lstsq(G, d)[0];
 
