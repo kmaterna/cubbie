@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys, math
 import datetime as dt
-import sentinel_utilities
 import stacking_utilities
 
 
@@ -152,33 +151,25 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
 
 
 def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
-    # What is the velocity of bunch of dates and displacements? ts_tuple in mm; velocity in mm/yr.
-    nanflag = 0;
+    # What is the velocity of bunch of dates and displacements? ts_tuple in mm; velocity in mm/yr
     ts_values = ts_tuple.zvalues[:, i, j];
-    if sum(np.isnan(ts_values)) > 30:
-        nanflag = 1;
-    vel = compute_velocity_math(ts_values, x_axis_days, nanflag);
-    return vel, nanflag;
-
-
-def compute_velocity_math(TS, x_axis_days, nanflag):
-    if nanflag:
-        vel = np.nan;
+    if sum(np.isnan(ts_values)) > 30:   # under certain conditions, nanflag=1
+        return np.nan, 1;
     else:
-        vel = np.polyfit(x_axis_days, TS, 1);
-        vel = vel[0] * 365.24;  # conversion from mm/day to mm/yr    
+        vel = compute_velocity_math(ts_values, x_axis_days);
+    return vel, 0;
+
+
+def compute_velocity_math(TS, x_axis_days):
+    vel = np.polyfit(x_axis_days, TS, 1);
+    vel = vel[0] * 365.24;  # conversion from mm/day to mm/yr
     return vel;
-
-
-def connected_components(date_pairs, datestrs):
-    # Are we inverting a complete network?
-    # Will remove both 'disconnected networks' and 'bad day' cases.
-    return 1;
 
 
 def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh_value=None):
     # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram
-    # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image, in format 2015157_2018177 (real julian day)
+    # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image,
+    #   format 2015157_2018177 (real julian day)
     # datestrs: a list of the dates we want to invert on, in format 2015157
     # This solves Gm = d for the movement of the pixel with smoothing.
     # If coh_value is an array, we do weighted least squares
@@ -208,8 +199,9 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
     W = np.diag(diagonals);
 
     # More defensive programming for degenerate cases like disconnected networks
-    cc_num = connected_components(date_pairs_used, datestrs);
-    if cc_num > 1:
+    cc_num = stacking_utilities.connected_components_search(date_pairs_used, datestrs);
+    if cc_num != 1:
+        print("SINGULAR MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
         return empty_vector;
 
     # building G matrix line by line.
@@ -227,11 +219,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
     if coh_value is not None:
         GTWG = np.dot(np.transpose(G), np.dot(W, G))
         GTWd = np.dot(np.transpose(G), np.dot(W, d))
-        try:
-            m = np.dot(np.linalg.inv(GTWG), GTWd)
-        except np.linalg.LinAlgError as err:
-            print("SINGULAR MATRIX ENCOUNTERED IN WEIGHTED NSBAS. RETURNING VECTOR OF NANS.");
-            return empty_vector;
+        m = np.dot(np.linalg.inv(GTWG), GTWd)
     else:
         m = np.linalg.lstsq(G, d)[0];
 

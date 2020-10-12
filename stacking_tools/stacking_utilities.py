@@ -253,6 +253,48 @@ def make_selection_of_intfs(config_params):
     return select_intf_list, select_corr_list;
 
 
+def find_connected_dates(date_pairs, sample_date):
+    connected_dates = [];
+    for i in range(len(date_pairs)):
+        if date_pairs[i][0:7] == sample_date:
+            connected_dates.append(date_pairs[i][8:15]);
+        if date_pairs[i][8:15] == sample_date:
+            connected_dates.append(date_pairs[i][0:7]);
+    return connected_dates;
+
+
+def connected_components_search(date_pairs, datestrs):
+    # Are we inverting a complete network?
+    # This function will catch both 'disconnected networks' and 'bad day' cases.
+    # We want only one connected component with len==len(datestrs).
+    # Otherwise the network should fail.
+    # 1. initialize the queue with the first date
+    # 2. find anything connected to that date, add to the queue.
+    # 3. When all of the dates connected to the first date have been added to queue, pop the first date from queue
+    # 4. Repeat until the queue is gone.
+    # 5. See if all dates have been added to the component.
+
+    # Initializing first time through
+    label = np.zeros(np.shape(datestrs));
+    queue = [];
+    queue.append(datestrs[0]);
+
+    # some kind of loop
+    while len(queue) > 0:
+        sample_date = queue[0];  # go exploring the queue, starting at the front.
+        idx_sample = datestrs.index(sample_date);
+        label[idx_sample] = 1;
+        connected_dates = find_connected_dates(date_pairs, sample_date);
+        for i in range(len(connected_dates)):
+            idx_connection = datestrs.index(connected_dates[i]);
+            if label[idx_connection] == 0:
+                label[idx_connection] = 1;
+                queue.append(connected_dates[i]);
+        queue.pop(0);  # removing the point from the queue after it has been traversed
+
+    return np.sum(label)==len(datestrs);  # returning SUCCESS if we have a single cc touching every required date
+
+
 # Functions to get TS points in row/col coordinates
 def drive_cache_ts_points(ts_points_file):
     # If you want to re-compute things, you need to delete the cache. 

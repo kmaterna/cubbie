@@ -58,7 +58,7 @@ if __name__ == "__main__":
     baseline_table = 'Testing_Data/baseline_table.dat'
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baseline_table);
     full_Igrams = read_test_pixel(ifile);
-    full_Igrams = take_coherent_igrams(full_Igrams, 0.375)
+    full_Igrams = take_coherent_igrams(full_Igrams, 0.385)
     sentinel_utilities.make_network_plot(full_Igrams.juldays, stems, times, baselines, "pixel_baseline_plot.png");
     ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);
     outputs(full_Igrams.x_axis_days, ts);
