@@ -210,13 +210,17 @@ def vels_and_ts(config_params):
     print("Start Stage 3 - Velocities and Time Series");
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);    
 
-    # This is where the hand-picking takes place.
-    # Ex: manual excludes, manual selects, long intfs only, ramp-removed, etc.
+    # This is where the hand-picking takes place: manual excludes, manual selects, long intfs only, ramp-removed, etc.
     intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
 
-    # Make signal_spread here. Can be commented if you already have it.
+    # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
+    baseline_file = None;
+    if config_params.dem_error:
+        baseline_file=config_params.baseline_file;
+
+    # Make signal_spread here. Should do this for real, now that excludes have taken place
     # stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
 
     if config_params.ts_type == "STACK":
@@ -232,12 +236,13 @@ def vels_and_ts(config_params):
     if config_params.ts_type == "NSBAS":
         print("Running velocities and time series by NSBAS");
         nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                           config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+                                           config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+                                           baseline_file=baseline_file);
     if config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by WNSBAS");
         nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
                                            config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-                                           corr_files);
+                                           coh_files=corr_files);
 
     print("End Stage 3 - Velocities and Time Series\n");
     return;

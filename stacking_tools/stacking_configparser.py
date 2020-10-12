@@ -5,8 +5,9 @@ import collections
 
 Params = collections.namedtuple('Params',
                                 ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'ref_loc', 'ref_idx',
-                                 'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'aps', 'sbas_smoothing',
-                                 'nsbas_min_intfs', 'intf_filename', 'corr_filename', 'geocoded_intfs',
+                                 'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'aps', 'dem_error',
+                                 'sbas_smoothing',
+                                 'nsbas_min_intfs', 'intf_filename', 'corr_filename', 'geocoded_intfs', 'baseline_file',
                                  'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file', 'flight_angle',
                                  'look_angle', 'skip_file',
                                  'intf_dir', 'ts_points_file', 'ts_output_dir']);
@@ -14,9 +15,9 @@ Params = collections.namedtuple('Params',
 Params_gmtsar = collections.namedtuple('Params_gmtsar',
                                        ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'ref_loc',
                                         'ref_idx',
-                                        'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'aps',
+                                        'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'aps', 'dem_error',
                                         'sbas_smoothing', 'nsbas_min_intfs', 'intf_filename', 'corr_filename',
-                                        'geocoded_intfs',
+                                        'geocoded_intfs', 'baseline_file',
                                         'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file',
                                         'flight_angle', 'look_angle', 'skip_file',
                                         'intf_dir', 'ts_points_file', 'ts_output_dir']);
@@ -25,9 +26,10 @@ Params_isce = collections.namedtuple('Params_isce', ['config_file', 'SAT', 'wave
                                                      'ref_loc', 'ref_idx', 'rlks', 'alks', 'filt', 'cor_cutoff_mask',
                                                      'xbounds', 'ybounds',
                                                      'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos',
-                                                     'aps', 'sbas_smoothing', 'nsbas_min_intfs', 'intf_filename',
-                                                     'corr_filename', 'geocoded_intfs', 'start_time', 'end_time',
-                                                     'coseismic',
+                                                     'aps', 'dem_error',
+                                                     'sbas_smoothing', 'nsbas_min_intfs', 'intf_filename',
+                                                     'corr_filename', 'geocoded_intfs', 'baseline_file',
+                                                     'start_time', 'end_time', 'coseismic',
                                                      'intf_timespan', 'llh_file', 'lkv_file',
                                                      'gps_file', 'flight_angle', 'look_angle', 'skip_file',
                                                      'ts_points_file',
@@ -43,10 +45,10 @@ def read_config():
     Params = Params_gmtsar(config_file=C.config_file, SAT=C.SAT, wavelength=C.wavelength, startstage=C.startstage,
                            endstage=C.endstage, ref_loc=C.ref_loc, ref_idx=C.ref_idx, ts_type=C.ts_type,
                            solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo,
-                           gacos=C.gacos, aps=C.aps, sbas_smoothing=C.sbas_smoothing,
+                           gacos=C.gacos, aps=C.aps, dem_error=C.dem_error, sbas_smoothing=C.sbas_smoothing,
                            nsbas_min_intfs=C.nsbas_min_intfs, intf_filename=C.intf_filename,
                            corr_filename=C.corr_filename,
-                           geocoded_intfs=C.geocoded_intfs,
+                           baseline_file=C.baseline_file, geocoded_intfs=C.geocoded_intfs,
                            start_time=C.start_time, end_time=C.end_time,
                            coseismic=C.coseismic,
                            intf_timespan=C.intf_timespan, gps_file=C.gps_file, flight_angle=C.flight_angle,
@@ -73,9 +75,9 @@ def read_config_isce():
                          rlks=rlks, alks=alks, filt=filt, cor_cutoff_mask=cor_cutoff_mask, xbounds=xbounds,
                          ybounds=ybounds, ts_type=C.ts_type,
                          solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo, gacos=C.gacos,
-                         aps=C.aps, sbas_smoothing=C.sbas_smoothing, intf_filename=C.intf_filename,
+                         aps=C.aps, dem_error=C.dem_error, sbas_smoothing=C.sbas_smoothing, intf_filename=C.intf_filename,
                          corr_filename=C.corr_filename,
-                         geocoded_intfs=C.geocoded_intfs,
+                         baseline_file=C.baseline_file, geocoded_intfs=C.geocoded_intfs,
                          nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time,
                          coseismic=C.coseismic,
                          intf_timespan=C.intf_timespan, llh_file=llh_file, lkv_file=lkv_file,
@@ -114,12 +116,14 @@ def read_config_general():
     solve_unwrap_errors = config.getint('py-config', 'solve_unwrap_errors');
     gacos = config.getint('py-config', 'gacos');
     aps = config.getint('py-config', 'aps');
+    dem_error = config.getint('py-config', 'dem_error');
     detrend_atm_topo = config.getint('py-config', 'detrend_atm_topo');
     nsbas_min_intfs = config.getint('py-config', 'nsbas_min_intfs');
     sbas_smoothing = config.getfloat('py-config', 'sbas_smoothing');
     intf_dir = config.get('py-config', 'intf_dir');
     intf_filename = config.get('py-config', 'intf_filename');
     corr_filename = config.get('py-config', 'corr_filename');
+    baseline_file = config.get('py-config', 'baseline_file');
     geocoded_intfs = config.getint('py-config', 'geocoded_intfs');
     start_time = config.get('py-config', 'start_time');
     end_time = config.get('py-config', 'end_time');
@@ -148,9 +152,10 @@ def read_config_general():
     config_params = Params(config_file=config_file_orig, SAT=SAT, wavelength=wavelength, startstage=startstage,
                            endstage=endstage,
                            ref_loc=ref_loc, ref_idx=ref_idx, ts_type=ts_type, solve_unwrap_errors=solve_unwrap_errors,
-                           detrend_atm_topo=detrend_atm_topo, gacos=gacos, aps=aps, sbas_smoothing=sbas_smoothing,
+                           detrend_atm_topo=detrend_atm_topo, gacos=gacos, aps=aps, dem_error=dem_error,
+                           sbas_smoothing=sbas_smoothing,
                            nsbas_min_intfs=nsbas_min_intfs, intf_filename=intf_filename, corr_filename=corr_filename,
-                           geocoded_intfs=geocoded_intfs,
+                           baseline_file=baseline_file, geocoded_intfs=geocoded_intfs,
                            start_time=start_time, end_time=end_time, coseismic=coseismic, intf_timespan=intf_timespan,
                            gps_file=gps_file, flight_angle=flight_angle, look_angle=look_angle,
                            skip_file=skip_file, ts_points_file=ts_points_file, intf_dir=intf_dir,

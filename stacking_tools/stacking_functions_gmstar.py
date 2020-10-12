@@ -1,6 +1,7 @@
 import sys
 from subprocess import call
 import stacking_utilities
+import sentinel_utilities
 import nsbas_accessing
 import Super_Simple_Stack as sss
 import coseismic_stack
@@ -77,6 +78,11 @@ def vels_and_ts(config_params):
     # Make signal_spread here. Should do this for real, now that excludes have taken place
     # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
 
+    # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
+    baseline_file = None;
+    if config_params.dem_error:
+        baseline_file=config_params.baseline_file;
+
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")
         sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref,
@@ -89,16 +95,27 @@ def vels_and_ts(config_params):
         print("\nRunning velocities and time series by SBAS: SBAS currently broken. ");
     if config_params.ts_type == "NSBAS":
         print("\nRunning velocities and time series by NSBAS");
-        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-        nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+        #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+        #                                       baseline_file=baseline_file);
+        nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
+                                              config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+                                              baseline_file=baseline_file);
         # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                             # config_params.wavelength, rowref, colref, config_params.ts_output_dir);
+        #                                      config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+        #                                      baseline_file=baseline_file);
         # nsbas_accessing.make_vels_from_ts_grids(config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
         print("\nRunning velocities and time series by WNSBAS");
-        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files);
-        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=coh_files);
-        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing, config_params.wavelength, rowref, colref, config_params.ts_output_dir, coh_files=corr_files); 
+        # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+        #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+        #                                       coh_files=corr_files);
+        nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
+                                              config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+                                              coh_files=coh_files);
+        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+        #                                      config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+        #                                      coh_files=corr_files);
 
     print("End Stage 3 - Velocities and Time Series\n");
     return;

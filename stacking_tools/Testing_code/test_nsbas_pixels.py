@@ -6,6 +6,8 @@ import datetime as dt
 import collections
 import nsbas
 import sentinel_utilities
+import dem_error_correction
+import sys
 
 
 Igrams = collections.namedtuple("Igrams", ["dt1", "dt2", "juldays", "datestrs", "x_axis_days", "phase", "corr"]);
@@ -46,9 +48,10 @@ def take_coherent_igrams(full_Igrams, corr_limit):
     return new_Igrams;
 
 
-def outputs(x_axis_days, ts):
+def outputs(x_axis_days, ts, ts_corrected):
     plt.figure()
     plt.plot(x_axis_days, ts, '.');
+    plt.plot(x_axis_days, ts_corrected, '.', color='red');
     plt.savefig('test.png');
     return;
 
@@ -58,7 +61,8 @@ if __name__ == "__main__":
     baseline_table = 'Testing_Data/baseline_table.dat'
     [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baseline_table);
     full_Igrams = read_test_pixel(ifile);
-    full_Igrams = take_coherent_igrams(full_Igrams, 0.385)
+    full_Igrams = take_coherent_igrams(full_Igrams, 0.375)
     sentinel_utilities.make_network_plot(full_Igrams.juldays, stems, times, baselines, "pixel_baseline_plot.png");
     ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);
-    outputs(full_Igrams.x_axis_days, ts);
+    ts_corrected = dem_error_correction.driver(ts, full_Igrams.datestrs, baseline_table);
+    outputs(full_Igrams.x_axis_days, ts, ts_corrected);
