@@ -13,10 +13,17 @@ import sys
 Igrams = collections.namedtuple("Igrams", ["dt1", "dt2", "juldays", "datestrs", "x_axis_days", "phase", "corr"]);
 
 
-def read_test_pixel(ifile):
-    [juldays, phase, corr] = np.loadtxt(ifile, usecols=(1, 2, 3), unpack=True,
-                                        dtype={'names': ('juldays', 'phase', 'corr'),
-                                               'formats': ('U15', np.float, np.float)});
+def read_test_pixel(ifile, coherence=True):
+    print("Reading file %s " % ifile);
+    if coherence:
+        [juldays, phase, corr] = np.loadtxt(ifile, usecols=(1, 2, 3), unpack=True,
+                                            dtype={'names': ('juldays', 'phase', 'corr'),
+                                                   'formats': ('U15', np.float, np.float)});
+    else:
+        [juldays, phase] = np.loadtxt(ifile, usecols=(1, 2), unpack=True,
+                                            dtype={'names': ('juldays', 'phase'),
+                                                   'formats': ('U15', np.float)});
+        corr = None;
     day1 = [dt.datetime.strptime(x[0:7], "%Y%j") for x in juldays];
     day2 = [dt.datetime.strptime(x[8:], "%Y%j") for x in juldays];
     datestr_first = [x[0:7] for x in juldays];
@@ -48,21 +55,32 @@ def take_coherent_igrams(full_Igrams, corr_limit):
     return new_Igrams;
 
 
-def outputs(x_axis_days, ts, ts_corrected):
+def outputs(x_axis_days, ts, ts_corrected=None):
     plt.figure()
     plt.plot(x_axis_days, ts, '.');
-    plt.plot(x_axis_days, ts_corrected, '.', color='red');
+    # plt.plot(x_axis_days, ts_corrected, '.', color='red');
     plt.savefig('test.png');
     return;
 
 
 if __name__ == "__main__":
-    ifile = 'Testing_Data/testing_pixel_3.txt';
-    baseline_table = 'Testing_Data/baseline_table.dat'
-    [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baseline_table);
-    full_Igrams = read_test_pixel(ifile);
-    full_Igrams = take_coherent_igrams(full_Igrams, 0.375)
-    sentinel_utilities.make_network_plot(full_Igrams.juldays, stems, times, baselines, "pixel_baseline_plot.png");
-    ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);
-    ts_corrected = dem_error_correction.driver(ts, full_Igrams.datestrs, baseline_table);
-    outputs(full_Igrams.x_axis_days, ts, ts_corrected);
+    # Testing the baseline correction of Fattahi and Amelung, 2013
+    # ifile = 'Testing_Data/testing_pixel_3.txt';
+    # baseline_table = 'Testing_Data/baseline_table.dat'
+    # [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baseline_table);
+    # full_Igrams = read_test_pixel(ifile);
+    # full_Igrams = take_coherent_igrams(full_Igrams, 0.375)
+    # sentinel_utilities.make_network_plot(full_Igrams.juldays, stems, times, baselines, "pixel_baseline_plot.png");
+    # ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);
+    # ts_corrected = dem_error_correction.driver(ts, full_Igrams.datestrs, baseline_table);
+    # outputs(full_Igrams.x_axis_days, ts, ts_corrected);
+
+    # Testing a single pixel of regular NSBAS without coherence information
+    # ifile = 'stacking/smoothing_7/ts/testing_pixel_11.txt';
+    ifile = 'stacking/no_smoothing/ts_smoothing0/testing_pixel_11.txt';
+    full_Igrams = read_test_pixel(ifile, coherence=False);
+    ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);  # smoothing is parameter
+    vel = nsbas.compute_velocity_math(ts, full_Igrams.x_axis_days);
+    print("Velocity is %.4f mm/yr" % (vel) );
+    outputs(full_Igrams.x_axis_days, ts);
+

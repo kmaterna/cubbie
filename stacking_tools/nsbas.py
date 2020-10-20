@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 import math
 import datetime as dt
 import stacking_utilities
@@ -76,11 +77,6 @@ def Velocities_from_TS(ts_tuple):
 
 def iterator_func(intf_tuple, func, retval, start_index=0, end_index=None):
     # This iterator performs a for loop. It assumes the return value can be stored in an array of ixj
-    # if np.shape(retval) != np.shape(signal_spread_data):
-    # 	print("ERROR: signal spread does not match input data. Stopping immediately. ");
-    # 	print("Shape of signal spread:", np.shape(signal_spread_data));
-    # 	print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
-    # 	sys.exit(0);
     print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)));
     print("Started at: ");
     print(dt.datetime.now());
@@ -134,6 +130,19 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
                baseline_file=None, coh_tuple=None):
     # For a given pixel, what are the SBAS time series?
     # Returns TS in mm
+    # Defensive programming
+    if np.shape(intf_tuple.zvalues[0]) != np.shape(signal_spread_data):
+        print("ERROR: signal spread does not match input data. Stopping immediately. ");
+        print("Shape of signal spread:", np.shape(signal_spread_data));
+        print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
+        sys.exit(1);
+    if coh_tuple is not None:
+        if np.shape(intf_tuple.zvalues[0]) != np.shape(coh_tuple.zvalues[0]):
+            print("ERROR: coherence data does not match input data. Stopping immediately. ");
+            print("Shape of coherence data:", np.shape(coh_tuple.zvalues[0]));
+            print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
+            sys.exit(1);     
+
     empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
     empty_vector[:] = np.nan;
     signal_spread = signal_spread_data[i, j];
@@ -228,7 +237,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
         GTWd = np.dot(np.transpose(G), np.dot(W, d))
         m = np.dot(np.linalg.inv(GTWG), GTWd)
     else:
-        m = np.linalg.lstsq(G, d)[0];
+        m = np.linalg.lstsq(G, d, rcond=None)[0];  # rcond=None comes from futurewarning
 
     # modeled_data=np.dot(G,m);
     # plt.figure();
@@ -249,6 +258,9 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
 
     # Conversion from radians to mm
     disp_ts = [i * wavelength / (4 * np.pi) for i in m_cumulative];
+
+    # Convert from range change to subsidence (negative means moving away)
+    disp_ts = [i * -1 for i in disp_ts];  
 
     return disp_ts;
 

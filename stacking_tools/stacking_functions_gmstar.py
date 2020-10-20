@@ -69,14 +69,14 @@ def vels_and_ts(config_params):
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
-    intf_files, coh_files = stacking_utilities.make_selection_of_intfs(config_params);
+    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
 
     # Plumbing stuff
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
 
     # Make signal_spread here. Should do this for real, now that excludes have taken place
-    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir);
+    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir, config_params.signal_spread_filename);
 
     # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
     baseline_file = None;
@@ -97,25 +97,25 @@ def vels_and_ts(config_params):
         print("\nRunning velocities and time series by NSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
         #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-        #                                       baseline_file=baseline_file);
-        nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
-                                              config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-                                              baseline_file=baseline_file);
-        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-        #                                      config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-        #                                      baseline_file=baseline_file);
+        #                                       config_params.signal_spread_filename, baseline_file=baseline_file);
+        # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
+        #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+        #                                       baseline_file=baseline_file, geocoded_flag=config_params.geocoded_intfs);
+        nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+                                             config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+                                             config_params.signal_spread_filename, baseline_file=baseline_file);
         # nsbas_accessing.make_vels_from_ts_grids(config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
         print("\nRunning velocities and time series by WNSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
         #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-        #                                       coh_files=corr_files);
+        #                                       config_params.signal_spread_filename, coh_files=corr_files);
         nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
                                               config_params.wavelength, rowref, colref, config_params.ts_output_dir,
                                               coh_files=coh_files);
         # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
         #                                      config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-        #                                      coh_files=corr_files);
+        #                                      config_params.signal_spread_filename, coh_files=corr_files);
 
     print("End Stage 3 - Velocities and Time Series\n");
     return;

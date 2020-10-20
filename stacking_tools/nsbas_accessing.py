@@ -11,9 +11,9 @@ import sentinel_utilities
 
 # LET'S GET A VELOCITY FIELD
 def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, rowref, colref, outdir,
-                          baseline_file=None, coh_files=None):
+                          signal_spread_file, baseline_file=None, coh_files=None):
     # GMTSAR DRIVING VELOCITIES
-    signal_spread_file = outdir + "/signalspread.nc"
+    signal_spread_file = outdir + "/" + signal_spread_file; 
     intf_tuple = rmd.reader(intf_files);
     coh_tuple = None;
     if coh_files is not None:
@@ -28,9 +28,9 @@ def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, ro
 
 # LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
 def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, rowref, colref, outdir,
-                          baseline_file=None, coh_files=None):
+                          baseline_file=None, coh_files=None, geocoded_flag=0):
     # For general use, please provide a file with [lon, lat, row, col, name]
-    lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file);
+    lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file, intf_files[0], geocoded_flag);
     if lons is None:
         return;
     outdir = outdir + "/ts";
@@ -50,10 +50,9 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
         pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
         if coh_tuple is not None:
             coh_value = coh_tuple.zvalues[:, rows[i], cols[i]];
-        # stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, 'testing_pixel_'+str(i)+'.txt');
+        stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, outdir+'/testing_pixel_'+str(i)+'.txt');
         m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
                                             coh_value=coh_value);
-        m_cumulative = [i * -1 for i in m_cumulative];  # My sign convention seems to be opposite to Katia's
 
         # If we're using DEM error, then we pass in the baseline table.
         if baseline_file is not None:
@@ -64,12 +63,12 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
 
 
 # LET'S GET THE FULL TS FOR EVERY PIXEL
-def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir,
-                         baseline_file=None, coh_files=None):
+def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, 
+                         signal_spread_file, baseline_file=None, coh_files=None):
     # SETUP. 
     start_index = 0;
     end_index = 7000000;
-    signal_spread_file = outdir + "/signalspread.nc"
+    signal_spread_file = outdir + "/" + signal_spread_file;
 
     intf_tuple = rmd.reader(intf_files);
     coh_tuple = None;

@@ -3,6 +3,7 @@ import numpy as np
 import glob, sys
 import netcdf_read_write as rwr
 import readmytupledata as rmd
+import netcdf_read_write
 
 
 def stack_corr(mytuple, cutoff):
@@ -36,13 +37,20 @@ def get_signal_spread(data_vector, cutoff):
     return a;
 
 
-def drive_signal_spread_calculation(intfs, cutoff, output_dir):
+def drive_signal_spread_calculation(intfs, cutoff, output_dir, output_filename):
     print("Making stack_corr")
-    mytuple = rmd.reader(intfs)
-    a = stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully.
-    rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_dir + '/signalspread.nc')
-    rwr.produce_output_plot(output_dir + '/signalspread.nc', 'Signal Spread',
-                            output_dir + '/signalspread.png',
+    output_file = output_dir + "/" + output_filename
+    mytuple = rmd.reader(intfs[0:2])  # get rid of [0:2] after testing
+    # a = stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully.
+    intf_file = intfs[1];
+    [x, y, z] = netcdf_read_write.read_netcdf4_xyz(intf_file);
+    # netcdf_read_write.produce_output_netcdf(x, y, z, 'mm', output_dir+'/python_written_file.nc');
+    netcdf_read_write.write_netcdf4(x, y, z, output_dir+'/python_written_file.nc');
+    sys.exit(0)
+
+    a = np.zeros(np.shape(mytuple.zvalues[0])); # get rid of this after testing
+    rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_file)
+    rwr.produce_output_plot(output_file, 'Signal Spread', output_dir + '/signalspread.png',
                             'Percentage of coherence (out of ' + str(len(intfs)) + ' images)', aspect=1.2);
     return;
 

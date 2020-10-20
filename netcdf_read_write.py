@@ -60,6 +60,7 @@ def read_netcdf4_xyz(filename):
     # Reading a generalized netCDF4 file with 3 variables, using netCDF4 library
     # Example: x, y, z
     # Example: lon, lat, z
+    # Probably reads such that the data point is the center of each pixel
     rootgrp = Dataset(filename, "r");
     [xkey, ykey, zkey] = rootgrp.variables.keys()
     xvar = rootgrp.variables[xkey];
@@ -114,6 +115,21 @@ def read_3D_netcdf(filename):
 
 
 # --------------- WRITING ------------------- # 
+
+
+def write_netcdf4(xdata, ydata, zdata, netcdfname):
+    root_grp = Dataset(netcdfname, 'w', format="NETCDF4");
+    root_grp.description = 'Created for a test';
+    root_grp.createDimension('x', len(xdata));
+    root_grp.createDimension('y', len(ydata));
+    x = root_grp.createVariable('x', 'f8', ('x',))
+    y = root_grp.createVariable('y', 'f8', ('y',))
+    z = root_grp.createVariable('z', 'f8', ('y', 'x'));
+    x[:] = xdata;
+    y[:] = ydata;
+    z[:,:] = zdata;
+    root_grp.close();
+    return;
 
 def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname, dtype=float):
     # # Write the netcdf velocity grid file.

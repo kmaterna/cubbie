@@ -9,7 +9,7 @@ Params = collections.namedtuple('Params',
                                  'sbas_smoothing',
                                  'nsbas_min_intfs', 'intf_filename', 'corr_filename', 'geocoded_intfs', 'baseline_file',
                                  'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file', 'flight_angle',
-                                 'look_angle', 'skip_file',
+                                 'look_angle', 'skip_file', 'signal_spread_filename',
                                  'intf_dir', 'ts_points_file', 'ts_output_dir']);
 
 Params_gmtsar = collections.namedtuple('Params_gmtsar',
@@ -19,7 +19,7 @@ Params_gmtsar = collections.namedtuple('Params_gmtsar',
                                         'sbas_smoothing', 'nsbas_min_intfs', 'intf_filename', 'corr_filename',
                                         'geocoded_intfs', 'baseline_file',
                                         'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file',
-                                        'flight_angle', 'look_angle', 'skip_file',
+                                        'flight_angle', 'look_angle', 'skip_file', 'signal_spread_filename',
                                         'intf_dir', 'ts_points_file', 'ts_output_dir']);
 
 Params_isce = collections.namedtuple('Params_isce', ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage',
@@ -31,8 +31,8 @@ Params_isce = collections.namedtuple('Params_isce', ['config_file', 'SAT', 'wave
                                                      'corr_filename', 'geocoded_intfs', 'baseline_file',
                                                      'start_time', 'end_time', 'coseismic',
                                                      'intf_timespan', 'llh_file', 'lkv_file',
-                                                     'gps_file', 'flight_angle', 'look_angle', 'skip_file',
-                                                     'ts_points_file',
+                                                     'gps_file', 'flight_angle', 'look_angle', 'skip_file', 
+                                                     'signal_spread_filename', 'ts_points_file',
                                                      'intf_dir', 'ts_output_dir']);
 
 
@@ -52,7 +52,7 @@ def read_config():
                            start_time=C.start_time, end_time=C.end_time,
                            coseismic=C.coseismic,
                            intf_timespan=C.intf_timespan, gps_file=C.gps_file, flight_angle=C.flight_angle,
-                           look_angle=C.look_angle, skip_file=C.skip_file,
+                           look_angle=C.look_angle, skip_file=C.skip_file, signal_spread_filename=C.signal_spread_filename, 
                            ts_points_file=C.ts_points_file, intf_dir=C.intf_dir,
                            ts_output_dir=C.ts_output_dir);
     return Params;
@@ -82,7 +82,7 @@ def read_config_isce():
                          coseismic=C.coseismic,
                          intf_timespan=C.intf_timespan, llh_file=llh_file, lkv_file=lkv_file,
                          gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle,
-                         skip_file=C.skip_file,
+                         skip_file=C.skip_file, signal_spread_filename=C.signal_spread_filename, 
                          ts_points_file=C.ts_points_file, intf_dir=C.intf_dir,
                          ts_output_dir=ts_output_dir);
     return Params;
@@ -123,6 +123,7 @@ def read_config_general():
     intf_dir = config.get('py-config', 'intf_dir');
     intf_filename = config.get('py-config', 'intf_filename');
     corr_filename = config.get('py-config', 'corr_filename');
+    signal_spread_filename = config.get('py-config', 'signal_spread_filename');
     baseline_file = config.get('py-config', 'baseline_file');
     geocoded_intfs = config.getint('py-config', 'geocoded_intfs');
     start_time = config.get('py-config', 'start_time');
@@ -158,7 +159,8 @@ def read_config_general():
                            baseline_file=baseline_file, geocoded_intfs=geocoded_intfs,
                            start_time=start_time, end_time=end_time, coseismic=coseismic, intf_timespan=intf_timespan,
                            gps_file=gps_file, flight_angle=flight_angle, look_angle=look_angle,
-                           skip_file=skip_file, ts_points_file=ts_points_file, intf_dir=intf_dir,
+                           skip_file=skip_file, signal_spread_filename=signal_spread_filename, 
+                           ts_points_file=ts_points_file, intf_dir=intf_dir,
                            ts_output_dir=ts_output_dir);
 
     return config, config_params;

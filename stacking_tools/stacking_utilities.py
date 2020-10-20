@@ -73,14 +73,14 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
             rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0]);
         else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
             trans_dat = "merged/trans.dat";
-            rowref, colref = get_index_merged(lon, lat, trans_dat, intf_files[0]);
+            rowref, colref = get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, intf_files[0]);
         print("\nSTOP! Please write the reference row/col into your config file. \n")
         sys.exit(1);
     return rowref, colref;
 
 
-def get_index_merged(lon, lat, trans_dat, example_grd):
-    print("  Finding coordinate %.3f, %.3f in grd file" % (lon, lat))
+def get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, example_grd):
+    print("  Finding coordinate %.4f, %.4f in radarcoord grd file %s" % (lon, lat, trans_dat));
     [ra, az] = get_ra_rc_from_ll.get_ra_from_ll(trans_dat, example_grd, lon, lat);
     if np.isnan(ra) or np.isnan(az):
         print("WARNING: Cannot Find %f %f in file." % (lon, lat));
@@ -94,13 +94,17 @@ def get_index_merged(lon, lat, trans_dat, example_grd):
 
 def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
     # Find the nearest pixel to a reference point in a geocoded grid
-    print("  Finding reference pixel of %.4f, %.4f in geocoded interferograms." % (ref_lon, ref_lat) );
+    print("  Finding coordinate %.4f, %.4f in geocoded interferograms %s" % (ref_lon, ref_lat, ifile) );
     [xdata, ydata, _] = netcdf_read_write.read_netcdf4_xyz(ifile);
     if xdata[0] > 180:   # If numbers are in the range above 180, turn them into -180 to 180
         xdata = [i-360 for i in xdata];
     row_idx = np.argmin(np.abs(np.array(ydata) - ref_lat));
     col_idx = np.argmin(np.abs(np.array(xdata) - ref_lon));
-    print("  Found reference pixel's coordinates at row/col: %d/%d " % (row_idx, col_idx));
+    if row_idx == 0 or row_idx == len(ydata) or col_idx == 0 or col_idx == len(xdata):
+        print("WARNING: Coordinate %f %f may be near edge of domain." % (ref_lon, ref_lat) );
+        row_idx = np.nan;
+        col_idx = np.nan; 
+    print("  Found Coordinates at row/col: %d/%d " % (row_idx, col_idx));
     return row_idx, col_idx;
 
 
@@ -296,13 +300,13 @@ def connected_components_search(date_pairs, datestrs):
 
 
 # Functions to get TS points in row/col coordinates
-def drive_cache_ts_points(ts_points_file):
+def drive_cache_ts_points(ts_points_file, intf_file_example, geocoded_flag):
     # If you want to re-compute things, you need to delete the cache. 
     if os.path.isfile(ts_points_file + ".cache"):
         lons, lats, names, rows, cols = read_ts_points_file(ts_points_file + ".cache");
     elif os.path.isfile(ts_points_file):  # if there's no cache, we will make one.
         lons, lats, names, rows, cols = read_ts_points_file(ts_points_file);
-        lons, lats, names, rows, cols = match_ts_points_row_col(lons, lats, names, rows, cols);
+        lons, lats, names, rows, cols = match_ts_points_row_col(lons, lats, names, rows, cols, intf_file_example, geocoded_flag);  
         write_ts_points_file(lons, lats, names, rows, cols, ts_points_file + ".cache");
     else:
         print(
@@ -311,16 +315,26 @@ def drive_cache_ts_points(ts_points_file):
     return lons, lats, names, rows, cols;
 
 
+def match_ts_points_row_col(lons, lats, names, rows, cols, example_grd, geocoded_flag):
+    # Find each row and col that hasn't been found before, either in geocoded or radarcoords. 
+    trans_dat = "merged/trans.dat";
+    for i in range(len(lons)):
+        if rows[i] == '':
+            if geocoded_flag:
+                irow, icol = get_reference_pixel_from_geocoded_grd(lons[i], lats[i], example_grd);
+            else:
+                irow, icol = get_referece_pixel_from_radarcoord_grd(lons[i], lats[i], trans_dat, example_grd);
+            rows[i] = irow;
+            cols[i] = icol;
+    return lons, lats, names, rows, cols;
+
+
 def read_ts_points_file(ts_points_file):
     # Here we can use several formats simultaneously. Point name is required. 
     # Format 1:  -117.76 35.88 313 654 coso1
     # Format 2:  -117.76 35.90 coso2
     print("Reading file %s" % ts_points_file);
-    lons = [];
-    lats = [];
-    names = [];
-    rows = [];
-    cols = [];
+    lons, lats, names, rows, cols = [], [], [], [], [];
     ifile = open(ts_points_file, 'r');
     for line in ifile:
         temp = line.split();
@@ -339,11 +353,12 @@ def read_ts_points_file(ts_points_file):
                 rows.append(int(temp[2]));
                 cols.append(int(temp[3]));
                 names.append(temp[4]);
-    print("Computing time series at %d geographic points " % (len(lons)));
+    print("  Computing time series at %d geographic points " % (len(lons)));
     return lons, lats, names, rows, cols;
 
 
 def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
+    print("Writing %s " % ts_points_file);
     ofile = open(ts_points_file, 'w');
     for i in range(len(lons)):
         ofile.write("%.5f %.5f %s %s %s\n" % (lons[i], lats[i], str(rows[i]), str(cols[i]), names[i]));
@@ -362,18 +377,6 @@ def write_testing_pixel(intf_tuple, pixel_value, coh_value, filename):
             ofile.write("%s %s %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i]) );
     ofile.close()
     return;
-
-
-def match_ts_points_row_col(lons, lats, names, rows, cols):
-    # Find each row and col that hasn't been found before. 
-    trans_dat = "merged/trans.dat";
-    example_grd = glob.glob("merged/*/unwrap.grd")[0];  # specific to the merged case.
-    for i in range(len(lons)):
-        if rows[i] == '':
-            irow, icol = get_index_merged(lons[i], lats[i], trans_dat, example_grd);
-            rows[i] = irow;
-            cols[i] = icol;
-    return lons, lats, names, rows, cols;
 
 
 def get_axarr_numbers(rows, cols, idx):
