@@ -37,21 +37,27 @@ def get_signal_spread(data_vector, cutoff):
     return a;
 
 
-def drive_signal_spread_calculation(intfs, cutoff, output_dir, output_filename):
+def dummy_signal_spread(intfs, output_dir, output_filename):
+    # Make a perfect signal spread for passing to other applications
+    print("Making a dummy signal spread that matches interferograms' dimensions (perfect 100).");
+    output_filename = output_dir + "/" + output_filename;
+    [xdata, ydata, zdata] = netcdf_read_write.read_netcdf4_xyz(intfs[0]);
+    a = np.add(np.zeros(np.shape(zdata)), 100);
+    rwr.produce_output_netcdf(xdata, ydata, a, 'Percentage', output_filename, dtype=np.float32)
+    rwr.produce_output_plot(output_filename, 'Signal Spread', output_dir + '/signalspread.png',
+                            'Percentage of coherence (out of ' + str(len(intfs)) + ' images)', aspect=1.2);
+    return;
+
+
+def drive_signal_spread_calculation(corr_files, cutoff, output_dir, output_filename):
     print("Making stack_corr")
     output_file = output_dir + "/" + output_filename
-    mytuple = rmd.reader(intfs[0:2])  # get rid of [0:2] after testing
-    # a = stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully.
-    intf_file = intfs[1];
-    [x, y, z] = netcdf_read_write.read_netcdf4_xyz(intf_file);
-    # netcdf_read_write.produce_output_netcdf(x, y, z, 'mm', output_dir+'/python_written_file.nc');
-    netcdf_read_write.write_netcdf4(x, y, z, output_dir+'/python_written_file.nc');
-    sys.exit(0)
-
+    mytuple = rmd.reader(corr_files)  
+    a = stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully.
     a = np.zeros(np.shape(mytuple.zvalues[0])); # get rid of this after testing
     rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_file)
     rwr.produce_output_plot(output_file, 'Signal Spread', output_dir + '/signalspread.png',
-                            'Percentage of coherence (out of ' + str(len(intfs)) + ' images)', aspect=1.2);
+                            'Percentage of coherence (out of ' + str(len(corr_files)) + ' images)', aspect=1.2);
     return;
 
 

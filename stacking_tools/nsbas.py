@@ -152,7 +152,8 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
         coh_value = None;
     else:
         coh_value = coh_tuple.zvalues[:, i, j];
-    if signal_spread > nsbas_good_perc:
+    if signal_spread > nsbas_good_perc and sum(np.isnan(pixel_value)) < len(pixel_value) * 0.5:  
+        # Defensive programming for degenerate cases (happened on coastlines where the water was just coherent enough)
         pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel.
         ts_vector = do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
                                    coh_value=coh_value);
@@ -190,12 +191,8 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
     # This solves Gm = d for the movement of the pixel with smoothing.
     # If coh_value is an array, we do weighted least squares
     # This function expects the values in the preferred reference system (i.e. reference pixel already implemented).
-
-    # Defensive programming for degenerate cases (happened on coastlines where the water was just coherent enough)
     empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
     empty_vector[:] = np.nan;
-    if sum(np.isnan(pixel_value)) > len(pixel_value) * 0.5:
-        return empty_vector;
 
     d = np.array([]);
     diagonals = [];
@@ -259,8 +256,9 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
     # Conversion from radians to mm
     disp_ts = [i * wavelength / (4 * np.pi) for i in m_cumulative];
 
-    # Convert from range change to subsidence (negative means moving away)
+    # Convert from range change to subsidence (negative means moving away); set beginning to zero
     disp_ts = [i * -1 for i in disp_ts];  
+    disp_ts = [i-disp_ts[0] for i in disp_ts];
 
     return disp_ts;
 
