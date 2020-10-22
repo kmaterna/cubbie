@@ -54,7 +54,6 @@ def drive_signal_spread_calculation(corr_files, cutoff, output_dir, output_filen
     output_file = output_dir + "/" + output_filename
     mytuple = rmd.reader(corr_files)  
     a = stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully.
-    a = np.zeros(np.shape(mytuple.zvalues[0])); # get rid of this after testing
     rwr.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_file)
     rwr.produce_output_plot(output_file, 'Signal Spread', output_dir + '/signalspread.png',
                             'Percentage of coherence (out of ' + str(len(corr_files)) + ' images)', aspect=1.2);

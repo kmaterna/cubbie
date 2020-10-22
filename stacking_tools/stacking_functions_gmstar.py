@@ -76,8 +76,9 @@ def vels_and_ts(config_params):
     colref = int(config_params.ref_idx.split('/')[1]);
 
     # Make signal_spread here. Should do this for real, now that excludes have taken place
-    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir, config_params.signal_spread_filename);
-    stack_corr.dummy_signal_spread(intf_files, config_params.ts_output_dir, config_params.signal_spread_filename);
+    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir, config_params.signal_spread_filename);
+    # stack_corr.dummy_signal_spread(intf_files, config_params.ts_output_dir, config_params.signal_spread_filename);
+    sys.exit(0);
 
     # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
     baseline_file = None;
