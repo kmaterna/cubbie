@@ -76,9 +76,8 @@ def vels_and_ts(config_params):
     colref = int(config_params.ref_idx.split('/')[1]);
 
     # Make signal_spread here. Should do this for real, now that excludes have taken place
-    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir, config_params.signal_spread_filename);
+    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir, config_params.signal_spread_filename);
     # stack_corr.dummy_signal_spread(intf_files, config_params.ts_output_dir, config_params.signal_spread_filename);
-    sys.exit(0);
 
     # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
     baseline_file = None;
@@ -103,10 +102,10 @@ def vels_and_ts(config_params):
         # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
         #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
         #                                       baseline_file=baseline_file, geocoded_flag=config_params.geocoded_intfs);
-        nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                             config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-                                             config_params.signal_spread_filename, baseline_file=baseline_file);
-        # nsbas_accessing.make_vels_from_ts_grids(config_params.ts_output_dir);
+        # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
+        #                                      config_params.wavelength, rowref, colref, config_params.ts_output_dir,
+        #                                      config_params.signal_spread_filename, baseline_file=baseline_file);
+        nsbas_accessing.make_vels_from_ts_grids(config_params.ts_output_dir, geocoded=config_params.geocoded_intfs);
     if config_params.ts_type == "WNSBAS":
         print("\nRunning velocities and time series by WNSBAS");
         # nsbas_accessing.drive_velocity_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,

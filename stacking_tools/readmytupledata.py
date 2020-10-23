@@ -57,9 +57,11 @@ def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
         # Establish timing and filepath information
         filepaths.append(filepathslist[i]);
         datestr = filepathslist[i].split('/')[-1][0:8];
+        datestr = filepathslist[i].split('/')[-1]
+        datestr = re.findall(r"\d\d\d\d\d\d\d\d", filepathslist[i])[0];
         ts_dates.append(datetime.strptime(datestr, "%Y%m%d"));
         # Read in the data, either netcdf3 or netcdf4
-        [xvalues, yvalues, zdata] = rwr.read_any_grd_variables(filepathslist[i], xvar, yvar, zvar);
+        [xvalues, yvalues, zdata] = rwr.read_netcdf4_xyz(filepathslist[i]);
         zvalues.append(zdata);
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...');

@@ -86,7 +86,7 @@ def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength
 
 def make_vels_from_ts_grids(ts_dir, geocoded=False):
     if geocoded:
-        filelist = glob.glob(ts_dir + "/????????_ll.grd");
+        filelist = glob.glob(ts_dir + "/publish/*_ll.grd");
         mydata = rmd.reader_from_ts(filelist, "lon", "lat", "z");  # put these if using geocoded values
     else:
         filelist = glob.glob(ts_dir + "/????????.grd");
