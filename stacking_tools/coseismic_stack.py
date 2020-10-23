@@ -30,9 +30,10 @@ def drive_coseismic_stack_isce(intf_files, wavelength, rowref, colref, outdir):
 
 def get_avg_coseismic(intf_tuple, rowref, colref, wavelength):
     # I could send this into the iterator_func in NSBAS if I wanted to.
+    # Negative sign matches the NSBAS code
     disp = np.zeros(np.shape(intf_tuple.zvalues[0, :, :]));
     for i in range(len(intf_tuple.yvalues)):
         for j in range(len(intf_tuple.xvalues)):
             pixel_value = np.subtract(intf_tuple.zvalues[:, i, j], intf_tuple.zvalues[:, rowref, colref]);
-            disp[i][j] = np.nanmean(pixel_value) * wavelength / (4 * np.pi);
+            disp[i][j] = np.nanmean(pixel_value) * -wavelength / (4 * np.pi);
     return disp;
