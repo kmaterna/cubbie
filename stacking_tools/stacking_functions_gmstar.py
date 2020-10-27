@@ -70,6 +70,7 @@ def vels_and_ts(config_params):
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
+    stacking_utilities.make_igram_plot(config_params, intf_files);
 
     # Plumbing stuff
     rowref = int(config_params.ref_idx.split('/')[0]);

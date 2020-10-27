@@ -257,6 +257,24 @@ def make_selection_of_intfs(config_params):
     return select_intf_list, select_corr_list;
 
 
+def make_igram_plot(config_params, igram_files):
+    print("Making simple plot of interferograms used.")
+    if config_params.SAT == "S1":
+        intf_tuples = get_intf_datetuple_gmtsar(igram_files, igram_files);
+    elif config_params.SAT == "UAVSAR":
+        intf_tuples = get_intf_datetuple_isce(igram_files, igram_files);
+
+    plt.figure(dpi=300, figsize=(8,7));
+    for i in range(len(intf_tuples)):
+        plt.plot([intf_tuples[i][0], intf_tuples[i][1]], [i, i], '.', markersize=7, linestyle=None, color='gray');
+        plt.plot([intf_tuples[i][0],intf_tuples[i][1]],[i,i],markersize=5);
+    plt.title(str(len(intf_tuples)) + ' Interferograms Used');
+    plt.xlabel('Time');
+    plt.ylabel('Interferogram Number');
+    plt.savefig(config_params.ts_output_dir+"/intf_record.png");
+    return;
+
+
 def find_connected_dates(date_pairs, sample_date):
     connected_dates = [];
     for i in range(len(date_pairs)):
