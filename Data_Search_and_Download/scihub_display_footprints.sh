@@ -100,8 +100,9 @@ projection="M6.1i"
 range="$lonmin/$lonmax/$latmin/$latmax"
 echo $range
 echo "Results displayed: " $num_results
-gmt pscoast -R$range -J$projection -Dh -N1 -N2 -Bp1.0 -B+t"Displaying $num_results Results" -P -Wblack -Gwhite -Swhite -K > $mapfile
-gmt psxy $footprints -R$range -J$projection -Wthick,red -K -O -P >> $mapfile
+gmt pscoast -R$range -J$projection -Dh  -N1/thick,black -N2/thick,black -Bp1.0 -B+t"Displaying $num_results Results" -P -Wthick,black -Gwhite -Swhite -K > $mapfile
+# gmt pscoast -R -J -Dh -N1/thick,black -N2/thick,black -Wthick,black -O -K >> $mapfile
+gmt psxy $footprints -R -J -Wthick,red -K -O -P >> $mapfile
 
 # Nice little thing: adding the point or rectangle that was used for searching. 
 python $DIR/get_search_bounds.py $search_file_name $bounds_file
@@ -115,7 +116,7 @@ fi
 
 # Make the timing plot
 projection="X10iTi/4i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
-region="2014-10-01T00:00/2020-08-30T00:00/0.1/1"  # The beginning and end of Sentinel. 
+region="2014-10-01T00:00/2020-12-30T00:00/0.1/1"  # The beginning and end of Sentinel. 
 
 gmt psbasemap -R$region -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K --FORMAT_DATE_MAP=mm/dd > $timing_file
 # -Bpx = primary x-axis; -Bs = secondary. a6O means primary annotate every 6 months; f2O means secondary annotate every 2 months
