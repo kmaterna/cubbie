@@ -17,8 +17,8 @@ def set_up_output_directories(config_params):
     print("\nStart Stage 0 - Setting up output directories");
     call(['mkdir', '-p', config_params.ts_output_dir], shell=False);
     print('calling: mkdir -p %s' % config_params.ts_output_dir);
-    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
-    print('calling: cp stacking.config %s' % config_params.ts_output_dir);
+    call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
+    print('calling: cp %s %s' % (config_params.config_file, config_params.ts_output_dir) );
     call(['cp', config_params.skip_file, config_params.ts_output_dir], shell=False);
     print("End Stage 0 - Setting up output directories (%s) \n" % config_params.ts_output_dir);
     return;
@@ -66,11 +66,11 @@ def vels_and_ts(config_params):
         return;
 
     print("Start Stage 3 - Velocities and Time Series");
-    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
+    call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
-    stacking_utilities.make_igram_plot(config_params, intf_files);
+    stacking_utilities.make_igram_stick_plot(config_params, intf_files);
 
     # Plumbing stuff
     rowref = int(config_params.ref_idx.split('/')[0]);

@@ -49,6 +49,20 @@ def dummy_signal_spread(intfs, output_dir, output_filename):
     return;
 
 
+def signal_spread_to_mask(ss_file, cutoff, mask_file):
+    # Given a signal spread file, make a nice mask that we can use for plotting.
+    [xdata, ydata, zdata] = netcdf_read_write.read_grd_xyz(ss_file);
+    mask_response = np.zeros(np.shape(zdata));
+    for i in range(len(ydata)):
+        for j in range(len(xdata)):
+            if zdata[i][j] >= cutoff:
+                mask_response[i][j] = 1;
+            else:
+                mask_response[i][j] = np.nan;
+    netcdf_read_write.produce_output_netcdf(xdata, ydata, mask_response, 'unitless', mask_file);
+    return;
+
+
 def drive_signal_spread_calculation(corr_files, cutoff, output_dir, output_filename):
     print("Making stack_corr")
     output_file = output_dir + "/" + output_filename

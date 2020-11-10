@@ -257,12 +257,12 @@ def make_selection_of_intfs(config_params):
     return select_intf_list, select_corr_list;
 
 
-def make_igram_plot(config_params, igram_files):
+def make_igram_stick_plot(config_params, igram_files):
     print("Making simple plot of interferograms used.")
-    if config_params.SAT == "S1":
-        intf_tuples = get_intf_datetuple_gmtsar(igram_files, igram_files);
-    elif config_params.SAT == "UAVSAR":
+    if config_params.SAT == "UAVSAR":
         intf_tuples = get_intf_datetuple_isce(igram_files, igram_files);
+    else:  # for S1, which is most cases
+        intf_tuples = get_intf_datetuple_gmtsar(igram_files, igram_files);
 
     plt.figure(dpi=300, figsize=(8,7));
     for i in range(len(intf_tuples)):
