@@ -11,11 +11,11 @@ import numpy as np
 import collections
 
 
-
 Velfield = collections.namedtuple("Velfield", ['name', 'nlat', 'elon', 'n', 'e', 'u', 'sn', 'se', 'su', 'first_epoch',
                                                'last_epoch']);
 # A useful structure to hold GPS velocity fields and their LOS-projected versions
 # In the LOS-projected case, we use 'e' as the LOS velocity and the other columns are zeros
+# Meant to be used in a list of these objects (one for each station)
 
 
 def closest_index(lst, K):
@@ -49,9 +49,6 @@ def simple_project_ENU_to_LOS(U_e, U_n, U_u, flight_angle, incidence_angle):
         lamda = np.deg2rad(incidence_angle);
         d_los = (U_n * np.sin(phi) - U_e * np.cos(phi)) * np.sin(lamda) + U_u * np.cos(lamda);
 
-    # Flipping by negative one, because the convention is positive when moving away from the satellite.
-    d_los = np.array(d_los) * -1;
-
     return d_los
 
 
@@ -72,26 +69,26 @@ def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_poi
     # If the reference is co-located with a GPS station, we find it within the tuple.
     # We either use name or lat/lon
     if reference_point_name is not None:
-        for i in range(len(vel_tuple.name)):
-            if vel_tuple.name[i] == reference_point_name:
-                velref_e = vel_tuple.e[i];
-                velref_n = vel_tuple.n[i];
+        for station_vel in vel_tuple:
+            if station_vel.name == reference_point_name:
+                velref_e = station_vel.e;
+                velref_n = station_vel.n;
                 if zero_vertical:
                     velref_u = 0;
                 else:
-                    velref_u = vel_tuple.u[i];
-                reflon = vel_tuple.elon[i];
-                reflat = vel_tuple.nlat[i];
+                    velref_u = station_vel.u;
+                reflon = station_vel.elon;
+                reflat = station_vel.nlat;
         return velref_e, velref_n, velref_u, reflon, reflat;
     else:
-        for i in range(len(vel_tuple.elon)):
-            if vel_tuple.elon[i] == reference_point_coords[0] and vel_tuple.nlat[i] == reference_point_coords[1]:  # should I make these tolerances?
-                velref_e = vel_tuple.e[i];
-                velref_n = vel_tuple.n[i];
+        for station_vel in vel_tuple:
+            if station_vel.elon == reference_point_coords[0] and station_vel.nlat == reference_point_coords[1]:  # should I make these tolerances?
+                velref_e = station_vel.e;
+                velref_n = station_vel.n;
                 if zero_vertical:
                     velref_u = 0;
                 else:
-                    velref_u = vel_tuple.u[i];
+                    velref_u = station_vel.u;
         return velref_e, velref_n, velref_u;
 
 
@@ -103,16 +100,16 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
     insar_los_array = [];
     gps_los_array = [];
     distance_tolerance = 0.01;  # degrees (approximately 1 km)
-    for i in range(len(gps_los_velfield.elon)):
-        xi, deg_distance_x = closest_index(xarray, gps_los_velfield.elon[i]);
-        yi, deg_distance_y = closest_index(yarray, gps_los_velfield.nlat[i]);
+    for station_vel in gps_los_velfield:
+        xi, deg_distance_x = closest_index(xarray, station_vel.elon);
+        yi, deg_distance_y = closest_index(yarray, station_vel.nlat);
         if deg_distance_x < distance_tolerance and deg_distance_y < distance_tolerance:
             target_array = LOS_array[yi - window_pixels:yi + window_pixels, xi - window_pixels:xi + window_pixels]
             # default tolerance is about 1 km, and it shows whether or not we are accidentally outside of the InSAR domain
             InSAR_LOS_value = np.nanmean(target_array);
             if ~np.isnan(InSAR_LOS_value):
                 insar_los_array.append(InSAR_LOS_value);
-                gps_los_array.append(gps_los_velfield.e[i]);
+                gps_los_array.append(station_vel.e);  # the LOS velocity
     return np.array(insar_los_array), np.array(gps_los_array);
 
 
@@ -120,20 +117,23 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
 # -------------------------------- # 
 def input_gps_as_los(filename):
     print("Reading file %s " % filename);
+    gps_velfield = [];
     [elon, nlat, los_vel, name] = np.loadtxt(filename, usecols=(0, 1, 5, 6), unpack=True,
                                              dtype={'names': ('elon', 'nlat', 'los_vel', 'station_name'),
                                                     'formats': (np.float, np.float, np.float, 'U4')});
-    gps_velfield = Velfield(name=name, elon=elon, nlat=nlat, e=los_vel, n=0 * los_vel, u=0 * los_vel, se=0 * los_vel,
-                            sn=0 * los_vel, su=0 * los_vel, first_epoch=0 * los_vel, last_epoch=0 * los_vel);
+    for i in range(len(elon)):
+        gps_station_as_los = Velfield(name=name[i], elon=elon[i], nlat=nlat[i], e=los_vel[i], n=0, u=0, se=0,
+                            sn=0, su=0, first_epoch=0, last_epoch=0);
+        gps_velfield.append(gps_station_as_los);
     return [gps_velfield];
 
 
 def output_gps_as_los(gps_velfield, LOS_velfield, outfile):
     ofile = open(outfile, 'w');
-    for i in range(len(LOS_velfield.e)):
+    for i in range(len(LOS_velfield)):
         ofile.write("%f %f %f %f %f %f %s \n" % (
-        LOS_velfield.elon[i], LOS_velfield.nlat[i], gps_velfield.e[i], gps_velfield.n[i], gps_velfield.u[i],
-        LOS_velfield.e[i], LOS_velfield.name[i]));
+        LOS_velfield[i].elon, LOS_velfield[i].nlat, gps_velfield[i].e, gps_velfield[i].n, gps_velfield[i].u,
+        LOS_velfield[i].e, LOS_velfield[i].name));
     ofile.close();
     print("-->Outputs printed to %s" % outfile);
     return;

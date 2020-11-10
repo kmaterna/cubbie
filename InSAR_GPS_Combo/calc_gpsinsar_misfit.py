@@ -19,9 +19,11 @@ def top_level_driver(gps_los_file, geocoded_insar_file, plotname):
 def inputs(gps_los_file, geocoded_insar_file):
     print("Reading files %s and %s for calculating misfit." % (gps_los_file, geocoded_insar_file));
     [gps_los_velfield] = los_projection_tools.input_gps_as_los(gps_los_file);
-    [xarray, yarray, LOS_array] = netcdf_read_write.read_netcdf4_xyz(geocoded_insar_file);
+    [xarray, yarray, LOS_array] = netcdf_read_write.read_grd_xyz(geocoded_insar_file);
     if np.nanmean(xarray) > 180:
         xarray = np.subtract(xarray, 360);  # some files come in with 244 instead of -115.  Fixing that.
+    if 'velo_nsbas.grd' in geocoded_insar_file:  # a correction for when I used a flipped sign convention
+        LOS_array = -1 * LOS_array;
     return [gps_los_velfield, xarray, yarray, LOS_array];
 
 
@@ -37,8 +39,8 @@ def compute(gps_los_velfield, xarray, yarray, LOS_array):
 def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname):
     plt.figure(figsize=(9, 9), dpi=300);
     plt.plot(gps_array, insar_array, '.', markersize=10);
-    bottom_level = -5;
-    top_level = 35;
+    bottom_level = -35;
+    top_level = 5;
     plt.plot([bottom_level, top_level], [bottom_level, top_level], '--k');
     plt.xlim([bottom_level, top_level])
     plt.ylim([bottom_level, top_level])
