@@ -49,15 +49,13 @@ def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
     This function makes a tuple of grids in timesteps
     It can read in radar coords or geocoded coords, depending on the use of xvar, yvar
     """
-    filepaths = [];
-    zvalues = [];
-    ts_dates = [];
+    filepaths, zvalues, ts_dates = [], [], [];
     for i in range(len(filepathslist)):
         print(filepathslist[i])
         # Establish timing and filepath information
         filepaths.append(filepathslist[i]);
-        datestr = filepathslist[i].split('/')[-1][0:8];
-        datestr = filepathslist[i].split('/')[-1]
+        # datestr = filepathslist[i].split('/')[-1][0:8];
+        # datestr = filepathslist[i].split('/')[-1]
         datestr = re.findall(r"\d\d\d\d\d\d\d\d", filepathslist[i])[0];
         ts_dates.append(datetime.strptime(datestr, "%Y%m%d"));
         # Read in the data, either netcdf3 or netcdf4
@@ -102,20 +100,21 @@ def reader_isce(filepathslist, band=1):
     xvalues, yvalues, zvalues = [], [], []
     for i in range(len(filepathslist)):
         filepaths.append(filepathslist[i])
-        # In the case of ISCE, we have the dates in YYYYMMDD_YYYYMMDD format somewhere within the filepath (maybe multiple times). We take the first. 
+        # In the case of ISCE, we have the dates in YYYYMMDD_YYYYMMDD format somewhere within the filepath
+        # (maybe multiple times). We take the first.
         datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", filepathslist[i])[0];  # example: 20100402_20140304
         date1 = datetime.strptime(datesplit[0:8], "%Y%m%d");
         date2 = datetime.strptime(datesplit[9:17], "%Y%m%d");
         date_pairs.append([date1, date2])
-        datestr_julian = datetime.strftime(date1, "%Y%j") + "_" + datetime.strftime(date2,
-                                                                                    "%Y%j");  # in order to maintain consistency with GMTSAR formats
+        # in order to maintain consistency with GMTSAR formats:
+        datestr_julian = datetime.strftime(date1, "%Y%j") + "_" + datetime.strftime(date2, "%Y%j");
         date_pairs_julian.append(datestr_julian)  # example: 2015158_2018178
         delta = abs(date1 - date2)
         date_deltas.append(delta.days / 365.24)  # in years.
 
         zdata = isce_read_write.read_scalar_data(filepathslist[i], band,
                                                  flush_zeros=False);  # NOTE: For unwrapped files, this will be band=2
-        # flush_zeros=False preserves the zeros in the input datasets. Added April 9 2020. Hope it doesn't break anything else. 
+        # flush_zeros=False preserves the zeros in the input datasets. Added April 9 2020. uncertain results.
         xvalues = range(0, np.shape(zdata)[1]);
         yvalues = range(0, np.shape(zdata)[0]);
         zvalues.append(zdata)

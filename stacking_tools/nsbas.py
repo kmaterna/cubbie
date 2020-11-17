@@ -31,7 +31,7 @@ def get_TS_dates(date_julstrings):
 # make an NSBAS matrix describing each image that's a real number (not nan).
 
 def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data,
-               baseline_file=None, coh_tuple=None):
+               baseline_tuple=None, coh_tuple=None):
     # This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities
     retval = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
     datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.date_pairs_julian);
@@ -39,14 +39,14 @@ def Velocities(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colre
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables
         return compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data,
-                           datestrs, x_axis_days, baseline_file, coh_tuple);
+                           datestrs, x_axis_days, baseline_tuple, coh_tuple);
 
     retval = iterator_func(intf_tuple, packager_function, retval);
     return retval
 
 
 def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, start_index=0,
-            end_index=10e6, baseline_file=None, coh_tuple=None):
+            end_index=10e6, baseline_tuple=None, coh_tuple=None):
     # This is how you access Time Series solutions from NSBAS
     datestrs, x_dts, _ = get_TS_dates(intf_tuple.date_pairs_julian);
     # Establishing the return array
@@ -56,7 +56,7 @@ def Full_TS(intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, 
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables.
         return compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data,
-                          datestrs, baseline_file, coh_tuple);
+                          datestrs, baseline_tuple, coh_tuple);
 
     retval = iterator_func(intf_tuple, packager_function, retval, start_index, end_index);
     return retval;
@@ -116,9 +116,9 @@ def iterator_func(intf_tuple, func, retval, start_index=0, end_index=None):
 # ---------- LOWER LEVEL COMPUTE FUNCTIONS ---------- #
 
 def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
-                x_axis_days, baseline_file=None, coh_tuple=None):
+                x_axis_days, baseline_tuple=None, coh_tuple=None):
     TS, nanflag = compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref,
-                             signal_spread_data, datestrs, baseline_file=baseline_file, coh_tuple=coh_tuple);
+                             signal_spread_data, datestrs, baseline_tuple=baseline_tuple, coh_tuple=coh_tuple);
     if nanflag:
         vel = np.nan;
     else:
@@ -127,7 +127,7 @@ def compute_vel(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref
 
 
 def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref, colref, signal_spread_data, datestrs,
-               baseline_file=None, coh_tuple=None):
+               baseline_tuple=None, coh_tuple=None):
     # For a given pixel, what are the SBAS time series?
     # Returns TS in mm
     # Defensive programming
@@ -157,8 +157,8 @@ def compute_TS(i, j, intf_tuple, nsbas_good_perc, smoothing, wavelength, rowref,
         pixel_value = np.subtract(pixel_value, reference_pixel_value);  # with respect to the reference pixel.
         ts_vector = do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
                                    coh_value=coh_value);
-        if baseline_file is not None:  # If we are implementing a DEM error correction
-            ts_vector = dem_error_correction.driver(ts_vector, datestrs, baseline_file);
+        if baseline_tuple is not None:  # If we are implementing a DEM error correction
+            ts_vector, Kz_error = dem_error_correction.driver(ts_vector, datestrs, baseline_tuple);
         TS = [ts_vector];
         nanflag = False;
     else:
@@ -244,8 +244,7 @@ def do_nsbas_pixel(pixel_value, date_pairs, smoothing, wavelength, datestrs, coh
     # plt.close();
 
     # Adding up all the displacement.
-    m_cumulative = [];
-    m_cumulative.append(0);
+    m_cumulative = [0];
     for i in range(1, len(m) + 1):
         m_cumulative.append(np.sum(m[0:i]));  # The cumulative phase from start to finish!
 

@@ -127,9 +127,10 @@ def write_netcdf4(xdata, ydata, zdata, netcdfname):
     z = root_grp.createVariable('z', 'f8', ('y', 'x'));
     x[:] = xdata;
     y[:] = ydata;
-    z[:,:] = zdata;
+    z[:, :] = zdata;
     root_grp.close();
     return;
+
 
 def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname, dtype=float):
     # # Write the netcdf velocity grid file.
@@ -172,7 +173,7 @@ def flip_if_necessary(filename):
         xinc = subprocess.check_output('gmt grdinfo -M -C ' + filename + ' | awk \'{print $8}\'',
                                        shell=True);  # the x-increment
         xinc = float(xinc.split()[0]);
-        print("New xinc is: %f " % (xinc));
+        print("New xinc is: %f " % xinc);
     if yinc < 0:
         print("flipping the y-axis");
         [xdata, ydata] = read_grd_xy(filename);
@@ -183,14 +184,14 @@ def flip_if_necessary(filename):
         yinc = subprocess.check_output('gmt grdinfo -M -C ' + filename + ' | awk \'{print $9}\'',
                                        shell=True);  # the x-increment
         yinc = float(yinc.split()[0]);
-        print("New yinc is: %f" % (yinc));
+        print("New yinc is: %f" % yinc);
     return;
 
 
 def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True,
                         dot_points=None, vmin=None, vmax=None, cmap='rainbow', xvar='x', yvar='y', zvar='z'):
     # Read in the dataset
-    [xread, yread, zread] = read_any_grd_variables(netcdfname, xvar, yvar, zvar);
+    [_, _, zread] = read_any_grd_variables(netcdfname, xvar, yvar, zvar);
 
     # Make a plot
     fig = plt.figure(figsize=(7, 10));
@@ -296,4 +297,3 @@ def produce_output_timeseries(xdata, ydata, zdata, timearray, zunits, netcdfname
     z.units = zunits;
     f.close();
     return;
-

@@ -10,7 +10,6 @@ import Super_Simple_Stack as sss
 import netcdf_read_write as rwr
 import nsbas_accessing
 import isce_read_write
-import mask_and_interpolate
 import unwrapping_isce_custom
 import isce_geocode_tools
 import haversine
@@ -91,7 +90,7 @@ def get_100p_pixels_get_ref(filenameslist, ref_idx, outdir):
 
     # Make a plot that shows where those pixels are
     # a=rwr.read_grd(outdir+'/signalspread_cut.nc');
-    fig = plt.figure();
+    plt.figure();
     # plt.imshow(a,aspect=1/4, cmap='rainbow');
     plt.plot(xpixels_good, ypixels_good, '.', color='k');
     plt.plot(xpixels_options, ypixels_options, '.', color='g');
@@ -110,7 +109,7 @@ def from_lonlat_get_rowcol(config_params):
     # Return its row and column.
     # Step 1: Geocode properly based on a sample interferogram grid (done)
     # Step 2: extract nearest pixel (code in Brawley repo)
-    isce_geocode_tools.geocode_UAVSAR_stack(config_params);
+    isce_geocode_tools.geocode_UAVSAR_stack(config_params, 'geocoded');
 
     reflon = float(config_params.ref_loc.split(',')[0]);
     reflat = float(config_params.ref_loc.split(',')[1]);
@@ -156,7 +155,7 @@ def stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, ts_output_dir,
                             'Percentage of coherence', aspect=1 / 4, invert_yaxis=False,
                             dot_points=[[colref], [rowref]]);
     signal_spread_ref = a[rowref, colref];
-    print("Signal Spread of the reference pixel = %.2f " % (signal_spread_ref));
+    print("Signal Spread of the reference pixel = %.2f " % signal_spread_ref);
     if signal_spread_ref < 50:
         print("WARNING: Your reference pixel has very low coherence. Consider picking a different one.");
         print("STOPPING ON PURPOSE.");
@@ -218,7 +217,7 @@ def vels_and_ts(config_params):
     # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
     baseline_file = None;
     if config_params.dem_error:
-        baseline_file=config_params.baseline_file;
+        baseline_file = config_params.baseline_file;
 
     # Make signal_spread here. Should do this for real, now that excludes have taken place
     # stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');

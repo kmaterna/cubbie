@@ -1,7 +1,6 @@
 import sys
 from subprocess import call
 import stacking_utilities
-import sentinel_utilities
 import nsbas_accessing
 import Super_Simple_Stack as sss
 import coseismic_stack
@@ -50,8 +49,8 @@ def get_ref(config_params):
     intf_files, _ = stacking_utilities.get_list_of_intf_all(config_params);
 
     # Here we need to get ref_idx if we don't have it already
-    rowref, colref = stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx,
-                                                      config_params.geocoded_intfs, intf_files);
+    stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs,
+                                     intf_files);
 
     print("End Stage 2 - Finding Files and Reference Pixel\n");
 
@@ -77,12 +76,13 @@ def vels_and_ts(config_params):
     colref = int(config_params.ref_idx.split('/')[1]);
 
     # Make signal_spread here. Should do this for real, now that excludes have taken place
-    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir, config_params.signal_spread_filename);
+    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
+                                               config_params.signal_spread_filename);
 
     # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
     baseline_file = None;
     if config_params.dem_error:
-        baseline_file=config_params.baseline_file;
+        baseline_file = config_params.baseline_file;
 
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")
@@ -101,7 +101,7 @@ def vels_and_ts(config_params):
         #                                       config_params.signal_spread_filename, baseline_file=baseline_file);
         # nsbas_accessing.drive_point_ts_gmtsar(intf_files, config_params.ts_points_file, config_params.sbas_smoothing,
         #                                       config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-        #                                       baseline_file=baseline_file, geocoded_flag=config_params.geocoded_intfs);
+        #                                       baseline_file=baseline_file, geocoded_flag=config_params.geocoded_intfs)
         # nsbas_accessing.drive_full_TS_gmtsar(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
         #                                      config_params.wavelength, rowref, colref, config_params.ts_output_dir,
         #                                      config_params.signal_spread_filename, baseline_file=baseline_file);
@@ -131,7 +131,7 @@ def geocode_vels(config_params):
 
     print("Start Stage 4 - Geocoding");
 
-    directory = config_params.ts_output_dir
+    # directory = config_params.ts_output_dir
 
     # vel_name = "velo_nsbas"
     # outfile=open("geocoding.txt",'w');

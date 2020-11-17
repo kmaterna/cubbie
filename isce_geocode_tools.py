@@ -71,12 +71,6 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     call(["mkdir", "-p", geocoded_folder], shell=False);
     llh_array = np.fromfile(config_params.llh_file, dtype=np.float32);  # this is a vector.
     lkv_array = np.fromfile(config_params.lkv_file, dtype=np.float32);
-    lon = [];
-    lat = [];
-    hgt = [];
-    lkv_e = [];
-    lkv_n = [];
-    lkv_u = [];
     lat = llh_array[np.arange(0, len(llh_array), 3)];  # ordered array opened from the provided UAVSAR files
     lon = llh_array[np.arange(1, len(llh_array), 3)];
     hgt = llh_array[np.arange(2, len(llh_array), 3)];
@@ -246,7 +240,8 @@ def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
 
     # Read the problematic bands and get ready to package them into a real geocoded file.
     data_top = isce_read_write.read_scalar_data(unw_file,
-                                                band=1);  # I'm not even sure how I'm allowed to read band 2 (xml says 1 band).
+                                                band=1);  # I'm not even sure how I'm allowed to read band 2
+                                                          # (xml says 1 band).
     data_bottom = isce_read_write.read_scalar_data(unw_file, band=2);  # xml is clearly wrong.
     data = np.vstack((data_top, data_bottom));  # each of these has a duplicate row by accident.
     data_surviving = np.zeros(np.shape(data_top));
@@ -268,10 +263,11 @@ def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
 
 def cross_track_pos(target_lon, target_lat, nearrange_lon, nearrange_lat, heading_cartesian):
     # Given the heading of a plane and the coordinates of one near-range point
-    # Get the cross-track position of point in a coordinate system centered at (nearrange_lon, nearrange_lat) with given heading
+    # Get the cross-track position of point in a coordinate system centered
+    # at (nearrange_lon, nearrange_lat) with given heading
     distance = haversine.distance((target_lat, target_lon), (nearrange_lat, nearrange_lon));
-    compass_bearing = haversine.calculate_initial_compass_bearing((nearrange_lat, nearrange_lon), (
-    target_lat, target_lon));  # this comes as CW from north
+    compass_bearing = haversine.calculate_initial_compass_bearing((nearrange_lat, nearrange_lon),
+                                                                  (target_lat, target_lon));  # this comes CW from north
     theta = bearing_to_cartesian(compass_bearing);  # the angle of the position vector in cartesian coords
     # heading_cartesian is the angle between the east unit vector and the flight direction
     x0 = distance * np.cos(np.deg2rad(theta));
@@ -295,8 +291,10 @@ def incidence_angle_trig(xtp, cross_track_max, near_inc_angle, far_inc_angle):
 
 
 def get_geocoded_axes_from_ann(ann_file, cut_rowcol, looks_x, looks_y):
-    # Given .ann file and cutting/multilooking scheme, give us the ground-range points of the final pixels in two east-and-north axes
-    # cut_rowcol is an array specifying our cut range. Example: [2500, 5100, 7800, 13000] where 0-1 are rows and 2-3 are cols
+    # Given .ann file and cutting/multilooking scheme, give us the ground-range points of the final pixels
+    # in two east-and-north axes
+    # cut_rowcol is an array specifying our cut range.
+    # Example: [2500, 5100, 7800, 13000] where 0-1 are rows and 2-3 are cols.
     # looks_x and looks_y were used in filtering.
     num_rows, num_cols = jpl_uav_read_write.get_rows_cols(ann_file, 'ground');
     start_lon, start_lat, lon_inc, lat_inc = jpl_uav_read_write.get_ground_range_corner_increment(ann_file);
@@ -327,7 +325,7 @@ def write_unwrapped_ground_range_displacements(ground_range_phase_file, output_f
     lon_inc = x_axis[1] - x_axis[0];
     lat_inc = y_axis[1] - y_axis[0];
 
-    [_,_,unw] = rwr.read_netcdf4_xyz(ground_range_phase_file);
+    [_, _, unw] = rwr.read_netcdf4_xyz(ground_range_phase_file);
 
     plt.figure(figsize=(11, 7), dpi=300)
     X, Y = np.meshgrid(x_axis, y_axis);
@@ -360,7 +358,8 @@ def create_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
 
     # Get the azimuth angle for the pixels looking up to the airplane
     # My own documentation says CCW from north, even though that's really strange.
-    azimuth = heading_cartesian - 90;  # 90 degrees to the right of the airplane heading (for the look vector from ground to plane)
+    azimuth = heading_cartesian - 90;  # 90 degrees to the right of the airplane heading
+    # (for the look vector from ground to plane)
     azimuth = cartesian_to_ccw_from_north(azimuth);  # degrees CCW from North
     print("azimuth from ground to plane is:", azimuth)
 

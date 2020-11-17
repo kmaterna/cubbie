@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 import netcdf_read_write
+import sentinel_utilities
 import get_ra_rc_from_ll
 
 
@@ -28,6 +29,22 @@ def write_super_master_batch_config(masterid):
     return;
 
 
+def read_baseline_table(baseline_file):
+    # Returns a tuple of datetimes and baseline values
+    [_, times, baselines, _] = sentinel_utilities.read_baseline_table(baseline_file);
+    dtarray = [];
+    for i in range(len(times)):
+        dtarray.append(dt.datetime.strptime(str(int(times[i] + 1)), '%Y%j'));
+
+    # Re-order times and baselines in chronological order
+    baselines = [x for _, x in sorted(zip(dtarray, baselines))];
+    dtarray = sorted(dtarray);
+    baseline_tuple_list = [];
+    for i in range(len(baselines)):
+        baseline_tuple_list.append((baselines[i], dtarray[i]));
+    return baseline_tuple_list;
+
+
 def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
     # It is designed to work with both ISCE and GMTSAR files
@@ -39,11 +56,13 @@ def get_list_of_intf_all(config_params):
         # Specific to the case of UAVSAR stacks with alt-unwrapped taking place
         total_intf_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.uwrappedphase");
         total_corr_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.cor");
+    else:
+        total_intf_list, total_corr_list = [], [];
     print("Identifying all unwrapped intfs in %s: " % config_params.intf_dir);
     print("  Found %d interferograms for stacking. " % (len(total_intf_list)));
     print("  Found %d coherence files for stacking. " % (len(total_corr_list)));
     if len(total_intf_list) != len(total_corr_list):
-        print("ERROR!  Length of interferograms does match length of coherence files!  Please fix this before proceeding. \n");
+        print("ERROR!  Length of intfs does match length of coherence files!  Please fix this before proceeding. \n");
         sys.exit(1);
     return total_intf_list, total_corr_list;
 
@@ -74,7 +93,7 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
         else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
             trans_dat = "merged/trans.dat";
             rowref, colref = get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, intf_files[0]);
-        print("\nSTOP! Please write the reference row/col into your config file. \n")
+        print("\nSTOP! Please write the reference row/col %d/%d into your config file. \n" % (rowref, colref))
         sys.exit(1);
     return rowref, colref;
 
@@ -122,7 +141,7 @@ def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
 def get_intf_datetuple_isce(total_intf_list, total_corr_list):
     intf_tuple_list = [];
     for i in range(len(total_intf_list)):
-        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", total_intf_list[i])[0];  # example: 20100402_20140304
+        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", total_intf_list[i])[0];  # ex: 20100402_20140304
         date1 = dt.datetime.strptime(datesplit[0:8], "%Y%m%d");
         date2 = dt.datetime.strptime(datesplit[9:17], "%Y%m%d");
         intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
@@ -146,7 +165,7 @@ def exclude_intfs_manually(total_intf_tuple, skip_file):
         ifile.close();
         print(manual_removes);
 
-        if manual_removes == []:
+        if not manual_removes:
             select_intf_tuple = total_intf_tuple;
         else:
             # Checking to see if each interferogram should be included. 
@@ -182,7 +201,7 @@ def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
     if start_time == "" and end_time == "":
         return total_intf_tuple;
     print("Including only interferograms in time range %s to %s." % (dt.datetime.strftime(start_time, "%Y-%m-%d"),
-                                                                      dt.datetime.strftime(end_time, "%Y-%m-%d")));
+                                                                     dt.datetime.strftime(end_time, "%Y-%m-%d")));
     print(" Starting with %d interferograms " % len(total_intf_tuple))
     select_intf_tuple = [];
     for mytuple in total_intf_tuple:
@@ -239,6 +258,8 @@ def make_selection_of_intfs(config_params):
         intf_tuples = get_intf_datetuple_gmtsar(total_intf_list, total_corr_list);
     elif config_params.SAT == "UAVSAR":
         intf_tuples = get_intf_datetuple_isce(total_intf_list, total_corr_list);
+    else:
+        intf_tuples = [];
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
     select_intf_tuples = include_intfs_by_time_range(intf_tuples, config_params.start_time, config_params.end_time);
@@ -264,14 +285,14 @@ def make_igram_stick_plot(config_params, igram_files):
     else:  # for S1, which is most cases
         intf_tuples = get_intf_datetuple_gmtsar(igram_files, igram_files);
 
-    plt.figure(dpi=300, figsize=(8,7));
+    plt.figure(dpi=300, figsize=(8, 7));
     for i in range(len(intf_tuples)):
         plt.plot([intf_tuples[i][0], intf_tuples[i][1]], [i, i], '.', markersize=7, linestyle=None, color='gray');
-        plt.plot([intf_tuples[i][0],intf_tuples[i][1]],[i,i],markersize=5);
+        plt.plot([intf_tuples[i][0], intf_tuples[i][1]], [i, i], markersize=5);
     plt.title(str(len(intf_tuples)) + ' Interferograms Used');
     plt.xlabel('Time');
     plt.ylabel('Interferogram Number');
-    plt.savefig(config_params.ts_output_dir+"/intf_record.png");
+    plt.savefig(config_params.ts_output_dir + "/intf_record.png");
     return;
 
 
@@ -298,8 +319,7 @@ def connected_components_search(date_pairs, datestrs):
 
     # Initializing first time through
     label = np.zeros(np.shape(datestrs));
-    queue = [];
-    queue.append(datestrs[0]);
+    queue = [datestrs[0]];
 
     # some kind of loop
     while len(queue) > 0:
@@ -314,7 +334,7 @@ def connected_components_search(date_pairs, datestrs):
                 queue.append(connected_dates[i]);
         queue.pop(0);  # removing the point from the queue after it has been traversed
 
-    return np.sum(label)==len(datestrs);  # returning SUCCESS if we have a single cc touching every required date
+    return np.sum(label) == len(datestrs);  # returning SUCCESS if we have a single cc touching every required date
 
 
 # Functions to get TS points in row/col coordinates
@@ -324,11 +344,12 @@ def drive_cache_ts_points(ts_points_file, intf_file_example, geocoded_flag):
         lons, lats, names, rows, cols = read_ts_points_file(ts_points_file + ".cache");
     elif os.path.isfile(ts_points_file):  # if there's no cache, we will make one.
         lons, lats, names, rows, cols = read_ts_points_file(ts_points_file);
-        lons, lats, names, rows, cols = match_ts_points_row_col(lons, lats, names, rows, cols, intf_file_example, geocoded_flag);  
+        lons, lats, names, rows, cols = match_ts_points_row_col(lons, lats, names, rows, cols,
+                                                                intf_file_example, geocoded_flag);
         write_ts_points_file(lons, lats, names, rows, cols, ts_points_file + ".cache");
     else:
         print(
-            "Error! You are asking for points but there's not ts_points_file %s . No points computed. " % ts_points_file);
+            "Error! You ask for points but there's no ts_points_file %s . No points computed. " % ts_points_file);
         return None, None, None, None, None;
     return lons, lats, names, rows, cols;
 
@@ -387,10 +408,11 @@ def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
 def write_testing_pixel(intf_tuple, pixel_value, coh_value, filename):
     # Outputting a specific pixel for using its values later in testing
     print("Writing %s " % filename);
-    ofile=open(filename, 'w');
+    ofile = open(filename, 'w');
     for i in range(len(intf_tuple.filepaths)):
         if coh_value is not None:
-            ofile.write("%s %s %.4f %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i], coh_value[i]) );
+            ofile.write("%s %s %.4f %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i],
+                                               pixel_value[i], coh_value[i]) );
         else:
             ofile.write("%s %s %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i]) );
     ofile.close()
@@ -399,7 +421,7 @@ def write_testing_pixel(intf_tuple, pixel_value, coh_value, filename):
 
 def get_axarr_numbers(rows, cols, idx):
     # Given an incrementally counting idx number and a subplot dimension, where is our plot? 
-    total_plots = rows * cols;
+    # total_plots = rows * cols;
     col_num = np.mod(idx, cols);
     row_num = int(np.floor(idx / cols));
     return row_num, col_num;
