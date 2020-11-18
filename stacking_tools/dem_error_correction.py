@@ -13,6 +13,8 @@ def driver(ts_vector, datestrs, baseline_tuple):
     # Right now, this assumes a linear velocity, although more complicated time histories can be implemented.
     # baselines format: meters (first one 0 by definition)
     # datestrs format: '2015134' (str, used for shape and consistency with data vector)
+    if np.sum(np.isnan(ts_vector)) == len(ts_vector):
+        return ts_vector, np.nan;
 
     # if the igrams use the date, then calculate
     baselines = [x[0] for x in baseline_tuple if x[2] in datestrs];
@@ -33,7 +35,7 @@ def driver(ts_vector, datestrs, baseline_tuple):
         Bdot[i] = (baselines[i+1] - baselines[i]) / (dtarray[i+1]-dtarray[i]).days / 365.24;
         G[i, 1] = Bdot[i];
 
-    model = np.linalg.lstsq(G, v, rcond=0.001);  # rcond helps the solution converge
+    model = np.linalg.lstsq(G, v, rcond=0.1);  # rcond helps the solution converge
     K_z_error = model[0][1]  # constant time z_error;
 
     topo_phase = [K_z_error * (x-baselines[0]) for x in baselines];
