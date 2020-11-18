@@ -29,7 +29,7 @@ def reader_function(intf_files, coh_files, baseline_file, ts_type, dem_error):
         baseline_tuple = stacking_utilities.read_baseline_table(baseline_file);
     else:
         baseline_tuple = None;
-    intf_tuple = rmd.reader(intf_files[0:30]);
+    intf_tuple = rmd.reader(intf_files);
     return intf_tuple, coh_tuple, baseline_tuple;
 
 
@@ -94,13 +94,13 @@ def drive_velocity_gmtsar(param_dict, intf_files, coh_files):
 # LET'S GET THE FULL TS FOR EVERY PIXEL
 def drive_full_TS_gmtsar(param_dict, intf_files, coh_files):
     param_dict["start_index"] = 0;
-    param_dict["end_index"] = 1000000;
+    param_dict["end_index"] = 7000000;
     intf_tuple, coh_tuple, baseline_tuple = reader_function(intf_files, coh_files, param_dict["baseline_file"],
                                                             param_dict["ts_type"], param_dict["dem_error"]);
     [_, _, signal_spread_tuple] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
     TS, metrics = nsbas.Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
-    # rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, intf_tuple.ts_dates, 'mm',
-    #                             param_dict["ts_output_dir"]);
+    rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, intf_tuple.ts_dates, 'mm',
+                                param_dict["ts_output_dir"]);
     write_output_metrics(param_dict, intf_tuple, metrics);
     return;
 
