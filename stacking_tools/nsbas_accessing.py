@@ -8,57 +8,117 @@ import nsbas
 import dem_error_correction
 
 
-def massive_reader_function(intf_files, coh_files, baseline_file):
-    coh_tuple = None;
-    baseline_tuple = None;
-    intf_tuple = rmd.reader(intf_files);
-    if coh_files is not None:
+def repack_param_dictionary(config_params):
+    rowref = int(config_params.ref_idx.split('/')[0]);
+    colref = int(config_params.ref_idx.split('/')[1]);
+    param_dictionary = {"nsbas_good_perc": config_params.nsbas_min_intfs,
+                        "sbas_smoothing": config_params.sbas_smoothing, "wavelength": config_params.wavelength,
+                        "rowref": rowref, "colref": colref, "ts_output_dir": config_params.ts_output_dir,
+                        "signal_spread_filename": config_params.ts_output_dir+'/'+config_params.signal_spread_filename,
+                        "dem_error": config_params.dem_error, "ts_type": config_params.ts_type,
+                        "baseline_file": config_params.baseline_file, "geocoded_flag": config_params.geocoded_intfs};
+    return param_dictionary;
+
+
+def reader_function(intf_files, coh_files, baseline_file, ts_type, dem_error):
+    if ts_type == 'WNSBAS':
         coh_tuple = rmd.reader(coh_files);
-    if baseline_file is not None:
+    else:
+        coh_tuple = None;
+    if dem_error:
         baseline_tuple = stacking_utilities.read_baseline_table(baseline_file);
+    else:
+        baseline_tuple = None;
+    intf_tuple = rmd.reader(intf_files[0:30]);
     return intf_tuple, coh_tuple, baseline_tuple;
 
 
-def massive_reader_function_isce(intf_files, coh_files, baseline_file):
-    coh_tuple = None;
-    baseline_tuple = None;
+def reader_function_isce(intf_files, coh_files, baseline_file, ts_type, dem_error):
     intf_tuple = rmd.reader_isce(intf_files);
-    if coh_files is not None:
+    if ts_type == 'WNSBAS':
         coh_tuple = rmd.reader_isce(coh_files);
-    if baseline_file is not None:
+    else:
+        coh_tuple = None;
+    if dem_error:
         baseline_tuple = stacking_utilities.read_baseline_table(baseline_file);
+    else:
+        baseline_tuple = None;
     return intf_tuple, coh_tuple, baseline_tuple;
 
 
-# LET'S GET A VELOCITY FIELD
-def drive_velocity_gmtsar(intf_files, nsbas_min_intfs, smoothing, wavelength, rowref, colref, outdir,
-                          signal_spread_file, baseline_file=None, coh_files=None):
-    # GMTSAR DRIVING VELOCITIES
-    signal_spread_file = outdir + "/" + signal_spread_file;
-    intf_tuple, coh_tuple, baseline_tuple = massive_reader_function(intf_files, coh_files, baseline_file);
-    signal_spread_data = rwr.read_grd(signal_spread_file);
-    velocities = nsbas.Velocities(intf_tuple, nsbas_min_intfs, smoothing, wavelength, rowref, colref,
-                                  signal_spread_data, baseline_tuple=baseline_tuple, coh_tuple=coh_tuple);
-    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr', outdir + '/velo_nsbas.grd');
-    rwr.produce_output_plot(outdir + '/velo_nsbas.grd', 'LOS Velocity', outdir + '/velo_nsbas.png', 'velocity (mm/yr)');
+def write_output_metrics(param_dict, intf_tuple, metrics):
+    # Unpack the dictionary that contains output metrics (if any), write into files.
+    if param_dict["dem_error"]:
+        gridshape = np.shape(metrics);
+        Kz_grid = np.zeros(gridshape);
+        for i in range(gridshape[0]):
+            for j in range(gridshape[1]):
+                if "Kz_error" in metrics[i][j].keys():
+                    Kz_grid[i][j] = metrics[i][j]["Kz_error"];
+        rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, Kz_grid, 'm',
+                                  param_dict["ts_output_dir"] + '/kz_error.grd');
+        rwr.produce_output_plot(param_dict["ts_output_dir"] + '/kz_error.grd', 'DEM Error',
+                                param_dict["ts_output_dir"] + '/kz_error.png', 'DEM Error (m)');
+    return;
+
+
+def nsbas_ts_format_selector(config_params, intf_files, corr_files):
+    # This is the function called from the top level coordinator
+    param_dictionary = repack_param_dictionary(config_params);
+    if config_params.ts_format == 'velocity':
+        drive_velocity_gmtsar(param_dictionary, intf_files, corr_files);
+    elif config_params.ts_format == 'points':
+        drive_point_ts_gmtsar(param_dictionary, intf_files, corr_files, config_params.ts_points_file);
+    elif config_params.ts_format == 'timeseries':
+        drive_full_TS_gmtsar(param_dictionary, intf_files, corr_files);
+    elif config_params.ts_format == 'velocities_from_timeseries':
+        make_vels_from_ts_grids(config_params.ts_output_dir, geocoded=config_params.geocoded_intfs);
+    else:
+        print("Error!");
+    return;
+
+
+# LET'S GET A VELOCITY FIELD FROM GMTSAR FILES
+def drive_velocity_gmtsar(param_dict, intf_files, coh_files):
+    intf_tuple, coh_tuple, baseline_tuple = reader_function(intf_files, coh_files, param_dict["baseline_file"],
+                                                            param_dict["ts_type"], param_dict["dem_error"]);
+    [_, _, signal_spread_tuple] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
+    velocities = nsbas.Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
+    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr',
+                              param_dict["ts_output_dir"] + '/velo_nsbas.grd');
+    rwr.produce_output_plot(param_dict["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
+                            param_dict["ts_output_dir"] + '/velo_nsbas.png', 'velocity (mm/yr)');
+    return;
+
+
+# LET'S GET THE FULL TS FOR EVERY PIXEL
+def drive_full_TS_gmtsar(param_dict, intf_files, coh_files):
+    param_dict["start_index"] = 0;
+    param_dict["end_index"] = 1000000;
+    intf_tuple, coh_tuple, baseline_tuple = reader_function(intf_files, coh_files, param_dict["baseline_file"],
+                                                            param_dict["ts_type"], param_dict["dem_error"]);
+    [_, _, signal_spread_tuple] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
+    TS, metrics = nsbas.Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
+    # rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, intf_tuple.ts_dates, 'mm',
+    #                             param_dict["ts_output_dir"]);
+    write_output_metrics(param_dict, intf_tuple, metrics);
     return;
 
 
 # LET'S GET SOME PIXELS AND OUTPUT THEIR TS. 
-def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, rowref, colref, outdir,
-                          baseline_file=None, coh_files=None, geocoded_flag=0):
+def drive_point_ts_gmtsar(param_dict, intf_files, coh_files, ts_points_file):
+    # Replicating what would happen for a single pixel in the main SBAS loop
     # For general use, please provide a file with [lon, lat, row, col, name]
     lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file, intf_files[0],
-                                                                             geocoded_flag);
-    if lons is None:
-        return;
-    outdir = outdir + "/ts";
+                                                                             param_dict["geocoded_flag"]);
+    outdir = param_dict["ts_output_dir"] + "/ts";
     print("TS OUTPUT DIR IS: " + outdir);
     call(['mkdir', '-p', outdir], shell=False);
     print("Computing TS for %d pixels" % len(lons));
-    intf_tuple, coh_tuple, baseline_tuple = massive_reader_function(intf_files, coh_files, baseline_file);
+    intf_tuple, coh_tuple, baseline_tuple = reader_function(intf_files, coh_files, param_dict["baseline_file"],
+                                                            param_dict["ts_type"], param_dict["dem_error"]);
     datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.date_pairs_julian);
-    reference_pixel_vector = intf_tuple.zvalues[:, rowref, colref];
+    reference_pixel_vector = intf_tuple.zvalues[:, param_dict["rowref"], param_dict["colref"]];
 
     for i in range(len(rows)):
         pixel_value = intf_tuple.zvalues[:, rows[i], cols[i]];
@@ -66,36 +126,17 @@ def drive_point_ts_gmtsar(intf_files, ts_points_file, smoothing, wavelength, row
         coh_value = None;
         if coh_tuple is not None:
             coh_value = coh_tuple.zvalues[:, rows[i], cols[i]];
-        stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, outdir+'/testing_pixel_'+str(i)
-                                               + '.txt');
-        m_cumulative = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian, smoothing, wavelength, datestrs,
-                                            coh_value=coh_value);
+        stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, outdir+'/test_pixel_'+str(i)+'.txt');
+        ts_vector = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian,
+                                         param_dict["wavelength"], datestrs, coh_value=coh_value);
 
-        # If we're using DEM error, then we pass in the baseline table.
-        if baseline_tuple is not None:
-            m_cumulative = dem_error_correction.driver(m_cumulative, datestrs, baseline_tuple);
+        if param_dict["dem_error"]:  # If we are implementing a DEM error correction.
+            # Shouldn't be done on Weighted least squares.
+            ts_vector, Kz_error = dem_error_correction.driver(ts_vector, datestrs, baseline_tuple);
+        if param_dict["sbas_smoothing"] > 0:  # Smoothing after the time series has been created
+            ts_vector = nsbas.temporal_smoothing_ts(ts_vector, param_dict["sbas_smoothing"]);
 
-        nsbas.nsbas_ts_points_outputs(x_dts, m_cumulative, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
-    return;
-
-
-# LET'S GET THE FULL TS FOR EVERY PIXEL
-def drive_full_TS_gmtsar(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir, 
-                         signal_spread_file, baseline_file=None, coh_files=None):
-    # SETUP. 
-    start_index = 0;
-    end_index = 7000000;
-    signal_spread_file = outdir + "/" + signal_spread_file;
-
-    intf_tuple, coh_tuple, baseline_tuple = massive_reader_function(intf_files, coh_files, baseline_file);
-    xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
-    signal_spread_data = rwr.read_grd(signal_spread_file);
-
-    # TIME SERIES
-    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data,
-                       start_index=start_index, end_index=end_index, baseline_tuple=baseline_tuple,
-                       coh_tuple=coh_tuple);
-    rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', outdir);
+        nsbas.nsbas_ts_points_outputs(x_dts, ts_vector, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;
 
 
@@ -113,21 +154,18 @@ def make_vels_from_ts_grids(ts_dir, geocoded=False):
 
 
 # LET'S GET THE FULL TS FOR UAVSAR/ISCE FILES.
-def drive_full_TS_isce(intf_files, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, outdir,
-                       baseline_file=None, coh_files=None):
-    # SETUP. 
-    signal_spread_file = outdir + "/signalspread_cut.nc"
-    intf_tuple, coh_tuple, baseline_tuple = massive_reader_function_isce(intf_files, coh_files, baseline_file);
-    xdates = stacking_utilities.get_xdates_from_intf_tuple(intf_tuple);
-    signal_spread_data = rwr.read_grd(signal_spread_file);
+def drive_full_TS_isce(param_dict, intf_files, coh_files):
+    intf_tuple, coh_tuple, bperp_tuple = reader_function_isce(intf_files, coh_files, param_dict["baseline_file"],
+                                                              param_dict["ts_type"], param_dict["dem_error"]);
+    signal_spread_tuple = rwr.read_grd(param_dict["signal_spread_filename"]);
 
     # TIME SERIES
-    TS = nsbas.Full_TS(intf_tuple, nsbas_min_intfs, sbas_smoothing, wavelength, rowref, colref, signal_spread_data,
-                       baseline_tuple=baseline_tuple, coh_tuple=coh_tuple);
+    TS = nsbas.Full_TS(param_dict, intf_tuple, signal_spread_tuple, coh_tuple, bperp_tuple);
 
     # OUTPUTS
-    TS_NC_file = outdir + "/TS.nc";
-    TS_image_file = outdir + "/TS.png";
-    rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, xdates, 'mm', TS_NC_file);
-    stacking_utilities.plot_full_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, aspect=1 / 8);
+    TS_NC_file = param_dict["ts_output_dir"] + "/TS.nc";
+    TS_image_file = param_dict["ts_output_dir"] + "/TS.png";
+    rwr.produce_output_timeseries(intf_tuple.xvalues, intf_tuple.yvalues, TS, intf_tuple.ts_dates, 'mm', TS_NC_file);
+    stacking_utilities.plot_full_timeseries(TS_NC_file, intf_tuple.ts_dates, TS_image_file,
+                                            vmin=-50, vmax=200, aspect=1/8);
     return;

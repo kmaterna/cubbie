@@ -31,17 +31,22 @@ def write_super_master_batch_config(masterid):
 
 def read_baseline_table(baseline_file):
     # Returns a tuple of datetimes and baseline values
+    if baseline_file == '':
+        print("Error! No baseline file provided in stacking.config. Exiting...");
+        sys.exit(0);
     [_, times, baselines, _] = sentinel_utilities.read_baseline_table(baseline_file);
-    dtarray = [];
+    dtarray = []; datestrs_bperp = [];
     for i in range(len(times)):
         dtarray.append(dt.datetime.strptime(str(int(times[i] + 1)), '%Y%j'));
+        datestrs_bperp.append(str(times[i] + 1)[0:7]);   # string with format "2014361"
 
     # Re-order times and baselines in chronological order
     baselines = [x for _, x in sorted(zip(dtarray, baselines))];
+    datestrs_bperp = [x for _, x in sorted(zip(dtarray, datestrs_bperp))];
     dtarray = sorted(dtarray);
     baseline_tuple_list = [];
     for i in range(len(baselines)):
-        baseline_tuple_list.append((baselines[i], dtarray[i]));
+        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs_bperp[i]));
     return baseline_tuple_list;
 
 
@@ -67,9 +72,9 @@ def get_list_of_intf_all(config_params):
     return total_intf_list, total_corr_list;
 
 
-def get_xdates_from_intf_tuple(intf_tuple):
+def get_xdates_from_intf_tuple_dates(date_pairs_dt):
     total_dates = [];
-    for item in intf_tuple.date_pairs_dt:
+    for item in date_pairs_dt:
         total_dates.append(item[0]);
         total_dates.append(item[1]);
     xdates = sorted(set(total_dates));

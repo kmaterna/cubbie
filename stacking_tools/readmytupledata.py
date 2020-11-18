@@ -4,6 +4,7 @@ import collections
 from datetime import datetime
 import re
 import netcdf_read_write as rwr
+import stacking_utilities
 
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
                                        'xvalues', 'yvalues', 'zvalues', 'date_pairs_dt', 'ts_dates']);
@@ -17,6 +18,7 @@ def reader(filepathslist):
     filepaths = []
     date_pairs_julian, date_deltas, date_pairs = [], [], []
     xvalues, yvalues, zvalues = [], [], []
+    ts_dates = [];  # the total list of dates used in the interferogram network
     for i in range(len(filepathslist)):
         print(filepathslist[i])
         # Establish timing and filepath information
@@ -38,9 +40,12 @@ def reader(filepathslist):
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...')
 
+    # The sorted list of dates used in this interferogram network
+    ts_dates = stacking_utilities.get_xdates_from_intf_tuple_dates(np.array(date_pairs));
+
     mydata = data(filepaths=np.array(filepaths), date_pairs_julian=np.array(date_pairs_julian),
                   date_deltas=np.array(date_deltas), xvalues=np.array(xdata), yvalues=np.array(ydata),
-                  zvalues=np.array(zvalues), date_pairs_dt=np.array(date_pairs), ts_dates=None);
+                  zvalues=np.array(zvalues), date_pairs_dt=np.array(date_pairs), ts_dates=ts_dates);
     return mydata
 
 

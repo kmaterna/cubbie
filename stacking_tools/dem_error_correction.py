@@ -2,6 +2,8 @@
 # Perform a DEM error correction from Fattahi and Amelung, 2013, IEEE Proceedings.
 # This correction operates in the time domain after the SBAS inversion.
 # It solves for a term proportional to baseline history.
+# It cannot be used with weighted NSBAS.
+# It operates on unsmoothed time series, but smoothing can be added in later.
 
 import numpy as np
 
@@ -10,10 +12,13 @@ def driver(ts_vector, datestrs, baseline_tuple):
     # A function to implement Fattahi and Amelung's 2013 paper
     # Right now, this assumes a linear velocity, although more complicated time histories can be implemented.
     # baselines format: meters (first one 0 by definition)
-    # datestrs format: '2015134' (only used for shape)
+    # datestrs format: '2015134' (str, used for shape and consistency with data vector)
 
-    baselines = [x[0] for x in baseline_tuple];
-    dtarray = [x[1] for x in baseline_tuple];
+    # if the igrams use the date, then calculate
+    baselines = [x[0] for x in baseline_tuple if x[2] in datestrs];
+    dtarray = [x[1] for x in baseline_tuple if x[2] in datestrs];
+    if len(datestrs) != len(baselines):
+        print("Error! Wrong number of baselines (%d) and dates in your intfs (%d)" % (len(baselines), len(datestrs)));
 
     # design matrix: phase(t) = v(t-t0) + other terms + .... (4pi/lamda B(ti)/rsin(theta) z_error)
     # Baseline history: Bdot(i) = B(t_i)-B(t_i-t_i-1) / (t_i-t_i-1), i=[1-N]
