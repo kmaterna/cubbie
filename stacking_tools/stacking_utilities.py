@@ -30,23 +30,24 @@ def write_super_master_batch_config(masterid):
 
 
 def read_baseline_table(baseline_file):
-    # Returns a tuple of datetimes and baseline values
+    # Returns a list of tuples of datetimes and baseline values
+    # Example: (150.2, dt, 2015230)...
     if baseline_file == '':
         print("Error! No baseline file provided in stacking.config. Exiting...");
         sys.exit(0);
     [_, times, baselines, _] = sentinel_utilities.read_baseline_table(baseline_file);
-    dtarray = []; datestrs_bperp = [];
+    dtarray = []; datestrs = [];
     for i in range(len(times)):
         dtarray.append(dt.datetime.strptime(str(int(times[i] + 1)), '%Y%j'));
-        datestrs_bperp.append(str(times[i] + 1)[0:7]);   # string with format "2014361"
+        datestrs.append(str(times[i] + 1)[0:7]);   # string with format "2014361"
 
     # Re-order times and baselines in chronological order
     baselines = [x for _, x in sorted(zip(dtarray, baselines))];
-    datestrs_bperp = [x for _, x in sorted(zip(dtarray, datestrs_bperp))];
+    datestrs = [x for _, x in sorted(zip(dtarray, datestrs))];
     dtarray = sorted(dtarray);
     baseline_tuple_list = [];
     for i in range(len(baselines)):
-        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs_bperp[i]));
+        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i]));
     return baseline_tuple_list;
 
 
@@ -407,20 +408,6 @@ def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
     for i in range(len(lons)):
         ofile.write("%.5f %.5f %s %s %s\n" % (lons[i], lats[i], str(rows[i]), str(cols[i]), names[i]));
     ofile.close();
-    return;
-
-
-def write_testing_pixel(intf_tuple, pixel_value, coh_value, filename):
-    # Outputting a specific pixel for using its values later in testing
-    print("Writing %s " % filename);
-    ofile = open(filename, 'w');
-    for i in range(len(intf_tuple.filepaths)):
-        if coh_value is not None:
-            ofile.write("%s %s %.4f %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i],
-                                               pixel_value[i], coh_value[i]) );
-        else:
-            ofile.write("%s %s %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i]) );
-    ofile.close()
     return;
 
 

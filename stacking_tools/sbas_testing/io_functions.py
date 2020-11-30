@@ -1,19 +1,14 @@
-# October 2020, testing pixels
+# Functions for reading/writing testing pixels
+# November 2020
 
 import numpy as np
-import matplotlib.pyplot as plt
-import datetime as dt
 import collections
-import nsbas
-import sentinel_utilities
-import dem_error_correction
-import sys
-
+import datetime as dt
 
 Igrams = collections.namedtuple("Igrams", ["dt1", "dt2", "juldays", "datestrs", "x_axis_days", "phase", "corr"]);
 
 
-def read_test_pixel(ifile, coherence=True):
+def read_testing_pixel(ifile, coherence=True):
     print("Reading file %s " % ifile);
     if coherence:
         [juldays, phase, corr] = np.loadtxt(ifile, usecols=(1, 2, 3), unpack=True,
@@ -55,32 +50,15 @@ def take_coherent_igrams(full_Igrams, corr_limit):
     return new_Igrams;
 
 
-def outputs(x_axis_days, ts, ts_corrected=None):
-    plt.figure()
-    plt.plot(x_axis_days, ts, '.');
-    # plt.plot(x_axis_days, ts_corrected, '.', color='red');
-    plt.savefig('test.png');
+def write_testing_pixel(intf_tuple, pixel_value, coh_value, filename):
+    # Outputting a specific pixel for using its values later in testing
+    print("Writing %s " % filename);
+    ofile = open(filename, 'w');
+    for i in range(len(intf_tuple.filepaths)):
+        if coh_value is not None:
+            ofile.write("%s %s %.4f %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i],
+                                               pixel_value[i], coh_value[i]) );
+        else:
+            ofile.write("%s %s %.4f\n" % (intf_tuple.filepaths[i], intf_tuple.date_pairs_julian[i], pixel_value[i]) );
+    ofile.close()
     return;
-
-
-if __name__ == "__main__":
-    # Testing the baseline correction of Fattahi and Amelung, 2013
-    # ifile = 'Testing_Data/testing_pixel_3.txt';
-    # baseline_table = 'Testing_Data/baseline_table.dat'
-    # [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baseline_table);
-    # full_Igrams = read_test_pixel(ifile);
-    # full_Igrams = take_coherent_igrams(full_Igrams, 0.375)
-    # sentinel_utilities.make_network_plot(full_Igrams.juldays, stems, times, baselines, "pixel_baseline_plot.png");
-    # ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);
-    # ts_corrected = dem_error_correction.driver(ts, full_Igrams.datestrs, baseline_table);
-    # outputs(full_Igrams.x_axis_days, ts, ts_corrected);
-
-    # Testing a single pixel of regular NSBAS without coherence information
-    # ifile = 'stacking/smoothing_7/ts/testing_pixel_11.txt';
-    ifile = 'stacking/no_smoothing/ts_smoothing0/testing_pixel_11.txt';
-    full_Igrams = read_test_pixel(ifile, coherence=False);
-    ts = nsbas.do_nsbas_pixel(full_Igrams.phase, full_Igrams.juldays, 0, 56, full_Igrams.datestrs, coh_value=full_Igrams.corr);  # smoothing is parameter
-    vel = nsbas.compute_velocity_math(ts, full_Igrams.x_axis_days);
-    print("Velocity is %.4f mm/yr" % (vel) );
-    outputs(full_Igrams.x_axis_days, ts);
-

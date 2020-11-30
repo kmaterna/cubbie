@@ -6,6 +6,7 @@ import readmytupledata as rmd
 import netcdf_read_write as rwr
 import nsbas
 import dem_error_correction
+import sbas_testing
 
 
 def repack_param_dictionary(config_params):
@@ -126,7 +127,7 @@ def drive_point_ts_gmtsar(param_dict, intf_files, coh_files, ts_points_file):
         coh_value = None;
         if coh_tuple is not None:
             coh_value = coh_tuple.zvalues[:, rows[i], cols[i]];
-        stacking_utilities.write_testing_pixel(intf_tuple, pixel_value, coh_value, outdir+'/test_pixel_'+str(i)+'.txt');
+        sbas_testing.io_functions.write_testing_pixel(intf_tuple, pixel_value, coh_value, outdir+'/test_pixel_'+str(i)+'.txt');
         ts_vector = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian,
                                          param_dict["wavelength"], datestrs, coh_value=coh_value);
 

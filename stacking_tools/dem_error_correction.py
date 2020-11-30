@@ -11,14 +11,16 @@ import numpy as np
 def driver(ts_vector, datestrs, baseline_tuple):
     # A function to implement Fattahi and Amelung's 2013 paper
     # Right now, this assumes a linear velocity, although more complicated time histories can be implemented.
-    # baselines format: meters (first one 0 by definition)
+    # baselines tuple: baseline (m), dt, str. example (150.2, dt, 2015230)... first baseline 0m by definition.
     # datestrs format: '2015134' (str, used for shape and consistency with data vector)
+
     if np.sum(np.isnan(ts_vector)) == len(ts_vector):
         return ts_vector, np.nan;
 
     # if the igrams use the date, then calculate
     baselines = [x[0] for x in baseline_tuple if x[2] in datestrs];
     dtarray = [x[1] for x in baseline_tuple if x[2] in datestrs];
+
     if len(datestrs) != len(baselines):
         print("Error! Wrong number of baselines (%d) and dates in your intfs (%d)" % (len(baselines), len(datestrs)));
 
@@ -26,13 +28,14 @@ def driver(ts_vector, datestrs, baseline_tuple):
     # Baseline history: Bdot(i) = B(t_i)-B(t_i-t_i-1) / (t_i-t_i-1), i=[1-N]
     # velocity history: v(i) = phi(t_i)-phi(t_i-1)  / (t_i-t_i-1), i=[1-N]
     # The model we're solving for is [velocity, (4pi/lamda z_error/rsin(theta))].
+    # The units of everything seem to be in movement per day, not movement per year (this matters)
     # I call that constant K_z_error
     G = np.ones((len(datestrs)-1, 2))
     v = np.zeros((len(datestrs)-1));
     Bdot = np.zeros((len(datestrs)-1));
     for i in range(0, len(datestrs)-1):
-        v[i] = (ts_vector[i+1] - ts_vector[i]) / (dtarray[i+1]-dtarray[i]).days / 365.24;
-        Bdot[i] = (baselines[i+1] - baselines[i]) / (dtarray[i+1]-dtarray[i]).days / 365.24;
+        v[i] = (ts_vector[i+1] - ts_vector[i]) / (dtarray[i+1]-dtarray[i]).days;
+        Bdot[i] = (baselines[i+1] - baselines[i]) / (dtarray[i+1]-dtarray[i]).days;
         G[i, 1] = Bdot[i];
 
     model = np.linalg.lstsq(G, v, rcond=0.1);  # rcond helps the solution converge
