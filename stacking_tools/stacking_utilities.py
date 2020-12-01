@@ -11,6 +11,7 @@ import re
 import netcdf_read_write
 import sentinel_utilities
 import get_ra_rc_from_ll
+import haversine
 
 
 def read_baseline_table(baseline_file):
@@ -111,6 +112,27 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
         print("\nSTOP! Please write the reference row/col %d/%d into your config file. \n" % (rowref, colref))
         sys.exit(1);
     return rowref, colref;
+
+
+def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
+    # A very general function
+    # Take a 2D raster of lons and lats and find the grid location closest to the target location
+    dist = np.zeros(np.shape(raster_lon));
+    lon_shape = np.shape(raster_lon);
+    for i in range(lon_shape[0]):
+        for j in range(lon_shape[1]):
+            mypt = [raster_lat[i][j], raster_lon[i][j]];
+            dist[i][j] = haversine.distance((target_lat, target_lon), mypt);
+    minimum_distance = np.nanmin(dist);
+    if minimum_distance < 0.25:  # if we're inside the domain.
+        idx = np.where(dist == np.nanmin(dist));
+        i_found = idx[0][0];
+        j_found = idx[1][0];
+        print(raster_lon[i_found][j_found], raster_lat[i_found][j_found]);
+    else:
+        i_found = -1;
+        j_found = -1;  # error codes
+    return i_found, j_found;
 
 
 def get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, example_grd):

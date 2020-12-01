@@ -1,19 +1,15 @@
-import sys, glob
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from subprocess import call
 import stacking_utilities
 import readmytupledata
 import stack_corr
-import coseismic_stack
-import Super_Simple_Stack as sss
 import netcdf_read_write as rwr
-import nsbas_accessing
 import isce_read_write
 import unwrapping_isce_custom
 import isce_geocode_tools
 import stacking_configparser
-import haversine
 
 
 # --------------- STEP 1: Make corrections and TS prep ------------ #
@@ -25,26 +21,17 @@ def make_corrections_isce(config_params):
     print("Start Stage 1 - optional atm corrections");
 
     # For ISCE, we might want to re-make all the interferograms and unwrap them in custom fashion.
-    # This operates on files in the Igram directory, no need to move directories yourself.
-    if config_params.solve_unwrap_errors:
+    if config_params.custom_unwrapping:
         custom_params = stacking_configparser.read_config_isce(config_params.config_file)
         unwrapping_isce_custom.main_function(custom_params.rlks, custom_params.alks, custom_params.filt,
                                              custom_params.xbounds, custom_params.ybounds,
                                              custom_params.cor_cutoff_mask);
 
     # WE ALSO MAKE THE SIGNAL SPREAD FOR FULL IMAGES
-    cor_value = 0.5;
-    filepathslist = glob.glob("../Igrams/????????_????????/filt*.cor");  # *** This may change
-    cor_data = readmytupledata.reader_isce(filepathslist);
-    a = stack_corr.stack_corr(cor_data, cor_value);
-    rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage',
-                              config_params.ts_output_dir + '/signalspread_full.nc')
-    rwr.produce_output_plot(config_params.ts_output_dir + '/signalspread_full.nc',
-                            'Signal Spread above cor=' + str(cor_value),
-                            config_params.ts_output_dir + '/signalspread_full.png',
-                            'Percentage of coherence', aspect=1 / 4, invert_yaxis=False);
+    intf_file_tuples = stacking_utilities.get_list_of_intf_all(config_params);
+    corr_files = [x[3] for x in intf_file_tuples];
+    stack_corr.drive_signal_spread_isce(corr_files, 0.5, config_params.ts_output_dir, "signalspread_full.nc");
     print("End Stage 1 - optional atm corrections\n");
-
     return;
 
 
@@ -118,29 +105,9 @@ def from_lonlat_get_rowcol(config_params):
     # Next we get the nearest pixel from the rasters
     raster_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lon.gdal");
     raster_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lat.gdal");
-    i_found, j_found = get_nearest_pixel_in_raster(raster_lon, raster_lat, reflon, reflat);
+    i_found, j_found = stacking_utilities.get_nearest_pixel_in_raster(raster_lon, raster_lat, reflon, reflat);
     print("From lon/lat, found Row and Column at %d, %d " % (i_found, j_found));
     print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");
-    return i_found, j_found;
-
-
-def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
-    # Take a raster and find the grid location closest to the target location
-    dist = np.zeros(np.shape(raster_lon));
-    lon_shape = np.shape(raster_lon);
-    for i in range(lon_shape[0]):
-        for j in range(lon_shape[1]):
-            mypt = [raster_lat[i][j], raster_lon[i][j]];
-            dist[i][j] = haversine.distance((target_lat, target_lon), mypt);
-    minimum_distance = np.nanmin(dist);
-    if minimum_distance < 0.25:  # if we're inside the domain.
-        idx = np.where(dist == np.nanmin(dist));
-        i_found = idx[0][0];
-        j_found = idx[1][0];
-        print(raster_lon[i_found][j_found], raster_lat[i_found][j_found]);
-    else:
-        i_found = -1;
-        j_found = -1;  # error codes
     return i_found, j_found;
 
 
@@ -198,47 +165,6 @@ def get_ref(config_params):
 
     print("End Stage 2 - Collecting referenced unwrapped\n");
 
-    return;
-
-
-# --------------- STEP 3: Velocities and Time Series! ------------ # 
-
-def vels_and_ts(config_params):
-    if config_params.startstage > 3:  # if we're starting after, we don't do this.
-        return;
-    if config_params.endstage < 3:  # if we're ending at intf, we don't do this.
-        return;
-    
-    print("Start Stage 3 - Velocities and Time Series");
-    call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);    
-
-    # This is where the hand-picking takes place: manual excludes, manual selects, long intfs only, ramp-removed, etc.
-    intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
-    rowref = int(config_params.ref_idx.split('/')[0]);
-    colref = int(config_params.ref_idx.split('/')[1]);
-
-    # Make signal_spread here. Should do this for real, now that excludes have taken place
-    stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
-
-    if config_params.ts_type == "STACK":
-        print("Running velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref,
-                                        config_params.ts_output_dir);  # broken??
-    if config_params.ts_type == "COSEISMIC":
-        print("Making a simple coseismic stack");
-        coseismic_stack.drive_coseismic_stack_isce(intf_files, config_params.wavelength, rowref, colref,
-                                                   config_params.ts_output_dir);
-    if config_params.ts_type == "NSBAS" or config_params.ts_type == "WNSBAS":
-        print("Running velocities and time series by NSBAS");
-        nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                           config_params.wavelength, rowref, colref, config_params.ts_output_dir);
-    if config_params.ts_type == "WNSBAS":
-        print("Running velocities and time series by WNSBAS");
-        nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                           config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-                                           coh_files=corr_files);
-
-    print("End Stage 3 - Velocities and Time Series\n");
     return;
 
 

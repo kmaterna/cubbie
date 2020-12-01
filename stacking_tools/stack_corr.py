@@ -75,6 +75,17 @@ def drive_signal_spread_calculation(corr_files, cutoff, output_dir, output_filen
     return;
 
 
+def drive_signal_spread_isce(corr_files, cutoff, output_dir, output_filename):
+    cor_data = rmd.reader_isce(corr_files);
+    a = stack_corr(cor_data, cutoff);
+    rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', output_dir+'/'+output_filename);
+    rwr.produce_output_plot(output_dir+'/'+output_filename, 'Signal Spread above cor=' + str(cutoff),
+                            output_dir+'/signalspread_full.png', 'Percentage of coherence', aspect=1 / 4,
+                            invert_yaxis=False);
+    return;
+
+
+
 if __name__ == "__main__":
     myfiles = glob.glob("intf_all_remote/???????_???????/corr.grd")
     mytuple = rmd.reader(myfiles)

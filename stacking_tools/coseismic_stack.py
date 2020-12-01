@@ -2,29 +2,20 @@
 # The average should contain less noise than the original interferograms.
 
 import numpy as np
-import sys
 import readmytupledata as rmd
 import netcdf_read_write as rwr
 
 
-def drive_coseismic_stack_gmtsar(intf_files, wavelength, rowref, colref, outdir):
-    intf_tuple = rmd.reader(intf_files);
-    average_coseismic = get_avg_coseismic(intf_tuple, rowref, colref, wavelength);
+def drive_coseismic_stack(config_params, intf_files):
+    # Can be used for gmtsar or isce
+    param_dict = get_coseismic_params(config_params);
+    intf_tuple = param_dict["reader"](intf_files);
+    average_coseismic = get_avg_coseismic(intf_tuple, param_dict["rowref"], param_dict["colref"],
+                                          param_dict["wavelength"]);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, average_coseismic, 'mm',
-                              outdir + '/coseismic.grd');
-    rwr.produce_output_plot(outdir + '/coseismic.grd', 'LOS Displacement', outdir + '/coseismic.png',
-                            'displacement (mm)');
-    return;
-
-
-def drive_coseismic_stack_isce(intf_files, wavelength, rowref, colref, outdir):
-    intf_tuple = rmd.reader_isce(intf_files);
-    average_coseismic = get_avg_coseismic(intf_tuple, rowref, colref, wavelength);
-    rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, average_coseismic, 'mm',
-                              outdir + '/coseismic.grd');
-    rwr.produce_output_plot(outdir + '/coseismic.grd', 'LOS Displacement', outdir + '/coseismic.png',
-                            'displacement (mm)',
-                            aspect=1 / 8, invert_yaxis=False, vmin=-50, vmax=200);
+                              param_dict["outdir"]+'/coseismic.grd');
+    rwr.produce_output_plot(param_dict["outdir"]+'/coseismic.grd', 'LOS Displacement',
+                            param_dict["outdir"]+'/coseismic.png', 'displacement (mm)');
     return;
 
 
@@ -37,3 +28,17 @@ def get_avg_coseismic(intf_tuple, rowref, colref, wavelength):
             pixel_value = np.subtract(intf_tuple.zvalues[:, i, j], intf_tuple.zvalues[:, rowref, colref]);
             disp[i][j] = np.nanmean(pixel_value) * -wavelength / (4 * np.pi);
     return disp;
+
+
+def get_coseismic_params(config_params):
+    rowref = int(config_params.ref_idx.split('/')[0]);
+    colref = int(config_params.ref_idx.split('/')[1]);
+    if config_params.file_format == 'isce':  # Working with the file formats
+        my_reader_function = rmd.reader_isce;
+    else:
+        my_reader_function = rmd.reader;
+    param_dictionary = {"wavelength": config_params.wavelength,
+                        "rowref": rowref, "colref": colref, "outdir": str(config_params.ts_output_dir),
+                        "signal_spread_filename": config_params.ts_output_dir+'/'+config_params.signal_spread_filename,
+                        "reader": my_reader_function};
+    return param_dictionary;

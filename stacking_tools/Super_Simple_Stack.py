@@ -4,10 +4,13 @@ import netcdf_read_write as rwr
 import readmytupledata as rmd
 
 
-def drive_velocity_simple_stack(intfs, wavelength, rowref, colref, outdir):
-    signal_spread_data = rwr.read_grd(outdir + "/signalspread.nc");
-    intf_tuple = rmd.reader(intfs);
-    velocities, x, y = velocity_simple_stack(intf_tuple, wavelength, rowref, colref, signal_spread_data, 25);
+def drive_velocity_simple_stack(config_params, intf_files):
+    param_dict = get_simple_stack_params(config_params);
+    [_, _, signal_spread_data] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
+    outdir = param_dict["outdir"];
+    intf_tuple = param_dict["reader"](intf_files);
+    velocities, x, y = velocity_simple_stack(intf_tuple, param_dict["wavelength"], param_dict["rowref"],
+                                             param_dict["colref"], signal_spread_data, 25);
     # last argument is signal threshold (< 100%).  lower signal threshold allows for more data into the stack.
     rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', outdir + '/velo_simple_stack.grd')
     rwr.produce_output_plot(outdir + '/velo_simple_stack.grd', 'LOS Velocity ', outdir + '/velo_simple_stack.png',
@@ -15,7 +18,21 @@ def drive_velocity_simple_stack(intfs, wavelength, rowref, colref, outdir):
     return;
 
 
-def get_velocity_by_stacking_pixel(phase_values, time_intervals, wavelength):
+def get_simple_stack_params(config_params):
+    rowref = int(config_params.ref_idx.split('/')[0]);
+    colref = int(config_params.ref_idx.split('/')[1]);
+    if config_params.file_format == 'isce':  # Working with the file formats
+        my_reader_function = rmd.reader_isce;
+    else:
+        my_reader_function = rmd.reader;
+    param_dictionary = {"wavelength": config_params.wavelength,
+                        "rowref": rowref, "colref": colref, "outdir": str(config_params.ts_output_dir),
+                        "signal_spread_filename": config_params.ts_output_dir+'/'+config_params.signal_spread_filename,
+                        "reader": my_reader_function};
+    return param_dictionary;
+
+
+def pixel_velocity_by_stacking(phase_values, time_intervals, wavelength):
     # The math behind the simple stack method. 
     phase_count = 0;
     time_count = 0.0001;  # we put a small number here to avoid div-by-zero during debugging.
@@ -44,7 +61,7 @@ def velocity_simple_stack(mytuple, wavelength, rowref, colref, signal_spread_dat
         signal_spread = signal_spread_data[i, j];
         if signal_spread > signal_threshold:  # if we want a calculation for that day...
             pixel_value = np.subtract(mytuple.zvalues[:, i, j], ref_pixel_values);
-            velocities[i, j] = get_velocity_by_stacking_pixel(pixel_value, mytuple.date_deltas, wavelength);
+            velocities[i, j] = pixel_velocity_by_stacking(pixel_value, mytuple.date_deltas, wavelength);
         else:
             velocities[i, j] = np.nan;
         c = c + 1;
@@ -58,8 +75,3 @@ def velocity_simple_stack(mytuple, wavelength, rowref, colref, signal_spread_dat
 
 if __name__ == "__main__":
     print("Manual Control of Super Simple Stack.");
-    # velocities, x, y = velocity_simple_stack(myfiles_new, 56, 50 )
-    # rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', outfile_stem + 'velo_prof_reasonable50_remastered.grd')
-    # rwr.produce_output_plot(outfile_stem + 'velo_prof_reasonable50_remastered.grd',
-    #   'Velocity Profile Reasonable (15 images removed)', outfile_stem + 'velo_prof_reasonable50_remastered.png',
-    #   'velocity (mm/yr)')

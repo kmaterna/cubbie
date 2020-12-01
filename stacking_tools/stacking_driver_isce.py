@@ -21,7 +21,7 @@ if __name__ == "__main__":
 	stacking_functions_isce.get_ref(config_params); 
 
 	# Step 3: make velocity field
-	stacking_functions_isce.vels_and_ts(config_params); 
+	stacking_functions_gmstar.vels_and_ts(config_params);
 
 	# Step 4: geocoding
 	stacking_functions_isce.geocode_vels(config_params);

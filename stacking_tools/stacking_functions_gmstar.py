@@ -67,24 +67,20 @@ def vels_and_ts(config_params):
 
     print("Start Stage 3 - Velocities and Time Series");
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
-    rowref = int(config_params.ref_idx.split('/')[0]);
-    colref = int(config_params.ref_idx.split('/')[1]);
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     # We make the signal spread again after excludes have taken place.
     intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
     stacking_utilities.make_igram_stick_plot(intf_file_tuples, config_params.ts_output_dir);
-    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
-                                               config_params.signal_spread_filename);
+    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
+    #                                            config_params.signal_spread_filename);
 
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")
-        sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref,
-                                        config_params.ts_output_dir);
+        sss.drive_velocity_simple_stack(config_params, intf_files);
     if config_params.ts_type == "COSEISMIC":
         print("\nMaking a simple coseismic stack");
-        coseismic_stack.drive_coseismic_stack_gmtsar(intf_files, config_params.wavelength, rowref, colref,
-                                                     config_params.ts_output_dir);
+        coseismic_stack.drive_coseismic_stack(config_params, intf_files);
     if config_params.ts_type == "NSBAS" or config_params.ts_type == "WNSBAS":
         print("\nRunning velocities and time series by NSBAS or WNSBAS");
         nsbas_accessing.nsbas_ts_format_selector(config_params, intf_files, corr_files);

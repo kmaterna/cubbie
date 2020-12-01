@@ -5,7 +5,8 @@ import collections
 
 Params = collections.namedtuple('Params',
                                 ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'ref_loc', 'ref_idx',
-                                 'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'aps', 'dem_error',
+                                 'ts_type', 'file_format',
+                                 'custom_unwrapping', 'detrend_atm_topo', 'gacos', 'aps', 'dem_error',
                                  'sbas_smoothing', 'ts_format',
                                  'nsbas_min_intfs', 'intf_filename', 'corr_filename', 'geocoded_intfs', 'baseline_file',
                                  'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file', 'flight_angle',
@@ -69,7 +70,7 @@ def read_config_general():
     ref_loc = config.get('py-config', 'ref_loc')
     ref_idx = config.get('py-config', 'ref_idx')
     ts_type = config.get('py-config', 'ts_type')
-    solve_unwrap_errors = config.getint('py-config', 'solve_unwrap_errors');
+    custom_unwrapping = config.getint('py-config', 'custom_unwrapping');
     gacos = config.getint('py-config', 'gacos');
     aps = config.getint('py-config', 'aps');
     dem_error = config.getint('py-config', 'dem_error');
@@ -77,6 +78,7 @@ def read_config_general():
     nsbas_min_intfs = config.getint('py-config', 'nsbas_min_intfs');
     sbas_smoothing = config.getfloat('py-config', 'sbas_smoothing');
     ts_format = config.get('py-config', 'ts_format');
+    file_format = config.get('py-config', 'file_format');
     intf_dir = config.get('py-config', 'intf_dir');
     intf_filename = config.get('py-config', 'intf_filename');
     corr_filename = config.get('py-config', 'corr_filename');
@@ -109,9 +111,9 @@ def read_config_general():
 
     config_params = Params(config_file=config_file_orig, SAT=SAT, wavelength=wavelength, startstage=startstage,
                            endstage=endstage,
-                           ref_loc=ref_loc, ref_idx=ref_idx, ts_type=ts_type, solve_unwrap_errors=solve_unwrap_errors,
+                           ref_loc=ref_loc, ref_idx=ref_idx, ts_type=ts_type, custom_unwrapping=custom_unwrapping,
                            detrend_atm_topo=detrend_atm_topo, gacos=gacos, aps=aps, dem_error=dem_error,
-                           sbas_smoothing=sbas_smoothing, ts_format=ts_format,
+                           sbas_smoothing=sbas_smoothing, ts_format=ts_format, file_format=file_format,
                            nsbas_min_intfs=nsbas_min_intfs, intf_filename=intf_filename, corr_filename=corr_filename,
                            baseline_file=baseline_file, geocoded_intfs=geocoded_intfs,
                            start_time=start_time, end_time=end_time, coseismic=coseismic, intf_timespan=intf_timespan,
