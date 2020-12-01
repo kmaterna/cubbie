@@ -13,9 +13,12 @@ def driver(ts_vector, datestrs, baseline_tuple):
     # Right now, this assumes a linear velocity, although more complicated time histories can be implemented.
     # baselines tuple: baseline (m), dt, str. example (150.2, dt, 2015230)... first baseline 0m by definition.
     # datestrs format: '2015134' (str, used for shape and consistency with data vector)
+    # ts_vector: usually mm, but we convert to meters for consistency with baselines
 
     if np.sum(np.isnan(ts_vector)) == len(ts_vector):
         return ts_vector, np.nan;
+
+    ts_vector = np.multiply(ts_vector, 0.001);   # convert to meters
 
     # if the igrams use the date, then calculate
     baselines = [x[0] for x in baseline_tuple if x[2] in datestrs];
@@ -27,9 +30,9 @@ def driver(ts_vector, datestrs, baseline_tuple):
     # design matrix: phase(t) = v(t-t0) + other terms + .... (4pi/lamda B(ti)/rsin(theta) z_error)
     # Baseline history: Bdot(i) = B(t_i)-B(t_i-t_i-1) / (t_i-t_i-1), i=[1-N]
     # velocity history: v(i) = phi(t_i)-phi(t_i-1)  / (t_i-t_i-1), i=[1-N]
-    # The model we're solving for is [velocity, (4pi/lamda z_error/rsin(theta))].
+    # The model we're solving for is [velocity, (z_error/rsin(theta))]. since data is already converted to mm
     # The units of everything seem to be in movement per day, not movement per year (this matters)
-    # I call that constant K_z_error
+    # I call that constant K_z_error. If we want DEM error, we multiply by an estimate of rsintheta
     G = np.ones((len(datestrs)-1, 2))
     v = np.zeros((len(datestrs)-1));
     Bdot = np.zeros((len(datestrs)-1));
@@ -44,4 +47,5 @@ def driver(ts_vector, datestrs, baseline_tuple):
     topo_phase = [K_z_error * (x-baselines[0]) for x in baselines];
 
     corrected_ts_vector = np.subtract(ts_vector, topo_phase);
+    corrected_ts_vector = np.multiply(corrected_ts_vector, 1000);   # convert to mm
     return corrected_ts_vector, K_z_error;

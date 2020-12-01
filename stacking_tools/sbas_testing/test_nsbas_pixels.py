@@ -51,7 +51,7 @@ def test_real_pixel_dem_error():
     Igrams = sbas_testing.io_functions.read_testing_pixel(ifile, coherence=False);
     ts = nsbas.do_nsbas_pixel(Igrams.phase, Igrams.juldays, 56, Igrams.datestrs);
     ts_corrected, K_z_error = dem_error_correction.driver(ts, Igrams.datestrs, baseline_tuple);
-    print("DEM ERROR: %.10f m " % K_z_error);
+    print("DEM ERROR: %.10f*rsintheta m " % K_z_error);
     outputs_dem_error_correction(Igrams.x_axis_days, ts, ts_corrected);
     # [stems, times, baselines, missiondays] = sentinel_utilities.read_baseline_table(baseline_table);
     # sentinel_utilities.make_network_plot(Igrams.juldays, stems, times, baselines,
@@ -67,11 +67,11 @@ def test_synthetic_pixel_dem_error():
     baseline_tuple = stacking_utilities.read_baseline_table(baseline_table);
     [datestrs, ts] = np.loadtxt(pixel_file, unpack=True, dtype={'names':('a','b'), 'formats':('U7', np.float)});
     ts_corrected, K_z_error = dem_error_correction.driver(ts, datestrs, baseline_tuple);
-    print("DEM ERROR: %.10f m " % K_z_error);
+    print("DEM ERROR: %.10f*rsintheta m " % K_z_error);
     outputs_dem_error_correction(range(0, 17*8, 8), ts, ts_corrected);
     return;
 
 
 if __name__ == "__main__":
-    test_real_pixel_dem_error();
-    # test_synthetic_pixel_dem_error();
+    # test_real_pixel_dem_error();
+    test_synthetic_pixel_dem_error();
