@@ -9,7 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import re
 import netcdf_read_write
+import isce_read_write
 import sentinel_utilities
+import readmytupledata
 import get_ra_rc_from_ll
 import haversine
 
@@ -92,26 +94,108 @@ def get_xdates_from_intf_tuple_dates(date_pairs_dt):
     return xdates;
 
 
+# Reference Pixel Math
 def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
     # Get the index of the reference pixel (generally using merged-subswath files)
     # If you don't have the reference pixel in the config file, 
     # the program will stop execution so you can write it there.
     print("Identifying reference pixel:");
-    if ref_idx != "":  # First preference: Get the reference pixel index from the config file
+    if ref_idx == "" and ref_loc == "":
+        get_100p_pixels_manually_choose(intf_files);
+        sys.exit(0);
+    elif ref_idx != "":  # First preference: Get the reference pixel index from the config file
         rowref = int(ref_idx.split('/')[0])
         colref = int(ref_idx.split('/')[1])
         print("  Found rowref, colref = %d, %d from config file" % (rowref, colref));
-    else:
+    else:  # here we have a reference pixel from lat/lon
         lon = float(ref_loc.split('/')[0])
         lat = float(ref_loc.split('/')[1])
         if geocoded_flag:   # Second preference: Extract the lat/lon from already-geocoded intf_files
             rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0]);
+            # Would use uavsar_from_lonlat_get_rowcol if doing UAVSAR here.
         else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
             trans_dat = "merged/trans.dat";
             rowref, colref = get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, intf_files[0]);
         print("\nSTOP! Please write the reference row/col %d/%d into your config file. \n" % (rowref, colref))
         sys.exit(1);
     return rowref, colref;
+
+
+def get_100p_pixels_manually_choose(filenameslist):
+    # This function helps you manually choose a reference pixel.
+    # You might have to run through this function a number of times
+    # To select your boxes and your eventual reference pixel.
+    # I pick one in a stable area, outside of the deformation, ideally in a desert.
+
+    print("Finding the pixels that are 100 percent coherent");
+    # Finding pixels that are completely non-nan
+    mydata = readmytupledata.reader_isce(filenameslist, band=1);
+    # if it's straight from SNAPHU, band = 2
+    # if it's manually processed first, band = 1
+    total_pixels = np.shape(mydata.zvalues)[1] * np.shape(mydata.zvalues)[2];
+    total_images = np.shape(mydata.zvalues)[0];
+    xvalues = range(np.shape(mydata.zvalues)[2]);
+    yvalues = range(np.shape(mydata.zvalues)[1]);
+    count = 0;
+    ypixels_good = [];
+    xpixels_good = [];
+    ypixels_options = [];
+    xpixels_options = [];
+
+    for i in range(np.shape(mydata.zvalues)[1]):
+        for j in range(np.shape(mydata.zvalues)[2]):
+            oneslice = mydata.zvalues[:, i, j];
+            if np.sum(~np.isnan(oneslice)) == total_images:  # if we have perfect coherence
+                count = count + 1;
+                xpixels_good.append(j);
+                ypixels_good.append(i);
+                # Here we will adjust parameters until we find a reference pixel that we like.
+                if 280 < j < 300 and 2500 < i < 2700:
+                    xpixels_options.append(j);
+                    ypixels_options.append(i);
+
+    idx_lucky = 710;
+    xref = xpixels_options[idx_lucky];
+    yref = ypixels_options[idx_lucky];
+
+    print("%d of %d (%f percent) are totally coherent. " % (count, total_pixels, 100 * (count / total_pixels)));
+    print(np.shape(mydata.zvalues));
+    print("%d pixels are good options for the reference pixel. " % (len(xpixels_options)));
+
+    # Make a plot that shows where those pixels are
+    # a=rwr.read_grd(outdir+'/signalspread_cut.nc');
+    plt.figure();
+    # plt.imshow(a,aspect=1/4, cmap='rainbow');
+    plt.plot(xpixels_good, ypixels_good, '.', color='k');
+    plt.plot(xpixels_options, ypixels_options, '.', color='g');
+    plt.plot(xref, yref, '.', color='r');
+    plt.savefig('best_pixels.png');
+    plt.close();
+
+    print("Based on 100p pixels, selecting reference pixel at row/col %d, %d " % (yref, xref));
+    print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");
+
+    return yref, xref;
+
+
+def uavsar_from_lonlat_get_rowcol(config_params):
+    # An alternative way of choosing a reference pixel with UAVSAR files
+    # Given a ref loc, get the geocoded grids and find the nearest point.
+    # Return its row and column.
+    # Step 1: Geocode properly based on a sample interferogram grid (done)
+    # Step 2: extract nearest pixel (code in Brawley repo)
+
+    # isce_geocode_tools.geocode_UAVSAR_stack(config_params, 'geocoded');
+
+    reflon = float(config_params.ref_loc.split(',')[0]);
+    reflat = float(config_params.ref_loc.split(',')[1]);
+    # Next we get the nearest pixel from the rasters
+    raster_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lon.gdal");
+    raster_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lat.gdal");
+    i_found, j_found = get_nearest_pixel_in_raster(raster_lon, raster_lat, reflon, reflat);
+    print("From lon/lat, found Row and Column at %d, %d " % (i_found, j_found));
+    print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");
+    return i_found, j_found;
 
 
 def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
@@ -288,6 +372,7 @@ def make_selection_of_intfs(config_params):
     return select_intf_list, select_corr_list, select_intf_tuples;
 
 
+# Metrics and Connected Components
 def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
     print("Making simple plot of interferograms used.")
     plt.figure(dpi=300, figsize=(8, 7));
@@ -402,6 +487,7 @@ def read_ts_points_file(ts_points_file):
     return lons, lats, names, rows, cols;
 
 
+# Output Functions
 def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
     print("Writing %s " % ts_points_file);
     ofile = open(ts_points_file, 'w');
