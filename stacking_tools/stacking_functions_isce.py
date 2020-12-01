@@ -12,6 +12,7 @@ import nsbas_accessing
 import isce_read_write
 import unwrapping_isce_custom
 import isce_geocode_tools
+import stacking_configparser
 import haversine
 
 
@@ -26,9 +27,10 @@ def make_corrections_isce(config_params):
     # For ISCE, we might want to re-make all the interferograms and unwrap them in custom fashion.
     # This operates on files in the Igram directory, no need to move directories yourself.
     if config_params.solve_unwrap_errors:
-        unwrapping_isce_custom.main_function(config_params.rlks, config_params.alks, config_params.filt,
-                                             config_params.xbounds, config_params.ybounds,
-                                             config_params.cor_cutoff_mask);
+        custom_params = stacking_configparser.read_config_isce(config_params.config_file)
+        unwrapping_isce_custom.main_function(custom_params.rlks, custom_params.alks, custom_params.filt,
+                                             custom_params.xbounds, custom_params.ybounds,
+                                             custom_params.cor_cutoff_mask);
 
     # WE ALSO MAKE THE SIGNAL SPREAD FOR FULL IMAGES
     cor_value = 0.5;
@@ -174,8 +176,9 @@ def get_ref(config_params):
     print("Start Stage 2 - Collecting referenced unwrapped");
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);
 
-    # Very general, takes all files and doesn't discriminate. 
-    intf_files, _ = stacking_utilities.get_list_of_intf_all(config_params);
+    # Very general, takes all files and doesn't discriminate.
+    intf_file_tuples = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files = [x[2] for x in intf_file_tuples];
 
     # If we are starting manually, we find reference pixel by using 100% pixels...
     if config_params.ref_idx == "" and config_params.ref_loc == "":
@@ -210,33 +213,25 @@ def vels_and_ts(config_params):
     call(['cp', 'stacking.config', config_params.ts_output_dir], shell=False);    
 
     # This is where the hand-picking takes place: manual excludes, manual selects, long intfs only, ramp-removed, etc.
-    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
+    intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
 
-    # If we're using DEM error, then we pass in the baseline table. Otherwise we pass None.
-    baseline_file = None;
-    if config_params.dem_error:
-        baseline_file = config_params.baseline_file;
-
     # Make signal_spread here. Should do this for real, now that excludes have taken place
-    # stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
+    stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, config_params.ts_output_dir, label='_selected');
 
     if config_params.ts_type == "STACK":
         print("Running velocities by simple stack.")
         sss.drive_velocity_simple_stack(intf_files, config_params.wavelength, rowref, colref,
-                                        config_params.ts_output_dir);
+                                        config_params.ts_output_dir);  # broken??
     if config_params.ts_type == "COSEISMIC":
         print("Making a simple coseismic stack");
         coseismic_stack.drive_coseismic_stack_isce(intf_files, config_params.wavelength, rowref, colref,
                                                    config_params.ts_output_dir);
-    if config_params.ts_type == "SBAS":
-        print("Running velocities and time series by SBAS: SBAS currently broken.");
-    if config_params.ts_type == "NSBAS":
+    if config_params.ts_type == "NSBAS" or config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by NSBAS");
         nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,
-                                           config_params.wavelength, rowref, colref, config_params.ts_output_dir,
-                                           baseline_file=baseline_file);
+                                           config_params.wavelength, rowref, colref, config_params.ts_output_dir);
     if config_params.ts_type == "WNSBAS":
         print("Running velocities and time series by WNSBAS");
         nsbas_accessing.drive_full_TS_isce(intf_files, config_params.nsbas_min_intfs, config_params.sbas_smoothing,

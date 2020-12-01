@@ -46,7 +46,8 @@ def get_ref(config_params):
     print("Start Stage 2 - Finding Files and Reference Pixel");
 
     # Very general, takes all files and doesn't discriminate. 
-    intf_files, _ = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_file_tuples = stacking_utilities.get_list_of_intf_all(config_params);
+    intf_files = [x[2] for x in intf_file_tuples];
 
     # Here we need to get ref_idx if we don't have it already
     stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs,
@@ -71,11 +72,10 @@ def vels_and_ts(config_params):
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
     # We make the signal spread again after excludes have taken place.
-    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
-    stacking_utilities.make_igram_stick_plot(config_params, intf_files);
-    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
-    #                                            config_params.signal_spread_filename);
-    # should do this for real applications.
+    intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
+    stacking_utilities.make_igram_stick_plot(intf_file_tuples, config_params.ts_output_dir);
+    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
+                                               config_params.signal_spread_filename);
 
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")

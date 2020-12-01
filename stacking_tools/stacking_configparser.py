@@ -12,58 +12,22 @@ Params = collections.namedtuple('Params',
                                  'look_angle', 'skip_file', 'signal_spread_filename',
                                  'intf_dir', 'ts_points_file', 'ts_output_dir']);
 
-Params_gmtsar = collections.namedtuple('Params_gmtsar',
-                                       ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'ref_loc',
-                                        'ref_idx',
-                                        'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'aps', 'dem_error',
-                                        'sbas_smoothing', 'ts_format',
-                                        'nsbas_min_intfs', 'intf_filename', 'corr_filename',
-                                        'geocoded_intfs', 'baseline_file',
-                                        'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file',
-                                        'flight_angle', 'look_angle', 'skip_file', 'signal_spread_filename',
-                                        'intf_dir', 'ts_points_file', 'ts_output_dir']);
 
-Params_isce = collections.namedtuple('Params_isce', ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage',
-                                                     'ref_loc', 'ref_idx', 'rlks', 'alks', 'filt', 'cor_cutoff_mask',
-                                                     'xbounds', 'ybounds',
-                                                     'ts_type', 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos',
-                                                     'aps', 'dem_error',
-                                                     'sbas_smoothing', 'ts_format',
-                                                     'nsbas_min_intfs', 'intf_filename',
-                                                     'corr_filename', 'geocoded_intfs', 'baseline_file',
-                                                     'start_time', 'end_time', 'coseismic',
-                                                     'intf_timespan', 'llh_file', 'lkv_file',
-                                                     'gps_file', 'flight_angle', 'look_angle', 'skip_file', 
-                                                     'signal_spread_filename', 'ts_points_file',
-                                                     'intf_dir', 'ts_output_dir']);
+Params_custom = collections.namedtuple('Params_custom', ['config_file', 'rlks', 'alks', 'filt', 'cor_cutoff_mask',
+                                                         'xbounds', 'ybounds', 'llh_file', 'lkv_file',
+                                                         'ts_output_dir']);
 
 
 # ----------------------------- #
 
-def read_config():
-    # GMTSAR-specific parameters
-    config, C = read_config_general();
-    # Here we would read GMTSAR params if necessary
-    Params = Params_gmtsar(config_file=C.config_file, SAT=C.SAT, wavelength=C.wavelength, startstage=C.startstage,
-                           endstage=C.endstage, ref_loc=C.ref_loc, ref_idx=C.ref_idx, ts_type=C.ts_type,
-                           solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo,
-                           gacos=C.gacos, aps=C.aps, dem_error=C.dem_error, sbas_smoothing=C.sbas_smoothing,
-                           ts_format=C.ts_format,
-                           nsbas_min_intfs=C.nsbas_min_intfs, intf_filename=C.intf_filename,
-                           corr_filename=C.corr_filename,
-                           baseline_file=C.baseline_file, geocoded_intfs=C.geocoded_intfs,
-                           start_time=C.start_time, end_time=C.end_time,
-                           coseismic=C.coseismic,
-                           intf_timespan=C.intf_timespan, gps_file=C.gps_file, flight_angle=C.flight_angle,
-                           look_angle=C.look_angle, skip_file=C.skip_file, signal_spread_filename=C.signal_spread_filename, 
-                           ts_points_file=C.ts_points_file, intf_dir=C.intf_dir,
-                           ts_output_dir=C.ts_output_dir);
-    return Params;
-
-
-def read_config_isce():
+def read_config_isce(config_file):
     # ISCE-specific parameters
-    config, C = read_config_general();
+
+    # read config file
+    config = configparser.ConfigParser()
+    config.optionxform = str  # make the config file case-sensitive
+    config.read(config_file)
+
     rlks = config.getint('py-config', 'rlks')
     alks = config.getint('py-config', 'alks')
     filt = config.getfloat('py-config', 'filt')
@@ -72,23 +36,11 @@ def read_config_isce():
     ybounds = config.get('py-config', 'ybounds');
     llh_file = config.get('py-config', 'llh_file');
     lkv_file = config.get('py-config', 'lkv_file');
-    ts_output_dir = C.ts_output_dir + "_" + str(rlks) + "_" + str(alks) + "_" + str(filt);  # custom output dir
-    Params = Params_isce(config_file=C.config_file, SAT=C.SAT, wavelength=C.wavelength, startstage=C.startstage,
-                         endstage=C.endstage, ref_loc=C.ref_loc, ref_idx=C.ref_idx,
-                         rlks=rlks, alks=alks, filt=filt, cor_cutoff_mask=cor_cutoff_mask, xbounds=xbounds,
-                         ybounds=ybounds, ts_type=C.ts_type,
-                         solve_unwrap_errors=C.solve_unwrap_errors, detrend_atm_topo=C.detrend_atm_topo, gacos=C.gacos,
-                         aps=C.aps, dem_error=C.dem_error, sbas_smoothing=C.sbas_smoothing, ts_format=C.ts_format,
-                         intf_filename=C.intf_filename,
-                         corr_filename=C.corr_filename,
-                         baseline_file=C.baseline_file, geocoded_intfs=C.geocoded_intfs,
-                         nsbas_min_intfs=C.nsbas_min_intfs, start_time=C.start_time, end_time=C.end_time,
-                         coseismic=C.coseismic,
-                         intf_timespan=C.intf_timespan, llh_file=llh_file, lkv_file=lkv_file,
-                         gps_file=C.gps_file, flight_angle=C.flight_angle, look_angle=C.look_angle,
-                         skip_file=C.skip_file, signal_spread_filename=C.signal_spread_filename, 
-                         ts_points_file=C.ts_points_file, intf_dir=C.intf_dir,
-                         ts_output_dir=ts_output_dir);
+    ts_output_dir = config.get('py-config', 'ts_output_dir');
+    ts_output_dir = ts_output_dir + "_" + str(rlks) + "_" + str(alks) + "_" + str(filt);  # custom output directory
+    Params = Params_custom(config_file=config_file, rlks=rlks, alks=alks, filt=filt,
+                           cor_cutoff_mask=cor_cutoff_mask, xbounds=xbounds, ybounds=ybounds, llh_file=llh_file,
+                           lkv_file=lkv_file, ts_output_dir=ts_output_dir);
     return Params;
 
 

@@ -1,6 +1,5 @@
-# Sentinel Utilities
+# Stacking Utilities
 
-import subprocess
 import os, sys, glob
 import datetime as dt
 import matplotlib
@@ -12,21 +11,6 @@ import re
 import netcdf_read_write
 import sentinel_utilities
 import get_ra_rc_from_ll
-
-
-def write_super_master_batch_config(masterid):
-    ifile = open('batch.config', 'r');
-    ofile = open('batch.config.new', 'w');
-    for line in ifile:
-        if 'master_image' in line:
-            ofile.write('master_image = ' + masterid + '\n');
-        else:
-            ofile.write(line);
-    ifile.close();
-    ofile.close();
-    subprocess.call(['mv', 'batch.config.new', 'batch.config'], shell=False);
-    print("Writing master_image into batch.config");
-    return;
 
 
 def read_baseline_table(baseline_file):
@@ -54,23 +38,48 @@ def read_baseline_table(baseline_file):
 def get_list_of_intf_all(config_params):
     # This is mechanical: just takes the list of interferograms in intf_all. 
     # It is designed to work with both ISCE and GMTSAR files
-    # The more advanced selection takes place in make_selection_of_intfs. 
+    # The more advanced selection takes place in make_selection_of_intfs.
+    # Returns a list of tuples like : (dt1, dt2, intf_file, corr_file).
     if config_params.SAT == "S1":
         total_intf_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.intf_filename);
         total_corr_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.corr_filename);
+        intf_file_tuples = get_intf_datetuple_gmtsar(total_intf_list, total_corr_list);
     elif config_params.SAT == "UAVSAR":
         # Specific to the case of UAVSAR stacks with alt-unwrapped taking place
         total_intf_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.uwrappedphase");
         total_corr_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.cor");
+        intf_file_tuples = get_intf_datetuple_isce(total_intf_list, total_corr_list);
     else:
         total_intf_list, total_corr_list = [], [];
+        intf_file_tuples = [];
     print("Identifying all unwrapped intfs in %s: " % config_params.intf_dir);
     print("  Found %d interferograms for stacking. " % (len(total_intf_list)));
     print("  Found %d coherence files for stacking. " % (len(total_corr_list)));
     if len(total_intf_list) != len(total_corr_list):
         print("ERROR!  Length of intfs does match length of coherence files!  Please fix this before proceeding. \n");
         sys.exit(1);
-    return total_intf_list, total_corr_list;
+    return intf_file_tuples;
+
+
+# Turn interferograms into date-date-filename tuples
+def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
+    intf_tuple_list = [];
+    for i in range(len(total_intf_list)):
+        datesplit = re.findall(r"\d\d\d\d\d\d\d_\d\d\d\d\d\d\d", total_intf_list[i])[0];  # example: 2010040_2014064
+        date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1), "%Y%j");
+        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1), "%Y%j");  # adding 1 because 000 = January 1
+        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
+    return intf_tuple_list;
+
+
+def get_intf_datetuple_isce(total_intf_list, total_corr_list):
+    intf_tuple_list = [];
+    for i in range(len(total_intf_list)):
+        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", total_intf_list[i])[0];  # ex: 20100402_20140304
+        date1 = dt.datetime.strptime(datesplit[0:8], "%Y%m%d");
+        date2 = dt.datetime.strptime(datesplit[9:17], "%Y%m%d");
+        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
+    return intf_tuple_list;
 
 
 def get_xdates_from_intf_tuple_dates(date_pairs_dt):
@@ -131,27 +140,6 @@ def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
         col_idx = np.nan; 
     print("  Found Coordinates at row/col: %d/%d " % (row_idx, col_idx));
     return row_idx, col_idx;
-
-
-# Turn interferograms into date-date-filename tuples
-def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
-    intf_tuple_list = [];
-    for i in range(len(total_intf_list)):
-        datesplit = re.findall(r"\d\d\d\d\d\d\d_\d\d\d\d\d\d\d", total_intf_list[i])[0];  # example: 2010040_2014064
-        date1 = dt.datetime.strptime(str(int(datesplit[0:7]) + 1), "%Y%j");
-        date2 = dt.datetime.strptime(str(int(datesplit[8:15]) + 1), "%Y%j");  # adding 1 because 000 = January 1
-        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
-    return intf_tuple_list;
-
-
-def get_intf_datetuple_isce(total_intf_list, total_corr_list):
-    intf_tuple_list = [];
-    for i in range(len(total_intf_list)):
-        datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", total_intf_list[i])[0];  # ex: 20100402_20140304
-        date1 = dt.datetime.strptime(datesplit[0:8], "%Y%m%d");
-        date2 = dt.datetime.strptime(datesplit[9:17], "%Y%m%d");
-        intf_tuple_list.append((date1, date2, total_intf_list[i], total_corr_list[i]));
-    return intf_tuple_list;
 
 
 # Exclude and Include criteria
@@ -259,13 +247,7 @@ def make_selection_of_intfs(config_params):
     # THIS DEPENDS ON YOUR CONFIG SETTINGS
     # ------------------------------ # 
     # The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
-    total_intf_list, total_corr_list = get_list_of_intf_all(config_params);
-    if config_params.SAT == "S1":
-        intf_tuples = get_intf_datetuple_gmtsar(total_intf_list, total_corr_list);
-    elif config_params.SAT == "UAVSAR":
-        intf_tuples = get_intf_datetuple_isce(total_intf_list, total_corr_list);
-    else:
-        intf_tuples = [];
+    intf_tuples = get_list_of_intf_all(config_params);
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
     select_intf_tuples = include_intfs_by_time_range(intf_tuples, config_params.start_time, config_params.end_time);
@@ -281,24 +263,20 @@ def make_selection_of_intfs(config_params):
     write_intf_record(select_intf_tuples, config_params.ts_output_dir+"/intf_record.txt")
     select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
     select_corr_list = [mytuple[3] for mytuple in select_intf_tuples]
-    return select_intf_list, select_corr_list;
+    return select_intf_list, select_corr_list, select_intf_tuples;
 
 
-def make_igram_stick_plot(config_params, igram_files):
+def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
     print("Making simple plot of interferograms used.")
-    if config_params.SAT == "UAVSAR":
-        intf_tuples = get_intf_datetuple_isce(igram_files, igram_files);
-    else:  # for S1, which is most cases
-        intf_tuples = get_intf_datetuple_gmtsar(igram_files, igram_files);
-
     plt.figure(dpi=300, figsize=(8, 7));
-    for i in range(len(intf_tuples)):
-        plt.plot([intf_tuples[i][0], intf_tuples[i][1]], [i, i], '.', markersize=7, linestyle=None, color='gray');
-        plt.plot([intf_tuples[i][0], intf_tuples[i][1]], [i, i], markersize=5);
-    plt.title(str(len(intf_tuples)) + ' Interferograms Used');
+    for i in range(len(intf_file_tuples)):
+        plt.plot([intf_file_tuples[i][0], intf_file_tuples[i][1]], [i, i], '.', markersize=7, linestyle=None,
+                 color='gray');
+        plt.plot([intf_file_tuples[i][0], intf_file_tuples[i][1]], [i, i], markersize=5);
+    plt.title(str(len(intf_file_tuples)) + ' Interferograms Used');
     plt.xlabel('Time');
     plt.ylabel('Interferogram Number');
-    plt.savefig(config_params.ts_output_dir + "/intf_record.png");
+    plt.savefig(ts_output_dir + "/intf_record.png");
     return;
 
 

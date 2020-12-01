@@ -9,7 +9,7 @@ import stacking_functions_gmstar
 import stacking_functions_isce
 
 if __name__ == "__main__":
-	config_params = stacking_configparser.read_config_isce();
+	conf, config_params = stacking_configparser.read_config_general();
 
 	# Step 0: set up output directories
 	stacking_functions_gmstar.set_up_output_directories(config_params);
