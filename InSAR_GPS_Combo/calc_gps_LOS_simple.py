@@ -7,11 +7,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import subprocess, sys
-import datetime as dt
+import subprocess
 from scipy import interpolate
-import netcdf_read_write
+from read_write_insar_utilities import netcdf_read_write
 import gps_io_functions
+import gps_vel_functions
 import los_projection_tools
 
 
@@ -41,7 +41,8 @@ def configure(config_params):
     bounds_ref = [-nominal_boundary, nominal_boundary, -nominal_boundary,
                   nominal_boundary];  # in Longitude/Latitude units away from the reference pixel.
     coordbox_nearref = [reflon + bounds_ref[0], reflon + bounds_ref[1], reflat + bounds_ref[2], reflat + bounds_ref[3]];
-    # For interpolating around the reference, I have found that it is very important to restrict the spline's domain. Otherwise it can get very unstable.
+    # For interpolating around the reference, I have found that it is very important to restrict the spline's domain.
+    # Otherwise it can get very unstable.
     type_of_interp = 'linear';
 
     return [gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, coordbox_gps, coordbox_nearref,
@@ -55,17 +56,17 @@ def inputs(gps_file, veldir, velfile, rowref, colref, coordbox_gps, coordbox_nea
 
     # The velocities within the latlon box.
     [gps_velfield] = gps_io_functions.read_unr_vel_file(gps_file);
-    [gps_velfield] = gps_io_functions.remove_duplicates(gps_velfield);
-    [gps_velfield] = gps_io_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
+    [gps_velfield] = gps_vel_functions.remove_duplicates(gps_velfield);
+    [gps_velfield] = gps_vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
 
     # A small range near the reference pixel for interpolating later.
-    [gps_velfield_removed] = gps_io_functions.clean_velfield(gps_velfield, coord_box=coordbox_nearref);
+    [gps_velfield_removed] = gps_vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_nearref);
 
     return [gps_velfield, gps_velfield_removed, reflon, reflat];
 
 
 def generate_reflon_reflat(velfile, veldir, rowref, colref):
-    # In this part, I sometimes need to flip the x-axis of the input array to make sense with the geographic coordinates.
+    # In this part, I sometimes need to flip the x-axis of the input array to make sense with geographic coordinates.
     # I suspect that for ascending orbits, this may not be necessary.
     # Worth checking if it introduces bugs.
 
@@ -103,7 +104,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
     netcdf_read_write.flip_if_necessary(veldir + '/' + refpoint_file);
     subprocess.call(['geocode_mod.csh', refpoint_file, ref_ll, ref_ll_name, veldir], shell=False);
 
-    [xll, yll, zll] = netcdf_read_write.read_any_grd_variables(veldir + '/' + ref_ll, 'lon', 'lat', 'z');
+    [xll, yll, _] = netcdf_read_write.read_any_grd_variables(veldir + '/' + ref_ll, 'lon', 'lat', 'z');
     latref = yll[0];
     lonref = xll[0];
     print("\nReference Location is: ", lonref, latref)
@@ -129,7 +130,7 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
     velref_e, velref_n, velref_u = los_projection_tools.get_point_enu_interp([reflon, reflat], f_east=f_east,
                                                                              f_north=f_north)
     LOS_reference = \
-    los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u, flight_angle, look_angle)[0];
+        los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u, flight_angle, look_angle)[0];
 
     # Transform GPS field into LOS field
     LOS_array = los_projection_tools.simple_project_ENU_to_LOS(vel_tuple.e, vel_tuple.n, vel_tuple.u, flight_angle,
@@ -148,8 +149,8 @@ def outputs(gps_velfield, LOS_velfield, reflon, reflat, outfile):
     ofile = open(outfile, 'w');
     for i in range(len(LOS_velfield.e)):
         ofile.write("%f %f %f %f %f %f %s \n" % (
-        LOS_velfield.elon[i], LOS_velfield.nlat[i], gps_velfield.e[i], gps_velfield.n[i], gps_velfield.u[i],
-        LOS_velfield.e[i], LOS_velfield.name[i]));
+            LOS_velfield.elon[i], LOS_velfield.nlat[i], gps_velfield.e[i], gps_velfield.n[i], gps_velfield.u[i],
+            LOS_velfield.e[i], LOS_velfield.name[i]));
     ofile.write("%f %f %f %f %f %f %s\n" % (reflon, reflat, 0, 0, 0, 0, 'reference'));
     ofile.close();
     print("Outputs printed to %s" % outfile);

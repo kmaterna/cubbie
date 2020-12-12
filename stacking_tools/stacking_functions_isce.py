@@ -3,9 +3,8 @@ import numpy as np
 import readmytupledata
 import stacking_utilities
 import stack_corr
-import netcdf_read_write as rwr
-import isce_geocode_tools
-import unwrapping_isce_custom
+from read_write_insar_utilities import netcdf_read_write as rwr
+from intf_generating import isce_geocode_tools, unwrapping_isce_custom
 import stacking_configparser
 
 

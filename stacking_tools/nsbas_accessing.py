@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import stacking_utilities
 import readmytupledata as rmd
-import netcdf_read_write as rwr
+from read_write_insar_utilities import netcdf_read_write as rwr
 import nsbas
 import dem_error_correction
 import sbas_testing

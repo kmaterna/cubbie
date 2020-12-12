@@ -3,7 +3,7 @@ import numpy as np
 import collections
 from datetime import datetime
 import re
-import netcdf_read_write as rwr
+from read_write_insar_utilities import netcdf_read_write as rwr, isce_read_write
 import stacking_utilities
 
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
@@ -92,8 +92,6 @@ def reader_simple_format(file_names):
 
 
 def reader_isce(filepathslist, band=1):
-    import isce_read_write
-
     """
     This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
     in a cuboid of data. It splits and stores this data in a named tuple which is returned. This can then be used

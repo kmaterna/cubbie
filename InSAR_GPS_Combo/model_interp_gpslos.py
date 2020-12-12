@@ -72,7 +72,8 @@ def configure():
 
 # -------------- INPUTS  --------------- # 
 def inputs(input_file, bounds, or_file, ca_file):
-    [vel_tuple] = gps_io_functions.read_pbo_vel_file(input_file);  # I actually have to interpolate over the whole field, shouldn't chunk it smaller with clean_velfield.
+    # I actually have to interpolate over the whole field, shouldn't chunk it smaller with clean_velfield.
+    [vel_tuple] = gps_io_functions.read_pbo_vel_file(input_file);
     ca_border = np.loadtxt(ca_file);
     or_border = np.loadtxt(or_file);
     return [vel_tuple, ca_border, or_border];
@@ -101,7 +102,7 @@ def get_interpolation_points_within_grid(latlon_bounds, interval, optional_borde
             include_path = path.Path(optional_border_paths[k]);
             for i in range(np.shape(X)[0]):
                 for j in range(np.shape(X)[1]):
-                    if include_path.contains_point([X[i,j], Y[i,j]]) == 1:  # example: if the point is in CA or OR
+                    if include_path.contains_point([X[i, j], Y[i, j]]) == 1:  # example: if the point is in CA or OR
                         x_for_interp.append(X[i, j]);
                         y_for_interp.append(Y[i, j]);
     else:
@@ -187,9 +188,11 @@ def compute(vel_tuple, my_param_collection, ca_border, or_border):
 
 def evaluate_gradients(point1, point2, ascending1, ascending2, descending1, descending2):
     mydistance = haversine.distance([point1[1], point1[0]], [point2[1], point2[0]]);
-    print("Gradient in ASCENDING track from point1 to point2: %f mm/yr in %f km " % (np.abs(ascending1 - ascending2), mydistance));
+    print("Gradient in ASCENDING track from point1 to point2: %f mm/yr in %f km " % (np.abs(ascending1 - ascending2),
+                                                                                     mydistance));
     print("Equal to: %f mm/yr per 100 km \n" % (100 * np.abs(ascending1 - ascending2) / mydistance));
-    print("Gradient in DESCENDING track from point1 to point2: %f mm/yr in %f km " % (np.abs(descending1 - descending2), mydistance));
+    print("Gradient in DESCENDING track from point1 to point2: %f mm/yr in %f km " % (np.abs(descending1 - descending2),
+                                                                                      mydistance));
     print("Equal to: %f mm/yr per 100 km \n" % (100 * np.abs(descending1 - descending2) / mydistance));
     return;
 
@@ -216,20 +219,25 @@ def outputs(vel_tuple, my_param_collection, ca_border, or_border, los_ascending_
     ax = f1.add_subplot(1, 1, 1)
     ax.plot(eastnorthfield.elon, eastnorthfield.nlat, '.g');
     ax.quiver(eastnorthfield.elon, eastnorthfield.nlat, eastnorthfield.e, eastnorthfield.n, color='red', scale=500.0);
-    f1 = my_plot_formatting(ax, my_param_collection.bounds, ca_border, or_border, "Interpolated GPS Velocity Field", vel_tuple);
+    f1 = my_plot_formatting(ax, my_param_collection.bounds, ca_border, or_border, "Interpolated GPS Velocity Field",
+                            vel_tuple);
     plt.savefig("Interpolated_field.png");
     plt.close();
 
     # Northward and Eastward velocities in a subplot
     f, axarr = plt.subplots(1, 2, figsize=(12, 6));
-    h1 = axarr[0].scatter(narray_x, narray_y, s=75, marker='s', c=narray_north, cmap='jet', edgecolors='face', vmin=-30, vmax=30);
+    h1 = axarr[0].scatter(narray_x, narray_y, s=75, marker='s', c=narray_north, cmap='jet', edgecolors='face', vmin=-30,
+                          vmax=30);
     axarr[0].quiver(narray_x, narray_y, narray_east, narray_north, color='white', scale=500.0);
-    my_plot_formatting(axarr[0], my_param_collection.bounds, ca_border, or_border, "North Velocity Interpolated from GPS", vel_tuple);
-    h2 = axarr[1].scatter(narray_x, narray_y, s=75, marker='s', c=narray_east, cmap='jet', edgecolors='face', vmin=-30, vmax=30);
+    my_plot_formatting(axarr[0], my_param_collection.bounds, ca_border, or_border,
+                       "North Velocity Interpolated from GPS", vel_tuple);
+    h2 = axarr[1].scatter(narray_x, narray_y, s=75, marker='s', c=narray_east, cmap='jet', edgecolors='face',
+                          vmin=-30, vmax=30);
     cbar = plt.colorbar(h1, ax=axarr[1]);
     cbar.set_label('mm/yr');
     axarr[1].quiver(narray_x, narray_y, narray_east, narray_north, color='white', scale=500.0);
-    my_plot_formatting(axarr[1], my_param_collection.bounds, ca_border, or_border, "East Velocity Interpolated from GPS", vel_tuple);
+    my_plot_formatting(axarr[1], my_param_collection.bounds, ca_border, or_border,
+                       "East Velocity Interpolated from GPS", vel_tuple);
     plt.savefig("East_North.png");
     plt.close();
 
@@ -252,7 +260,8 @@ def outputs(vel_tuple, my_param_collection, ca_border, or_border, los_ascending_
                   markersize=5);
     axarr[0].plot(my_param_collection.reference_point[0], my_param_collection.reference_point[1], marker='s',
                   color='black', markersize=5);
-    my_plot_formatting(axarr[0], my_param_collection.bounds, ca_border, or_border, "Ascending GPS LOS Velocity (interp)", vel_tuple);
+    my_plot_formatting(axarr[0], my_param_collection.bounds, ca_border, or_border,
+                       "Ascending GPS LOS Velocity (interp)", vel_tuple);
 
     h1 = axarr[1].scatter(narray_x, narray_y, s=75, marker='s', c=des_dataset, cmap='jet', edgecolors='face',
                           vmin=min_los_value, vmax=max_los_value);
@@ -273,7 +282,8 @@ def outputs(vel_tuple, my_param_collection, ca_border, or_border, los_ascending_
                   markersize=5);
     axarr[1].plot(my_param_collection.reference_point[0], my_param_collection.reference_point[1], marker='s',
                   color='black', markersize=5);
-    my_plot_formatting(axarr[1], my_param_collection.bounds, ca_border, or_border, "Descending GPS LOS Velocity (interp)", vel_tuple);
+    my_plot_formatting(axarr[1], my_param_collection.bounds, ca_border, or_border,
+                       "Descending GPS LOS Velocity (interp)", vel_tuple);
 
     # The sentinel descending scene.
     xboxes = [-123.260666, -124.37, -123.98, -122.816429, -123.260666];

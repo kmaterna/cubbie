@@ -1,9 +1,8 @@
 #!/usr/bin/python
 import numpy as np
-import glob, sys
-import netcdf_read_write as rwr
+import glob
+from read_write_insar_utilities import netcdf_read_write as rwr, netcdf_read_write
 import readmytupledata as rmd
-import netcdf_read_write
 
 
 def stack_corr(mytuple, cutoff):

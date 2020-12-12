@@ -68,6 +68,7 @@ def get_point_enu_interp(reference_point, f_east=None, f_north=None, f_up=None):
 def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_point_name=None, zero_vertical=False):
     # If the reference is co-located with a GPS station, we find it within the tuple.
     # We either use name or lat/lon
+    velref_e, velref_n, velref_u, reflon, reflat = 0, 0, 0, 0, 0;
     if reference_point_name is not None:
         for station_vel in vel_tuple:
             if station_vel.name == reference_point_name:
@@ -82,7 +83,8 @@ def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_poi
         return velref_e, velref_n, velref_u, reflon, reflat;
     else:
         for station_vel in vel_tuple:
-            if station_vel.elon == reference_point_coords[0] and station_vel.nlat == reference_point_coords[1]:  # should I make these tolerances?
+            # should I make these tolerances?
+            if station_vel.elon == reference_point_coords[0] and station_vel.nlat == reference_point_coords[1]:
                 velref_e = station_vel.e;
                 velref_n = station_vel.n;
                 if zero_vertical:
@@ -105,7 +107,7 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
         yi, deg_distance_y = closest_index(yarray, station_vel.nlat);
         if deg_distance_x < distance_tolerance and deg_distance_y < distance_tolerance:
             target_array = LOS_array[yi - window_pixels:yi + window_pixels, xi - window_pixels:xi + window_pixels]
-            # default tolerance is about 1 km, and it shows whether or not we are accidentally outside of the InSAR domain
+            # default tolerance is about 1 km, and it shows whether or not we are accidentally outside of InSAR domain
             InSAR_LOS_value = np.nanmean(target_array);
             if ~np.isnan(InSAR_LOS_value):
                 insar_los_array.append(InSAR_LOS_value);
@@ -123,7 +125,7 @@ def input_gps_as_los(filename):
                                                     'formats': (np.float, np.float, np.float, 'U4')});
     for i in range(len(elon)):
         gps_station_as_los = Velfield(name=name[i], elon=elon[i], nlat=nlat[i], e=los_vel[i], n=0, u=0, se=0,
-                            sn=0, su=0, first_epoch=0, last_epoch=0);
+                                      sn=0, su=0, first_epoch=0, last_epoch=0);
         gps_velfield.append(gps_station_as_los);
     return [gps_velfield];
 
@@ -131,9 +133,9 @@ def input_gps_as_los(filename):
 def output_gps_as_los(gps_velfield, LOS_velfield, outfile):
     ofile = open(outfile, 'w');
     for i in range(len(LOS_velfield)):
-        ofile.write("%f %f %f %f %f %f %s \n" % (
-        LOS_velfield[i].elon, LOS_velfield[i].nlat, gps_velfield[i].e, gps_velfield[i].n, gps_velfield[i].u,
-        LOS_velfield[i].e, LOS_velfield[i].name));
+        ofile.write("%f %f %f %f %f %f %s \n" %
+                    (LOS_velfield[i].elon, LOS_velfield[i].nlat, gps_velfield[i].e, gps_velfield[i].n,
+                     gps_velfield[i].u, LOS_velfield[i].e, LOS_velfield[i].name));
     ofile.close();
     print("-->Outputs printed to %s" % outfile);
     return;

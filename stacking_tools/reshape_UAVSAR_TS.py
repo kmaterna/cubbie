@@ -1,6 +1,6 @@
 import numpy as np
 import datetime as dt
-import netcdf_read_write
+from read_write_insar_utilities import netcdf_read_write
 import stacking_utilities
 
 

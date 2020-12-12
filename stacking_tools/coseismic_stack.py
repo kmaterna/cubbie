@@ -3,7 +3,7 @@
 
 import numpy as np
 import readmytupledata as rmd
-import netcdf_read_write as rwr
+from read_write_insar_utilities import netcdf_read_write as rwr
 
 
 def drive_coseismic_stack(config_params, intf_files):

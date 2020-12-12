@@ -5,7 +5,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import netcdf_read_write
+from read_write_insar_utilities import netcdf_read_write
 import los_projection_tools
 
 
@@ -32,7 +32,8 @@ def compute(gps_los_velfield, xarray, yarray, LOS_array):
                                                                             window_pixels=15);
     misfit_array = np.subtract(insar_array, gps_array);
     rms_misfit = np.sqrt(np.mean(misfit_array ** 2));
-    print("Results: RMS Misfit Between these two fields is %f mm/yr at %d GPS stations \n" % (rms_misfit, len(insar_array)));
+    print("Results: RMS Misfit Between these two fields is %f mm/yr at %d GPS stations \n" % (rms_misfit,
+                                                                                              len(insar_array)));
     return insar_array, gps_array, rms_misfit;
 
 
@@ -48,7 +49,7 @@ def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname):
     plt.xlabel('GNSS LOS Velocity (mm/yr)', fontsize=18);
     plt.ylabel('InSAR LOS Velocity (mm/yr)', fontsize=18);
     plt.gca().tick_params(axis='both', labelsize=16);
-    plt.title('InSAR vs GNSS Velocities, RMS=%.3fmm/yr' % (rms_misfit), fontsize=18);
+    plt.title('InSAR vs GNSS Velocities, RMS=%.3fmm/yr' % rms_misfit, fontsize=18);
     plt.savefig(plotname);
     plt.close();
     return;

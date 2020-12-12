@@ -1,7 +1,7 @@
 import numpy as np
-import sys, glob
+import glob
 from subprocess import call
-import netcdf_read_write
+from read_write_insar_utilities import netcdf_read_write
 
 
 # This is for when you've run a large SBAS in chunks of several million pixels each

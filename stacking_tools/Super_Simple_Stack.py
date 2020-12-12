@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import numpy as np
-import netcdf_read_write as rwr
+from read_write_insar_utilities import netcdf_read_write as rwr
 import readmytupledata as rmd
 
 
