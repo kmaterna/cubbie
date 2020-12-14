@@ -117,6 +117,38 @@ def read_3D_netcdf(filename):
 # --------------- WRITING ------------------- # 
 
 
+def write_temp_output_txt(z, outfile):
+    # A helper function for dumping grid data into pixel-node-registered grd files
+    (y, x) = np.shape(z);
+    z = np.reshape(z, (x*y,));
+    z = np.array(z).astype(str)
+    z[z == 'nan'] = '-9999'
+    np.savetxt(outfile, z, fmt='%s');
+    print("writing temporary outfile %s " % outfile);
+    return;
+
+
+def write_output_grd_pixelnode(x, y, z, outfile):
+    # Writing pixel node registered grd files from your numpy arrays (finally)
+    print("writing outfile %s " % outfile);
+    outtxt = outfile+'.xyz'
+    write_temp_output_txt(z, outtxt);
+    xinc = x[1] - x[0];
+    yinc = y[1] - y[0];
+    xmin = np.min(x)-xinc/2;  # for the half-pixel outside the edge
+    xmax = np.max(x)+xinc/2;  # required when writing pixel-node registration from Python's netcdf into .grd files
+    ymin = np.min(y)-yinc/2;  # required when writing pixel-node registration from Python's netcdf into .grd files
+    ymax = np.max(y)+yinc/2;  # required when writing pixel-node registration from Python's netcdf into .grd files
+    increments = str(xinc)+'/'+str(yinc);
+    region = str(xmin)+'/'+str(xmax)+'/'+str(ymin)+'/'+str(ymax);
+    command = 'gmt xyz2grd '+outtxt+' -G'+outfile+' -I'+increments+' -R'+region+' -ZBLa -r -fg -di-9999 '
+    print(command);
+    subprocess.call(['gmt', 'xyz2grd', outtxt, '-G'+outfile, '-I'+increments, '-R'+region, '-ZBLa', '-r',
+                     '-fg', '-di-9999'], shell=False);
+    subprocess.call(['rm', outtxt], shell=False);
+    return;
+
+
 def write_netcdf4(xdata, ydata, zdata, netcdfname):
     root_grp = Dataset(netcdfname, 'w', format="NETCDF4");
     root_grp.description = 'Created for a test';
