@@ -90,7 +90,7 @@ def nsbas_ts_format_selector(config_params, intf_files, corr_files):
 def drive_velocity(param_dict, intf_files, coh_files):
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
-    [_, _, signal_spread_tuple] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
+    [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
     velocities = nsbas.Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr',
                               param_dict["ts_output_dir"] + '/velo_nsbas.grd');
@@ -105,7 +105,7 @@ def drive_full_TS(param_dict, intf_files, coh_files):
     param_dict["end_index"] = 7000000;
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
-    [_, _, signal_spread_tuple] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
+    [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
     TS, metrics = nsbas.Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
     rwr.produce_output_TS_grids(intf_tuple.xvalues, intf_tuple.yvalues, TS, intf_tuple.ts_dates, 'mm',
                                 param_dict["ts_output_dir"]);

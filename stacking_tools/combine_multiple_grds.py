@@ -5,7 +5,9 @@ from read_write_insar_utilities import netcdf_read_write
 
 
 # This is for when you've run a large SBAS in chunks of several million pixels each
-# Because it saves time to run in parallel. 
+# Because it saves time to run in parallel.
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+
 
 def get_input_dirs():
     input_files = [];
@@ -24,8 +26,10 @@ def get_datestrs():
 def combine_all_files(datestr, input_dirs, output_dir):
     print("\nCombining files for date %s" % datestr);
 
-    xdata, ydata, zdata0 = netcdf_read_write.read_grd_xyz(input_dirs[0] + "/" + datestr + ".grd");
-    xdata, ydata, zdata1 = netcdf_read_write.read_grd_xyz(input_dirs[1] + "/" + datestr + ".grd");
+    filename = input_dirs[0] + "/" + datestr + ".grd"
+    xdata, ydata, zdata0 = read_netcdf3(filename);
+    filename1 = input_dirs[1] + "/" + datestr + ".grd"
+    xdata, ydata, zdata1 = read_netcdf3(filename1);
     zdata_total = np.zeros(np.shape(zdata0));
 
     for j in range(len(ydata)):

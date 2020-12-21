@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 from read_write_insar_utilities import netcdf_read_write
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def main_function(input_dir='intf_all/', outdir='atm_topo/'):
@@ -30,8 +31,8 @@ def configure(input_dir, outdir):
 	return [input_file, demfile, rowsample, colsample];
 
 def inputs(inputfile, demfile):
-	[x,y,topo]= netcdf_read_write.read_grd_xyz(demfile);
-	[xdata, ydata, zdata]= netcdf_read_write.read_grd_xyz(inputfile);
+	[x,y,topo]= read_netcdf3(demfile);
+	[xdata, ydata, zdata]= read_netcdf3(inputfile);
 	topo=np.flipud(topo);
 	return [topo, xdata, ydata, zdata];
 

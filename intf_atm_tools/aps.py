@@ -9,6 +9,7 @@ from copy import deepcopy
 import datetime as dt
 from intf_generating import sentinel_utilities
 from read_write_insar_utilities import netcdf_read_write
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def main_function(staging_directory, out_dir, rowref, colref, starttime, endtime, run_type):
@@ -45,9 +46,10 @@ def configure(staging_directory, out_dir, run_type):
 def inputs(file_names, start_time, end_time, run_type):
     # Read the input grd files. Support for netcdf3 and netcdf4.
     try:
-        [xdata, ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
+        filename = file_names[0]
+        [xdata, ydata] = read_netcdf3(filename)[0:2];
     except TypeError:
-        [xdata, ydata, _] = netcdf_read_write.read_netcdf4_xyz(file_names[0]);
+        [xdata, ydata, _] = netcdf_read_write.read_netcdf4(file_names[0]);
 
     data_all = [];
     date_pairs = [];
@@ -73,9 +75,9 @@ def inputs(file_names, start_time, end_time, run_type):
         if start_dt <= image1_dt <= end_dt:
             if start_dt <= image2_dt <= end_dt:
                 try:
-                    data = netcdf_read_write.read_grd(ifile);
+                    data = read_netcdf3(ifile)[2];
                 except TypeError:
-                    [_, _, data] = netcdf_read_write.read_netcdf4_xyz(ifile);
+                    [_, _, data] = netcdf_read_write.read_netcdf4(ifile);
                 if run_type == "test":
                     data_all.append(
                         data * -0.0555 / 4 / np.pi);  # mcandis preprocessing involves changing to LOS distances.

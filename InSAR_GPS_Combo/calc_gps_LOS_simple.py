@@ -76,7 +76,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
     ref_ll_name = 'ref_ll';  # These are temporary files.
     ref_ll = ref_ll_name + '.grd';
 
-    [xdata, ydata, zdata] = netcdf_read_write.read_any_grd_xyz(velfile);
+    [xdata, ydata, zdata] = netcdf_read_write.read_any_grd(velfile);
 
     # Flipping the x-axis direction and the data itself. Required for descending data, unsure about ascending.
     # All of this will change with better grid referencing in the future.
@@ -104,7 +104,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
     netcdf_read_write.flip_if_necessary(veldir + '/' + refpoint_file);
     subprocess.call(['geocode_mod.csh', refpoint_file, ref_ll, ref_ll_name, veldir], shell=False);
 
-    [xll, yll, _] = netcdf_read_write.read_any_grd_variables(veldir + '/' + ref_ll, 'lon', 'lat', 'z');
+    [xll, yll, _] = netcdf_read_write.read_any_grd(veldir + '/' + ref_ll);
     latref = yll[0];
     lonref = xll[0];
     print("\nReference Location is: ", lonref, latref)

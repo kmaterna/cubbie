@@ -8,6 +8,9 @@ from read_write_insar_utilities import netcdf_read_write
 
 
 # TOP LEVEL DRIVER
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+
+
 def top_level_driver(skip_file=None):
     [file_names, outdir, num_plots_x, num_plots_y] = configure();
     [xdata, ydata, data_all, date_pairs, skip_intfs] = inputs(file_names, skip_file);
@@ -35,9 +38,10 @@ def configure():
 # ------------- INPUTS ------------ # 
 def inputs(file_names, skip_file):
     try:
-        [xdata, ydata] = netcdf_read_write.read_grd_xy(file_names[0]);  # can read either netcdf3 or netcdf4.
+        filename = file_names[0]
+        [xdata, ydata] = read_netcdf3(filename)[0:2];  # can read either netcdf3 or netcdf4.
     except TypeError:
-        [xdata, ydata, _] = netcdf_read_write.read_netcdf4_xyz(file_names[0]);
+        [xdata, ydata, _] = netcdf_read_write.read_netcdf4(file_names[0]);
     data_all = [];
     date_pairs = [];
 
@@ -45,9 +49,9 @@ def inputs(file_names, skip_file):
 
     for ifile in file_names:  # Read the data
         try:
-            data = netcdf_read_write.read_grd(ifile);
+            data = read_netcdf3(ifile)[2];
         except TypeError:
-            [_, _, data] = netcdf_read_write.read_netcdf4_xyz(ifile);
+            [_, _, data] = netcdf_read_write.read_netcdf4(ifile);
         data_all.append(data);
         pairname = ifile.split('/')[-2][0:15];
         date_pairs.append(pairname);  # returning something like '2016292_2016316' for each intf

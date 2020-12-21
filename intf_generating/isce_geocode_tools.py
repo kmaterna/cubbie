@@ -322,7 +322,7 @@ def write_unwrapped_ground_range_displacements(ground_range_phase_file, output_f
     lon_inc = x_axis[1] - x_axis[0];
     lat_inc = y_axis[1] - y_axis[0];
 
-    [_, _, unw] = rwr.read_netcdf4_xyz(ground_range_phase_file);
+    [_, _, unw] = rwr.read_netcdf4(ground_range_phase_file);
 
     plt.figure(figsize=(11, 7), dpi=300)
     X, Y = np.meshgrid(x_axis, y_axis);

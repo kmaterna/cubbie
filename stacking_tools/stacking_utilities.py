@@ -233,7 +233,7 @@ def get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, example_grd):
 def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
     # Find the nearest pixel to a reference point in a geocoded grid
     print("  Finding coordinate %.4f, %.4f in geocoded interferograms %s" % (ref_lon, ref_lat, ifile) );
-    [xdata, ydata, _] = netcdf_read_write.read_netcdf4_xyz(ifile);
+    [xdata, ydata, _] = netcdf_read_write.read_netcdf4(ifile);
     if xdata[0] > 180:   # If numbers are in the range above 180, turn them into -180 to 180
         xdata = [i-360 for i in xdata];
     row_idx = np.argmin(np.abs(np.array(ydata) - ref_lat));

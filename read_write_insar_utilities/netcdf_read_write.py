@@ -1,75 +1,62 @@
 # Netcdf reading and writing functions
-# Bring a netcdf3 file into python!
 
 import numpy as np
 import scipy.io.netcdf as netcdf
 import datetime as dt
 import matplotlib.pyplot as plt
-import subprocess
+import subprocess, sys
 from netCDF4 import Dataset
 
 
 # --------------- READING ------------------- #
 
-def read_grd(filename):
-    return read_grd_xyz(filename)[2]
+def parse_pixelnode_registration(filename):
+    output = subprocess.check_output(['gmt', 'grdinfo', filename], shell=False);
+    if "Pixel node registration used" not in str(output):
+        print("ERROR! %s is not a pixel-node registered grd file (pixel-node required for this library)" % filename);
+        sys.exit(1);
+    return;
 
-def read_grd_xy(filename):
-    return read_grd_xyz(filename)[0:2]
 
-def read_grd_xyz(filename):
-    return read_grd_variables(filename, 'x', 'y', 'z')
-
-def read_grd_lonlatz(filename):
-    return read_grd_variables(filename, 'lon', 'lat', 'z')
-
-def read_grd_variables(filename, var1, var2, var3):
-    # future steps: create an expanded version that doesn't take variables, and
-    # spits out the right thing based on several known patterns (x, y, z; lon,lat,z; etc)
-    # This could be the place to impose pixel-node registration
-    file = netcdf.netcdf_file(filename, 'r')
-    xdata0 = file.variables[var1][:];
-    ydata0 = file.variables[var2][:];
-    zdata0 = file.variables[var3][::];
+def read_netcdf3(filename):
+    # A general netcdf3 function that may or may not take variables.
+    # Spits out the right thing based on several known patterns (x, y, z; lon,lat,z; etc)
+    # Imposes pixel-node registration.
+    print("Reading file %s " % filename);
+    file = netcdf.netcdf_file(filename, 'r');
+    parse_pixelnode_registration(filename);
+    [xkey, ykey, zkey] = file.variables.keys();
+    xdata0 = file.variables[xkey][:];
+    ydata0 = file.variables[ykey][:];
+    zdata0 = file.variables[zkey][::];
     return [xdata0.copy(), ydata0.copy(), zdata0.copy()];
 
 
-def read_netcdf4_xyz(filename):
+def read_netcdf4(filename):
     # Reading a generalized netCDF4 file with 3 variables, using netCDF4 library
-    # Example: x, y, z
-    # Example: lon, lat, z
-    # Probably reads such that the data point is the center of each pixel
+    # Examples: (x,y,z; lon,lat,z; etc.)
+    # Should read such that the data point is the center of each pixel
+    print("Reading file %s " % filename);
     rootgrp = Dataset(filename, "r");
+    parse_pixelnode_registration(filename);
     [xkey, ykey, zkey] = rootgrp.variables.keys()
     xvar = rootgrp.variables[xkey];
-    xdata = xvar[:]
     yvar = rootgrp.variables[ykey];
-    ydata = yvar[:]
     zvar = rootgrp.variables[zkey];
-    zdata = zvar[:, :];
-    return [xdata, ydata, zdata];
+    return [xvar[:], yvar[:], zvar[:, :]];
 
 
-def read_any_grd_xyz(filename):
+def read_any_grd(filename):
     # Switch between netcdf4 and netcdf3 automatically.
     try:
-        [xdata, ydata, zdata] = read_grd_xyz(filename);
+        [xdata, ydata, zdata] = read_netcdf3(filename);
     except TypeError:
-        [xdata, ydata, zdata] = read_netcdf4_xyz(filename);
-    return [xdata, ydata, zdata];
-
-
-def read_any_grd_variables(filename, var1, var2, var3):
-    # Switch between netcdf4 and netcdf3 automatically.
-    try:
-        [xdata, ydata, zdata] = read_grd_variables(filename, var1, var2, var3);
-    except TypeError:
-        [xdata, ydata, zdata] = read_netcdf4_xyz(filename);
+        [xdata, ydata, zdata] = read_netcdf4(filename);
     return [xdata, ydata, zdata];
 
 
 def give_metrics_on_grd(filename):
-    grid_data = read_grd(filename);
+    grid_data = read_any_grd(filename)[2];
     nan_pixels = np.count_nonzero(np.isnan(grid_data));
     total_pixels = np.shape(grid_data)[0] * np.shape(grid_data)[1];
     print("Shape of %s is [%d, %d]" % (filename, np.shape(grid_data)[0], np.shape(grid_data)[1]));
@@ -81,15 +68,12 @@ def give_metrics_on_grd(filename):
 
 
 def read_3D_netcdf(filename):
-    tdata0 = netcdf.netcdf_file(filename, 'r').variables['t'][:];
-    tdata = tdata0.copy();
-    xdata0 = netcdf.netcdf_file(filename, 'r').variables['x'][:];
-    xdata = xdata0.copy();
-    ydata0 = netcdf.netcdf_file(filename, 'r').variables['y'][:];
-    ydata = ydata0.copy();
-    zdata0 = netcdf.netcdf_file(filename, 'r').variables['z'][:, :, :];
-    zdata = zdata0.copy();
-    return [tdata, xdata, ydata, zdata];
+    filereader = netcdf.netcdf_file(filename, 'r');
+    tdata0 = filereader.variables['t'][:];
+    xdata0 = filereader.variables['x'][:]
+    ydata0 = filereader.variables['y'][:];
+    zdata0 = filereader.variables['z'][:, :, :];
+    return [tdata0.copy(), xdata0.copy(), ydata0.copy(), zdata0.copy()];
 
 
 # --------------- WRITING ------------------- # 
@@ -99,15 +83,20 @@ def write_temp_output_txt(z, outfile):
     # A helper function for dumping grid data into pixel-node-registered grd files
     (y, x) = np.shape(z);
     z = np.reshape(z, (x*y,));
-    z = np.array(z).astype(str)
-    z[z == 'nan'] = '-9999'
-    np.savetxt(outfile, z, fmt='%s');
+    # z = np.array(z).astype(str)
+    # z[z == 'nan'] = '-9999'
+    # np.savetxt(outfile, z, fmt='%s');
+    ofile=open(outfile,'w+b')
+    zbytes = bytearray(z)
+    ofile.write(zbytes)
+    ofile.close()
     print("writing temporary outfile %s " % outfile);
     return;
 
 
-def write_output_grd_pixelnode(x, y, z, outfile):
-    # Writing pixel node registered grd files from your numpy arrays (finally)
+def write_netcdf4(x, y, z, outfile):
+    # Writing pixel node registered netcdf4 file from numpy arrays
+    # strategy: send out to a file and make GMT convert to netcdf
     print("writing outfile %s " % outfile);
     outtxt = outfile+'.xyz'
     write_temp_output_txt(z, outtxt);
@@ -119,26 +108,11 @@ def write_output_grd_pixelnode(x, y, z, outfile):
     ymax = np.max(y)+yinc/2;  # required when writing pixel-node registration from Python's netcdf into .grd files
     increments = str(xinc)+'/'+str(yinc);
     region = str(xmin)+'/'+str(xmax)+'/'+str(ymin)+'/'+str(ymax);
-    command = 'gmt xyz2grd '+outtxt+' -G'+outfile+' -I'+increments+' -R'+region+' -ZBLa -r -fg -di-9999 '
+    command = 'gmt xyz2grd '+outtxt+' -G'+outfile+' -I'+increments+' -R'+region+' -ZBLf -r -fg -di-9999 '
     print(command);
-    subprocess.call(['gmt', 'xyz2grd', outtxt, '-G'+outfile, '-I'+increments, '-R'+region, '-ZBLa', '-r',
+    subprocess.call(['gmt', 'xyz2grd', outtxt, '-G'+outfile, '-I'+increments, '-R'+region, '-ZBLf', '-r',
                      '-fg', '-di-9999'], shell=False);
     subprocess.call(['rm', outtxt], shell=False);
-    return;
-
-
-def write_netcdf4(xdata, ydata, zdata, netcdfname):
-    root_grp = Dataset(netcdfname, 'w', format="NETCDF4");
-    root_grp.description = 'Created for a test';
-    root_grp.createDimension('x', len(xdata));
-    root_grp.createDimension('y', len(ydata));
-    x = root_grp.createVariable('x', 'f8', ('x',))
-    y = root_grp.createVariable('y', 'f8', ('y',))
-    z = root_grp.createVariable('z', 'f8', ('y', 'x'));
-    x[:] = xdata;
-    y[:] = ydata;
-    z[:, :] = zdata;
-    root_grp.close();
     return;
 
 
@@ -167,41 +141,41 @@ def produce_output_netcdf(xdata, ydata, zdata, zunits, netcdfname, dtype=float):
 def flip_if_necessary(filename):
     # IF WE NEED TO FLIP DATA:
     xinc = subprocess.check_output('gmt grdinfo -M -C ' + filename + ' | awk \'{print $8}\'',
-                                   shell=True);  # the x-increment
+                                   shell=True);  # x-increment
     yinc = subprocess.check_output('gmt grdinfo -M -C ' + filename + ' | awk \'{print $9}\'',
-                                   shell=True);  # the x-increment
+                                   shell=True);  # y-increment
     xinc = float(xinc.split()[0]);
     yinc = float(yinc.split()[0]);
 
     if xinc < 0:  # FLIP THE X-AXIS
         print("flipping the x-axis");
-        [xdata, ydata] = read_grd_xy(filename);
-        data = read_grd(filename);
+        [xdata, ydata] = read_netcdf3(filename)[0:2];
+        data = read_netcdf3(filename)[2];
         # This is the key! Flip the x-axis when necessary.
         # xdata=np.flip(xdata,0);  # This is sometimes necessary and sometimes not!  Not sure why.
         produce_output_netcdf(xdata, ydata, data, 'mm/yr', filename);
         xinc = subprocess.check_output('gmt grdinfo -M -C ' + filename + ' | awk \'{print $8}\'',
-                                       shell=True);  # the x-increment
+                                       shell=True);  # x-increment
         xinc = float(xinc.split()[0]);
         print("New xinc is: %f " % xinc);
     if yinc < 0:
         print("flipping the y-axis");
-        [xdata, ydata] = read_grd_xy(filename);
-        data = read_grd(filename);
+        [xdata, ydata] = read_netcdf3(filename)[0:2];
+        data = read_netcdf3(filename)[2];
         # Flip the y-axis when necessary.
         # ydata=np.flip(ydata,0);
         produce_output_netcdf(xdata, ydata, data, 'mm/yr', filename);
         yinc = subprocess.check_output('gmt grdinfo -M -C ' + filename + ' | awk \'{print $9}\'',
-                                       shell=True);  # the x-increment
+                                       shell=True);  # y-increment
         yinc = float(yinc.split()[0]);
         print("New yinc is: %f" % yinc);
     return;
 
 
-def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True,
-                        dot_points=None, vmin=None, vmax=None, cmap='rainbow', xvar='x', yvar='y', zvar='z'):
+def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, invert_yaxis=True, dot_points=None,
+                        vmin=None, vmax=None, cmap='rainbow'):
     # Read in the dataset
-    [_, _, zread] = read_any_grd_variables(netcdfname, xvar, yvar, zvar);
+    [_, _, zread] = read_any_grd(netcdfname);
 
     # Make a plot
     fig = plt.figure(figsize=(7, 10));
@@ -228,7 +202,7 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, in
 
 def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
     # Read in the dataset
-    [xread, yread, zread] = read_grd_xyz(netcdfname);
+    [xread, yread, zread] = read_netcdf3(netcdfname);
 
     # Make a plot
     fig = plt.figure(figsize=(7, 10));

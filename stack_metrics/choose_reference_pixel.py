@@ -9,7 +9,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, math
-from read_write_insar_utilities import netcdf_read_write
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def main_function(file_dir):
@@ -39,10 +39,11 @@ def configure(file_dir):
 
 # ------------- INPUTS ------------ # 
 def inputs(file_names):
-    [xdata, ydata] = netcdf_read_write.read_grd_xy(file_names[0]);
+    filename = file_names[0]
+    [xdata, ydata] = read_netcdf3(filename)[0:2];
     data_all = [];
     for ifile in file_names:  # this happens to be in date order on my mac
-        data = netcdf_read_write.read_grd(ifile);
+        data = read_netcdf3(ifile)[2];
         data_all.append(data);
     date_pairs = [];
     dates = [];

@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from read_write_insar_utilities import netcdf_read_write
 import los_projection_tools
 
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+
 
 def top_level_driver(gps_los_file, geocoded_insar_file, plotname):
     [gps_los_velfield, xarray, yarray, LOS_array] = inputs(gps_los_file, geocoded_insar_file);
@@ -19,7 +21,7 @@ def top_level_driver(gps_los_file, geocoded_insar_file, plotname):
 def inputs(gps_los_file, geocoded_insar_file):
     print("Reading files %s and %s for calculating misfit." % (gps_los_file, geocoded_insar_file));
     [gps_los_velfield] = los_projection_tools.input_gps_as_los(gps_los_file);
-    [xarray, yarray, LOS_array] = netcdf_read_write.read_grd_xyz(geocoded_insar_file);
+    [xarray, yarray, LOS_array] = read_netcdf3(geocoded_insar_file);
     if np.nanmean(xarray) > 180:
         xarray = np.subtract(xarray, 360);  # some files come in with 244 instead of -115.  Fixing that.
     if 'velo_nsbas.grd' in geocoded_insar_file:  # a correction for when I used a flipped sign convention

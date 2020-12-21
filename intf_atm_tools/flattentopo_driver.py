@@ -9,6 +9,7 @@ import numpy as np
 import subprocess
 import glob
 from read_write_insar_utilities import netcdf_read_write, readbin
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def main_function():
@@ -74,8 +75,8 @@ def main_function():
         [phasefilt_out, amp_late] = readbin.real_imag2phase_amp(real, imag);  # 1d arrays
 
         # # Write the GRD files , fixing an issue with pixel node registration.
-        [xdata_p, ydata_p] = netcdf_read_write.read_grd_xy(orig_phasefile);
-        [xdata_pf, ydata_pf] = netcdf_read_write.read_grd_xy(orig_phasefilt_file);
+        [xdata_p, ydata_p] = read_netcdf3(orig_phasefile)[0:2];
+        [xdata_pf, ydata_pf] = read_netcdf3(orig_phasefilt_file)[0:2];
         phase_out_grd = np.reshape(phase_out, (length, width));
         phasefilt_out_grd = np.reshape(phasefilt_out, (length, width));
 

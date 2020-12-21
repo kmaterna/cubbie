@@ -4,6 +4,8 @@ import glob
 from read_write_insar_utilities import netcdf_read_write as rwr, netcdf_read_write
 import readmytupledata as rmd
 
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+
 
 def stack_corr(mytuple, cutoff):
     """This function takes in a mytuple of data (argument 1) and counts how many times a certain
@@ -41,7 +43,7 @@ def dummy_signal_spread(intfs, output_dir, output_filename):
     # Make a perfect signal spread for passing to other applications
     print("Making a dummy signal spread that matches interferograms' dimensions (perfect 100).");
     output_filename = output_dir + "/" + output_filename;
-    [xdata, ydata, zdata] = netcdf_read_write.read_netcdf4_xyz(intfs[0]);
+    [xdata, ydata, zdata] = netcdf_read_write.read_netcdf4(intfs[0]);
     a = np.add(np.zeros(np.shape(zdata)), 100);
     rwr.produce_output_netcdf(xdata, ydata, a, 'Percentage', output_filename, dtype=np.float32)
     rwr.produce_output_plot(output_filename, 'Signal Spread', output_dir + '/signalspread.png',
@@ -51,7 +53,7 @@ def dummy_signal_spread(intfs, output_dir, output_filename):
 
 def signal_spread_to_mask(ss_file, cutoff, mask_file):
     # Given a signal spread file, make a nice mask that we can use for plotting.
-    [xdata, ydata, zdata] = netcdf_read_write.read_grd_xyz(ss_file);
+    [xdata, ydata, zdata] = read_netcdf3(ss_file);
     mask_response = np.zeros(np.shape(zdata));
     for i in range(len(ydata)):
         for j in range(len(xdata)):
@@ -78,8 +80,8 @@ def drive_signal_spread_isce(corr_files, cutoff, output_dir, output_filename):
     cor_data = rmd.reader_isce(corr_files);
     a = stack_corr(cor_data, cutoff);
     rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', output_dir+'/'+output_filename);
-    rwr.produce_output_plot(output_dir+'/'+output_filename, 'Signal Spread above cor=' + str(cutoff),
-                            output_dir+'/signalspread_full.png', 'Percentage of coherence', aspect=1 / 4,
+    rwr.produce_output_plot(output_dir + '/' + output_filename, 'Signal Spread above cor=' + str(cutoff),
+                            output_dir + '/signalspread_full.png', 'Percentage of coherence', aspect=1 / 4,
                             invert_yaxis=False);
     return;
 

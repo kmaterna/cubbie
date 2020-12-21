@@ -6,6 +6,8 @@ import re
 from read_write_insar_utilities import netcdf_read_write as rwr, isce_read_write
 import stacking_utilities
 
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
                                        'xvalues', 'yvalues', 'zvalues', 'date_pairs_dt', 'ts_dates']);
 
@@ -35,7 +37,7 @@ def reader(filepathslist):
         date_deltas.append(delta.days / 365.24)  # in years. 
 
         # Read in the data
-        xdata, ydata, zdata = rwr.read_netcdf4_xyz(filepathslist[i]);  # does this work on netcdf3 as well? 
+        xdata, ydata, zdata = rwr.read_netcdf4(filepathslist[i]);  # does this work on netcdf3 as well?
         zvalues.append(zdata)
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...')
@@ -64,7 +66,7 @@ def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
         datestr = re.findall(r"\d\d\d\d\d\d\d\d", filepathslist[i])[0];
         ts_dates.append(datetime.strptime(datestr, "%Y%m%d"));
         # Read in the data, either netcdf3 or netcdf4
-        [xvalues, yvalues, zdata] = rwr.read_netcdf4_xyz(filepathslist[i]);
+        [xvalues, yvalues, zdata] = rwr.read_netcdf4(filepathslist[i]);
         zvalues.append(zdata);
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...');
@@ -78,10 +80,11 @@ def reader_simple_format(file_names):
     """
     An earlier reading function, works fast, useful for things like coherence statistics
     """
-    [xdata, ydata] = rwr.read_grd_xy(file_names[0]);
+    filename = file_names[0]
+    [xdata, ydata] = read_netcdf3(filename)[0:2];
     data_all = [];
     for ifile in file_names:  # this happens to be in date order on my mac
-        data = rwr.read_grd(ifile);
+        data = read_netcdf3(ifile)[2];
         data_all.append(data);
     date_pairs = [];
     for name in file_names:

@@ -14,8 +14,8 @@ def drive_coseismic_stack(config_params, intf_files):
                                           param_dict["wavelength"]);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, average_coseismic, 'mm',
                               param_dict["outdir"]+'/coseismic.grd');
-    rwr.produce_output_plot(param_dict["outdir"]+'/coseismic.grd', 'LOS Displacement',
-                            param_dict["outdir"]+'/coseismic.png', 'displacement (mm)');
+    rwr.produce_output_plot(param_dict["outdir"] + '/coseismic.grd', 'LOS Displacement',
+                            param_dict["outdir"] + '/coseismic.png', 'displacement (mm)');
     return;
 
 

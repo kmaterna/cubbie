@@ -3,17 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from read_write_insar_utilities import netcdf_read_write
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def how_many_nans(filename):
-	[xdata, ydata, zdata]= netcdf_read_write.read_grd_xyz(filename);
+	[xdata, ydata, zdata]= read_netcdf3(filename);
 	nan_pixels = np.count_nonzero(np.isnan(zdata));
 	total_pixels=np.shape(zdata)[0]*np.shape(zdata)[1];
 	print("For file %s: %d pixels of %d are NaNs (%f percent)." % (filename, nan_pixels, total_pixels, 100*float(nan_pixels/float(total_pixels))) )
 	return [nan_pixels, total_pixels];
 
 def number_below_value(filename, value):
-	[xdata, ydata, zdata]= netcdf_read_write.read_grd_xyz(filename);
+	[xdata, ydata, zdata]= read_netcdf3(filename);
 	count=0;
 	for i in range(len(ydata)):
 		for j in range(len(xdata)):
@@ -24,7 +25,7 @@ def number_below_value(filename, value):
 	return;
 
 def plot_grid_file(filename, figname):
-	[xdata, ydata, zdata]= netcdf_read_write.read_grd_xyz(filename);
+	[xdata, ydata, zdata]= read_netcdf3(filename);
 	plt.figure();
 	plt.imshow(zdata);
 	plt.colorbar();

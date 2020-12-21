@@ -6,6 +6,7 @@ import subprocess
 import struct
 from read_write_insar_utilities import netcdf_read_write
 from math_tools import phase_math
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def read_binary_roipac_real_imag(filename):
@@ -112,9 +113,9 @@ def write_gmtsar2roipac_phase(input_directory, phasefile, phasefilt_file, ampfil
     """
 
     # INPUTS
-    [_, _, phase] = netcdf_read_write.read_grd_xyz(phasefile);
-    [_, _, phasefilt] = netcdf_read_write.read_grd_xyz(phasefilt_file);
-    [xdata, ydata, amp] = netcdf_read_write.read_grd_xyz(ampfile);
+    [_, _, phase] = read_netcdf3(phasefile);
+    [_, _, phasefilt] = read_netcdf3(phasefilt_file);
+    [xdata, ydata, amp] = read_netcdf3(ampfile);
     width = len(xdata);
     length = len(ydata);
 
@@ -141,7 +142,7 @@ def write_gmtsar2roipac_topo(infile, out_topo):
     A function that reads a GMT topographic grid and writes the corresponding .hgt format
     for use with roipac functions.
     """
-    [xdata, ydata, topo] = netcdf_read_write.read_grd_xyz(infile);
+    [xdata, ydata, topo] = read_netcdf3(infile);
     width = len(xdata);
     length = len(ydata);
     topo = np.flipud(topo);  # formatting correct when you flip up/down.

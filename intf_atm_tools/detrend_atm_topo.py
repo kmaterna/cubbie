@@ -10,6 +10,7 @@ import glob, sys, os
 import subprocess
 import datetime as dt
 from read_write_insar_utilities import netcdf_read_write
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
 
 
 def main_function(staging_directory, outdir, rowref, colref, starttime, endtime):
@@ -17,7 +18,7 @@ def main_function(staging_directory, outdir, rowref, colref, starttime, endtime)
     demdata = subsample_read_dem(filenames[0], demfile);
 
     for item in filenames:
-        [xdata, ydata, zdata] = netcdf_read_write.read_grd_xyz(item);
+        [xdata, ydata, zdata] = read_netcdf3(item);
         [corrected_zdata, zarray, corrarray, demarray] = global_compute_item(zdata, demdata, rowref, colref);
         output_item(xdata, ydata, zdata, corrected_zdata, zarray, corrarray, demarray, item, outdir);
     return;
@@ -73,7 +74,7 @@ def subsample_read_dem(samplefile, demfile):
     subprocess.call('nccopy -k classic topo/temp.grd ' + subsampled_file, shell=True);
     subprocess.call(['rm', 'topo/temp.grd'], shell=False);
 
-    [_, _, z] = netcdf_read_write.read_grd_xyz(subsampled_file);
+    [_, _, z] = read_netcdf3(subsampled_file);
     return z;
 
 

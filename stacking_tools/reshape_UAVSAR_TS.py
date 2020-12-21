@@ -5,6 +5,9 @@ import stacking_utilities
 
 
 # UAVSAR INPUT FUNCTIONS
+from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+
+
 def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):
     # This is not particular general. It's using hard-coded information about time axis
     # and the timing of the earthquake.
@@ -14,7 +17,7 @@ def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):
     tolerance = 300;  # Purposely killing all pixels above this value.
     print("Reshaping UAVSAR file into single TS File");
     [tdata1, xdata1, ydata1, zdata1] = netcdf_read_write.read_3D_netcdf(earlyfile);
-    [xdata2, ydata2, zdata2] = netcdf_read_write.read_grd_xyz(cofile);
+    [xdata2, ydata2, zdata2] = read_netcdf3(cofile);
     [tdata3, xdata3, ydata3, zdata3] = netcdf_read_write.read_3D_netcdf(latefile);
     print(np.shape(zdata1), np.shape(zdata2), np.shape(zdata3));
     ynum = np.shape(zdata1)[1];

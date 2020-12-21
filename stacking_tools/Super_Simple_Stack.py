@@ -6,7 +6,7 @@ import readmytupledata as rmd
 
 def drive_velocity_simple_stack(config_params, intf_files):
     param_dict = get_simple_stack_params(config_params);
-    [_, _, signal_spread_data] = rwr.read_any_grd_xyz(param_dict["signal_spread_filename"]);
+    [_, _, signal_spread_data] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
     outdir = param_dict["outdir"];
     intf_tuple = param_dict["reader"](intf_files);
     velocities, x, y = velocity_simple_stack(intf_tuple, param_dict["wavelength"], param_dict["rowref"],
