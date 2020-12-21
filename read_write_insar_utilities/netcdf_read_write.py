@@ -12,41 +12,21 @@ from netCDF4 import Dataset
 # --------------- READING ------------------- #
 
 def read_grd(filename):
-    data0 = netcdf.netcdf_file(filename, 'r').variables['z'][::];
-    data = data0.copy();
-    return data;
-
+    return read_grd_xyz(filename)[2]
 
 def read_grd_xy(filename):
-    xdata0 = netcdf.netcdf_file(filename, 'r').variables['x'][:];
-    ydata0 = netcdf.netcdf_file(filename, 'r').variables['y'][:];
-    xdata = xdata0.copy();
-    ydata = ydata0.copy();
-    return [xdata, ydata];
-
+    return read_grd_xyz(filename)[0:2]
 
 def read_grd_xyz(filename):
-    xdata0 = netcdf.netcdf_file(filename, 'r').variables['x'][:];
-    ydata0 = netcdf.netcdf_file(filename, 'r').variables['y'][:];
-    zdata0 = netcdf.netcdf_file(filename, 'r').variables['z'][::];
-    xdata = xdata0.copy();
-    ydata = ydata0.copy();
-    zdata = zdata0.copy();
-    return [xdata, ydata, zdata];
-
+    return read_grd_variables(filename, 'x', 'y', 'z')
 
 def read_grd_lonlatz(filename):
-    # for geocoded netcdf from gmtsar
-    xdata0 = netcdf.netcdf_file(filename, 'r').variables['lon'][:];
-    ydata0 = netcdf.netcdf_file(filename, 'r').variables['lat'][:];
-    zdata0 = netcdf.netcdf_file(filename, 'r').variables['z'][::];
-    xdata = xdata0.copy();
-    ydata = ydata0.copy();
-    zdata = zdata0.copy();
-    return [xdata, ydata, zdata];
-
+    return read_grd_variables(filename, 'lon', 'lat', 'z')
 
 def read_grd_variables(filename, var1, var2, var3):
+    # future steps: create an expanded version that doesn't take variables, and
+    # spits out the right thing based on several known patterns (x, y, z; lon,lat,z; etc)
+    # This could be the place to impose pixel-node registration
     file = netcdf.netcdf_file(filename, 'r')
     xdata0 = file.variables[var1][:];
     ydata0 = file.variables[var2][:];
