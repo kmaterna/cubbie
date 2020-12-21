@@ -47,13 +47,11 @@ def read_grd_lonlatz(filename):
 
 
 def read_grd_variables(filename, var1, var2, var3):
-    xdata0 = netcdf.netcdf_file(filename, 'r').variables[var1][:];
-    xdata = xdata0.copy();
-    ydata0 = netcdf.netcdf_file(filename, 'r').variables[var2][:];
-    ydata = ydata0.copy();
-    zdata0 = netcdf.netcdf_file(filename, 'r').variables[var3][::];
-    zdata = zdata0.copy();
-    return [xdata, ydata, zdata];
+    file = netcdf.netcdf_file(filename, 'r')
+    xdata0 = file.variables[var1][:];
+    ydata0 = file.variables[var2][:];
+    zdata0 = file.variables[var3][::];
+    return [xdata0.copy(), ydata0.copy(), zdata0.copy()];
 
 
 def read_netcdf4_xyz(filename):
