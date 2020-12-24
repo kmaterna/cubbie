@@ -1,9 +1,11 @@
 from subprocess import call
 import numpy as np
 import glob
+
+import read_write_insar_utilities.netcdf_plots
 import stacking_utilities
 import readmytupledata as rmd
-from read_write_insar_utilities import netcdf_read_write as rwr
+from Tectonic_Utils.read_write import netcdf_read_write as rwr
 import nsbas
 import dem_error_correction
 import sbas_testing
@@ -65,8 +67,8 @@ def write_output_metrics(param_dict, intf_tuple, metrics):
                     Kz_grid[i][j] = metrics[i][j]["Kz_error"];
         rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, Kz_grid, 'm',
                                   param_dict["ts_output_dir"] + '/kz_error.grd');
-        rwr.produce_output_plot(param_dict["ts_output_dir"] + '/kz_error.grd', 'DEM Error',
-                                param_dict["ts_output_dir"] + '/kz_error.png', 'DEM Error (m)');
+        read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dict["ts_output_dir"] + '/kz_error.grd', 'DEM Error',
+                                                                    param_dict["ts_output_dir"] + '/kz_error.png', 'DEM Error (m)');
     return;
 
 
@@ -94,8 +96,8 @@ def drive_velocity(param_dict, intf_files, coh_files):
     velocities = nsbas.Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr',
                               param_dict["ts_output_dir"] + '/velo_nsbas.grd');
-    rwr.produce_output_plot(param_dict["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
-                            param_dict["ts_output_dir"] + '/velo_nsbas.png', 'velocity (mm/yr)');
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dict["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
+                                                                param_dict["ts_output_dir"] + '/velo_nsbas.png', 'velocity (mm/yr)');
     return;
 
 
@@ -158,5 +160,5 @@ def make_vels_from_ts_grids(ts_dir, geocoded=False):
         mydata = rmd.reader_from_ts(filelist);
     vel = nsbas.Velocities_from_TS(mydata);
     rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', ts_dir + '/velo_nsbas.grd');
-    rwr.produce_output_plot(ts_dir + '/velo_nsbas.grd', 'LOS Velocity', ts_dir + '/velo_nsbas.png', 'velocity (mm/yr)');
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(ts_dir + '/velo_nsbas.grd', 'LOS Velocity', ts_dir + '/velo_nsbas.png', 'velocity (mm/yr)');
     return;

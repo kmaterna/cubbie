@@ -6,7 +6,7 @@ import numpy as np
 # Do the example configs in the repo actually parse through the configparser?
 # etc.
 
-from ..netcdf_read_write import read_netcdf4, read_netcdf3, write_netcdf4
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf4, read_netcdf3, write_netcdf4
 
 
 class NetCDFTests(unittest.TestCase):
@@ -36,6 +36,8 @@ class NetCDFTests(unittest.TestCase):
         self.assertTrue(np.allclose(lon, lon2));
         self.assertTrue(np.allclose(lat, lat2));
         self.assertTrue(np.allclose(z, z2));
+
+    # Should write a test that affirms both files have the same gridline/pixel node registration
 
 
 if __name__ == '__main__':

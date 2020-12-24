@@ -14,7 +14,7 @@ import collections
 from scipy import interpolate
 import gps_io_functions
 import los_projection_tools
-import haversine
+from Tectonic_Utils.geodesy import haversine
 
 param_collection = collections.namedtuple("param_collection", ['input_file', 'ca_file', 'or_file', 'type_of_interp',
                                                                'ascending_flight_angle', 'descending_flight_angle',

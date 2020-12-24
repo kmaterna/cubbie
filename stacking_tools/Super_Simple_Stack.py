@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import numpy as np
-from read_write_insar_utilities import netcdf_read_write as rwr
+import read_write_insar_utilities.netcdf_plots
+from Tectonic_Utils.read_write import netcdf_read_write as rwr
 import readmytupledata as rmd
 
 
@@ -13,7 +14,7 @@ def drive_velocity_simple_stack(config_params, intf_files):
                                              param_dict["colref"], signal_spread_data, 25);
     # last argument is signal threshold (< 100%).  lower signal threshold allows for more data into the stack.
     rwr.produce_output_netcdf(x, y, velocities, 'mm/yr', outdir + '/velo_simple_stack.grd')
-    rwr.produce_output_plot(outdir + '/velo_simple_stack.grd', 'LOS Velocity ', outdir + '/velo_simple_stack.png',
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(outdir + '/velo_simple_stack.grd', 'LOS Velocity ', outdir + '/velo_simple_stack.png',
                             'velocity (mm/yr)');
     return;
 

@@ -4,9 +4,8 @@ import matplotlib.pyplot as plt
 import math, os
 import subprocess
 import struct
-from read_write_insar_utilities import netcdf_read_write
 from math_tools import phase_math
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def read_binary_roipac_real_imag(filename):

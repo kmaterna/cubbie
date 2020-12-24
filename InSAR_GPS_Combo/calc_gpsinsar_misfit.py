@@ -5,10 +5,9 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from read_write_insar_utilities import netcdf_read_write
 import los_projection_tools
 
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def top_level_driver(gps_los_file, geocoded_insar_file, plotname):

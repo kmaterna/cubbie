@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import glob, sys, os
 import subprocess
 import datetime as dt
-from read_write_insar_utilities import netcdf_read_write
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write import netcdf_read_write
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def main_function(staging_directory, outdir, rowref, colref, starttime, endtime):

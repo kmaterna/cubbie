@@ -8,8 +8,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys, glob
 from subprocess import call
-from read_write_insar_utilities import netcdf_read_write as rwr, isce_read_write, jpl_uav_read_write
-import haversine
+from read_write_insar_utilities import isce_read_write, jpl_uav_read_write
+from Tectonic_Utils.read_write import netcdf_read_write as rwr
+from Tectonic_Utils.geodesy import haversine
 from read_write_insar_utilities.isce_read_write import get_xmin_xmax_xinc_from_xml
 from math_tools import mask_and_interpolate
 from math_tools.lkv_trig_math import bearing_to_cartesian, complement_angle, cartesian_to_ccw_from_north, \

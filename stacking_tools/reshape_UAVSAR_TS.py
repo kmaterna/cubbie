@@ -1,11 +1,11 @@
 import numpy as np
 import datetime as dt
-from read_write_insar_utilities import netcdf_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 import stacking_utilities
 
 
 # UAVSAR INPUT FUNCTIONS
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):

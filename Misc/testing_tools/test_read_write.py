@@ -1,8 +1,9 @@
 # Testing the compatibility of the read/write functions
 # In ISCE and GMTSAR
 # March 2020
-
-from read_write_insar_utilities import netcdf_read_write, isce_read_write
+import read_write_insar_utilities.netcdf_plots
+from read_write_insar_utilities import isce_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 
 
 def test_read_write(filename):
@@ -39,7 +40,7 @@ def test_read_write(filename):
 	netcdf_read_write.produce_output_netcdf(xdata, ydata, phase, "radians", netcdfname);
 
 	# Step 5: look at what's inside; 
-	netcdf_read_write.produce_output_plot(netcdfname, "phase", "grdstyle_phase.png", "radians", aspect=1 / 10);
+	read_write_insar_utilities.netcdf_plots.produce_output_plot(netcdfname, "phase", "grdstyle_phase.png", "radians", aspect=1 / 10);
 
 	return;
 

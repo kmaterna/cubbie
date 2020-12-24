@@ -8,8 +8,9 @@
 import numpy as np
 import subprocess
 import glob
-from read_write_insar_utilities import netcdf_read_write, readbin
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from read_write_insar_utilities import readbin
+from Tectonic_Utils.read_write import netcdf_read_write
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def main_function():

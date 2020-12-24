@@ -9,7 +9,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, math
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def main_function(file_dir):

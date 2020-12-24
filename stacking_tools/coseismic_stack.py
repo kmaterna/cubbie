@@ -2,8 +2,9 @@
 # The average should contain less noise than the original interferograms.
 
 import numpy as np
+import read_write_insar_utilities.netcdf_plots
 import readmytupledata as rmd
-from read_write_insar_utilities import netcdf_read_write as rwr
+from Tectonic_Utils.read_write import netcdf_read_write as rwr
 
 
 def drive_coseismic_stack(config_params, intf_files):
@@ -14,8 +15,8 @@ def drive_coseismic_stack(config_params, intf_files):
                                           param_dict["wavelength"]);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, average_coseismic, 'mm',
                               param_dict["outdir"]+'/coseismic.grd');
-    rwr.produce_output_plot(param_dict["outdir"] + '/coseismic.grd', 'LOS Displacement',
-                            param_dict["outdir"] + '/coseismic.png', 'displacement (mm)');
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dict["outdir"] + '/coseismic.grd', 'LOS Displacement',
+                                                                param_dict["outdir"] + '/coseismic.png', 'displacement (mm)');
     return;
 
 

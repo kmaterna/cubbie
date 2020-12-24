@@ -4,7 +4,7 @@
 
 import numpy as np
 import subprocess
-from read_write_insar_utilities import netcdf_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 
 
 def get_nearest_row_col(example_grd, ra, az):

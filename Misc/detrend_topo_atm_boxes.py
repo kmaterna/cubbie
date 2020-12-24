@@ -6,8 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
-from read_write_insar_utilities import netcdf_read_write
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def main_function(input_dir='intf_all/', outdir='atm_topo/'):

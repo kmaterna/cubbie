@@ -3,10 +3,11 @@ import numpy as np
 import collections
 from datetime import datetime
 import re
-from read_write_insar_utilities import netcdf_read_write as rwr, isce_read_write
+from read_write_insar_utilities import isce_read_write
+from Tectonic_Utils.read_write import netcdf_read_write as rwr
 import stacking_utilities
 
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
                                        'xvalues', 'yvalues', 'zvalues', 'date_pairs_dt', 'ts_dates']);

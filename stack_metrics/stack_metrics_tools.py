@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.cm as cm
 import datetime as dt
-from read_write_insar_utilities import netcdf_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 from intf_generating import sentinel_utilities
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def produce_min_max(filename, xyz=False):

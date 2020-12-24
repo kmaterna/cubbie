@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 from scipy import interpolate
-from read_write_insar_utilities import netcdf_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 import gps_io_functions
 import gps_vel_functions
 import los_projection_tools

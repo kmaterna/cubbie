@@ -8,10 +8,11 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 import re
-from read_write_insar_utilities import netcdf_read_write, isce_read_write
+from read_write_insar_utilities import isce_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 import readmytupledata
 from intf_generating import get_ra_rc_from_ll, sentinel_utilities
-import haversine
+from Tectonic_Utils.geodesy import haversine
 
 
 def read_baseline_table(baseline_file):

@@ -1,12 +1,12 @@
 import numpy as np
 import glob
 from subprocess import call
-from read_write_insar_utilities import netcdf_read_write
-
+import read_write_insar_utilities.netcdf_plots
+from Tectonic_Utils.read_write import netcdf_read_write
 
 # This is for when you've run a large SBAS in chunks of several million pixels each
 # Because it saves time to run in parallel.
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def get_input_dirs():
@@ -42,8 +42,8 @@ def combine_all_files(datestr, input_dirs, output_dir):
     output_file = output_dir + "/" + datestr + ".grd";
     output_plot = output_dir + "/" + datestr + ".png";
     netcdf_read_write.produce_output_netcdf(xdata, ydata, zdata_total, "mm", output_file);
-    netcdf_read_write.produce_output_plot(output_file, datestr, output_plot, "mm", aspect=1.0, invert_yaxis=True,
-                                          vmin=-50, vmax=100);
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(output_file, datestr, output_plot, "mm", aspect=1.0, invert_yaxis=True,
+                                                                vmin=-50, vmax=100);
     return;
 
 

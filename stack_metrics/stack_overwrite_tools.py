@@ -4,7 +4,7 @@
 
 
 import numpy as np
-from read_write_insar_utilities import netcdf_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 import subprocess
 
 

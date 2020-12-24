@@ -4,11 +4,10 @@ import glob as glob
 import sys
 import datetime as dt
 import subprocess
-from read_write_insar_utilities import netcdf_read_write
-
+from Tectonic_Utils.read_write import netcdf_read_write
 
 # TOP LEVEL DRIVER
-from read_write_insar_utilities.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def top_level_driver(skip_file=None):

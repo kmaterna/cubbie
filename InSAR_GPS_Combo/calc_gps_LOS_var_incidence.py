@@ -2,7 +2,7 @@
 # Using a grid of look vector components. 
 # The incidence angle of the look vector varies across the scene! 
 # The reference pixel must be a GPS station in the Velfield
-from read_write_insar_utilities import netcdf_read_write
+from Tectonic_Utils.read_write import netcdf_read_write
 import gps_io_functions
 import gps_vel_functions
 import los_projection_tools
