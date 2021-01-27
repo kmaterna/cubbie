@@ -7,7 +7,6 @@ from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 import stacking_utilities
 
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
                                        'xvalues', 'yvalues', 'zvalues', 'date_pairs_dt', 'ts_dates']);
@@ -82,10 +81,10 @@ def reader_simple_format(file_names):
     An earlier reading function, works fast, useful for things like coherence statistics
     """
     filename = file_names[0]
-    [xdata, ydata] = read_netcdf3(filename)[0:2];
+    [xdata, ydata] = rwr.read_netcdf3(filename)[0:2];
     data_all = [];
     for ifile in file_names:  # this happens to be in date order on my mac
-        data = read_netcdf3(ifile)[2];
+        data = rwr.read_netcdf3(ifile)[2];
         data_all.append(data);
     date_pairs = [];
     for name in file_names:
