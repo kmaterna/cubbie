@@ -7,7 +7,7 @@ import stacking_configparser
 import stacking_functions
 
 if __name__ == "__main__":
-	conf, config_params = stacking_configparser.read_config_general();
+	conf, config_params = stacking_configparser.parse_cmd_and_config();
 
 	# Step 0: set up output directories
 	stacking_functions.set_up_output_directories(config_params);

@@ -21,6 +21,19 @@ Params_custom = collections.namedtuple('Params_custom', ['config_file', 'rlks', 
 
 # ----------------------------- #
 
+def parse_cmd_and_config():
+    ################################################
+    # Stage 0: Read and check config parameters
+    # read command line arguments and parse config file.
+    parser = argparse.ArgumentParser(description='Run stack processing. ')
+    parser.add_argument('config', type=str, help='supply name of config file to setup processing options. Required.')
+    parser.add_argument('--debug', action='store_true', help='Print extra debugging messages (default: false)')
+    args = parser.parse_args()
+    config_file = args.config;
+    config, config_params = read_config_general(config_file);
+    return config, config_params;
+
+
 def read_config_isce(config_file):
     # ISCE-specific parameters
     # read config file
@@ -44,24 +57,14 @@ def read_config_isce(config_file):
     return Params;
 
 
-def read_config_general():
-    ################################################
-    # Stage 0: Read and check config parameters
-    #
-    # read command line arguments and parse config file.
-    # Common to both GMTSAR and ISCE. 
-    parser = argparse.ArgumentParser(description='Run stack processing. ')
-    parser.add_argument('config', type=str, help='supply name of config file to setup processing options. Required.')
-    parser.add_argument('--debug', action='store_true', help='Print extra debugging messages (default: false)')
-    args = parser.parse_args()
-
+def read_config_general(config_file):
+    # Common to both GMTSAR and ISCE.
     # read config file
     config = configparser.ConfigParser()
     config.optionxform = str  # make the config file case-sensitive
-    config.read(args.config)
+    config.read(config_file)
 
     # get options from config file
-    config_file_orig = args.config;
     SAT = config.get('py-config', 'satellite')
     wavelength = config.getfloat('py-config', 'wavelength')
     startstage = config.getint('py-config', 'startstage')
@@ -103,14 +106,12 @@ def read_config_general():
     if coseismic != "":
         coseismic = dt.datetime.strptime(coseismic, "%Y%m%d");
 
-    print("Running velocity and time series processing, starting with stage %d" % startstage);
-
     # enforce startstage <= endstage
     if endstage < startstage:
         print('Warning: endstage is less than startstage. Setting endstage = startstage.')
         endstage = startstage
 
-    config_params = Params(config_file=config_file_orig, SAT=SAT, wavelength=wavelength, startstage=startstage,
+    config_params = Params(config_file=config_file, SAT=SAT, wavelength=wavelength, startstage=startstage,
                            endstage=endstage,
                            ref_loc=ref_loc, ref_idx=ref_idx, ts_type=ts_type, custom_unwrapping=custom_unwrapping,
                            detrend_atm_topo=detrend_atm_topo, gacos=gacos, aps=aps, dem_error=dem_error,

@@ -1,9 +1,9 @@
 import os
 import unittest
 import numpy as np
+import subprocess
 
 # Do the read/write functions give the same data afterwards?
-# Do the example configs in the repo actually parse through the configparser?
 # etc.
 
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf4, read_netcdf3, write_netcdf4
@@ -36,6 +36,7 @@ class NetCDFTests(unittest.TestCase):
         self.assertTrue(np.allclose(lon, lon2));
         self.assertTrue(np.allclose(lat, lat2));
         self.assertTrue(np.allclose(z, z2));
+        subprocess.call(['rm', 'gmt.history'], shell=False);
 
     # Should write a test that affirms both files have the same gridline/pixel node registration
 
