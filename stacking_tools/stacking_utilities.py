@@ -37,11 +37,12 @@ def read_baseline_table(baseline_file):
     return baseline_tuple_list;
 
 
-def get_list_of_intf_all(config_params):
+def get_list_of_intf_all(config_params, returnval='all'):
     # This is mechanical: just takes the list of interferograms in intf_all. 
-    # It is designed to work with both ISCE and GMTSAR files
+    # It is designed to work with both ISCE and GMTSAR files.
     # The more advanced selection takes place in make_selection_of_intfs.
-    # Returns a list of tuples like : (dt1, dt2, intf_file, corr_file).
+    # By Default, returns a list of tuples like : (dt1, dt2, intf_file, corr_file).
+    # If returnval is set, it can return a subset like a list of intf_filenames.
     if config_params.SAT == "S1":
         total_intf_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.intf_filename);
         total_corr_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.corr_filename);
@@ -60,7 +61,11 @@ def get_list_of_intf_all(config_params):
     if len(total_intf_list) != len(total_corr_list):
         print("ERROR!  Length of intfs does match length of coherence files!  Please fix this before proceeding. \n");
         sys.exit(1);
-    return intf_file_tuples;
+    if returnval == 'intf_file':
+        intf_files = [x[2] for x in intf_file_tuples];
+        return intf_files;
+    else:
+        return intf_file_tuples;
 
 
 # Turn interferograms into date-date-filename tuples
@@ -105,7 +110,7 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
     elif ref_idx != "":  # First preference: Get the reference pixel index from the config file
         rowref = int(ref_idx.split('/')[0])
         colref = int(ref_idx.split('/')[1])
-        print("  Found rowref, colref = %d, %d from config file" % (rowref, colref));
+        print("  Found rowref, colref = %d, %d from config file.\n  Moving on..." % (rowref, colref));
     else:  # here we have a reference pixel from lat/lon
         lon = float(ref_loc.split('/')[0])
         lat = float(ref_loc.split('/')[1])
@@ -121,25 +126,19 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
 
 
 def get_100p_pixels_manually_choose(filenameslist):
-    # This function helps you manually choose a reference pixel.
+    # This iterative function helps you manually choose a reference pixel.
     # You might have to run through this function a number of times
     # To select your boxes and your eventual reference pixel.
     # I pick one in a stable area, outside of the deformation, ideally in a desert.
 
     print("Finding the pixels that are 100 percent coherent");
     # Finding pixels that are completely non-nan
-    mydata = readmytupledata.reader_isce(filenameslist, band=1);
-    # if it's straight from SNAPHU, band = 2
-    # if it's manually processed first, band = 1
+    mydata = readmytupledata.reader_isce(filenameslist, band=2);
     total_pixels = np.shape(mydata.zvalues)[1] * np.shape(mydata.zvalues)[2];
     total_images = np.shape(mydata.zvalues)[0];
-    xvalues = range(np.shape(mydata.zvalues)[2]);
-    yvalues = range(np.shape(mydata.zvalues)[1]);
     count = 0;
-    ypixels_good = [];
-    xpixels_good = [];
-    ypixels_options = [];
-    xpixels_options = [];
+    ypixels_good, xpixels_good = [], [];
+    ypixels_options, xpixels_options = [], [];
 
     for i in range(np.shape(mydata.zvalues)[1]):
         for j in range(np.shape(mydata.zvalues)[2]):
@@ -386,6 +385,31 @@ def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
     return;
 
 
+def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
+    # This function checks the number of interferograms present in the reference pixel.
+    # It can possibly do other defensive checks as well.
+    ref_pixel_values = mytuple.zvalues[:, rowref, colref];
+    num_nans = np.sum(np.isnan(ref_pixel_values));
+    num_intfs = len(ref_pixel_values);
+    if num_nans / num_intfs > 0.5:
+        print("Error! Data Cube has more than 50% NaNs for your reference pixel. What do you want to do?  ");
+        sys.exit(0);
+    reference_ss = signal_spread_data[rowref, colref];
+    print("Signal Spread has %f percent coherent igrams for ref pixel %d, %d" % (reference_ss, rowref, colref) );
+    if signal_spread_data[rowref, colref] < 50:
+        print("Error! Reference Pixel has less than 50% coherent interferograms. What do you want to do? ");
+        sys.exit(0);
+    return;
+
+
+def report_on_refpixel(rowref, colref, signal_spread_data, outdir):
+    ofile = open(outdir+"/metrics_report.txt", 'w');
+    ofile.write("Refpixel is Row/col %d %d \n" % (rowref, colref) );
+    ofile.write("Percentage of good interferograms at that pixel: %f \n" % signal_spread_data[rowref, colref]);
+    ofile.close();
+    return;
+
+
 def find_connected_dates(date_pairs, sample_date):
     connected_dates = [];
     for i in range(len(date_pairs)):
@@ -496,7 +520,7 @@ def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
     return;
 
 
-def get_axarr_numbers(rows, cols, idx):
+def get_axarr_numbers(cols, idx):
     # Given an incrementally counting idx number and a subplot dimension, where is our plot? 
     # total_plots = rows * cols;
     col_num = np.mod(idx, cols);
@@ -512,13 +536,13 @@ def plot_full_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, 
 
     f, axarr = plt.subplots(num_rows_plots, num_cols_plots, figsize=(16, 10), dpi=300);
     for i in range(len(xdates)):
-        rownum, colnum = get_axarr_numbers(num_rows_plots, num_cols_plots, i);
+        rownum, colnum = get_axarr_numbers(num_cols_plots, i);
         axarr[rownum][colnum].imshow(TS_array[i, :, :], aspect=aspect, cmap='rainbow', vmin=vmin, vmax=vmax);
         titlestr = dt.datetime.strftime(xdates[i], "%Y-%m-%d");
         axarr[rownum][colnum].get_xaxis().set_visible(False);
         axarr[rownum][colnum].set_title(titlestr, fontsize=20);
 
-    cbarax = f.add_axes([0.75, 0.35, 0.2, 0.3], visible=False);
+    _ = f.add_axes([0.75, 0.35, 0.2, 0.3], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
     custom_cmap.set_array(np.arange(vmin, vmax));
@@ -547,14 +571,14 @@ def plot_incremental_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vma
 
     f, axarr = plt.subplots(num_rows_plots, num_cols_plots, figsize=(16, 10), dpi=300);
     for i in range(1, len(xdates)):
-        rownum, colnum = get_axarr_numbers(num_rows_plots, num_cols_plots, i);
+        rownum, colnum = get_axarr_numbers(num_cols_plots, i);
         data = np.subtract(TS_array[i, :, :], TS_array[i - 1, :, :]);
         axarr[rownum][colnum].imshow(data, aspect=aspect, cmap='rainbow', vmin=vmin, vmax=vmax);
         titlestr = dt.datetime.strftime(xdates[i], "%Y-%m-%d");
         axarr[rownum][colnum].get_xaxis().set_visible(False);
         axarr[rownum][colnum].set_title(titlestr, fontsize=20);
 
-    cbarax = f.add_axes([0.75, 0.35, 0.2, 0.3], visible=False);
+    _ = f.add_axes([0.75, 0.35, 0.2, 0.3], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
     custom_cmap.set_array(np.arange(vmin, vmax));

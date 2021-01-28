@@ -41,6 +41,7 @@ def initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, pa
         print("Error! You cannot have weighted least squares and dem_error at the same time.");
         print("Please un-set one of these options. ");
         sys.exit(1);
+    stacking_utilities.check_clean_computation(param_dict["rowref"], param_dict["colref"], intf_tuple, signal_spread_tuple);
     return;
 
 
@@ -67,7 +68,7 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
                            datestrs, x_axis_days);
 
     retval_main, retval_metrics = iterator_func(intf_tuple, packager_function, retval_main, retval_metrics);
-    return retval_main;
+    return retval_main, retval_metrics;
 
 
 def Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple):

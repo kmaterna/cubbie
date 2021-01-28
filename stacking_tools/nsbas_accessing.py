@@ -1,14 +1,11 @@
 from subprocess import call
 import numpy as np
-import glob
-
+import glob, sys
 import read_write_insar_utilities.netcdf_plots
 import stacking_utilities
 import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 import nsbas
-import dem_error_correction
-import sbas_testing
 
 
 def reader_function_gmtsar(intf_files, coh_files, baseline_file, ts_type, dem_error):
@@ -40,6 +37,7 @@ def reader_function_isce(intf_files, coh_files, baseline_file, ts_type, dem_erro
 
 
 def repack_param_dictionary(config_params):
+    # Repacking param dictionary for NSBAS and imposing basic defensive programming.
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
     if config_params.file_format == 'isce':  # Working with the file formats
@@ -88,12 +86,12 @@ def nsbas_ts_format_selector(config_params, intf_files, corr_files):
     return;
 
 
-# LET'S GET A VELOCITY FIELD FROM GMTSAR FILES
+# LET'S GET A VELOCITY FIELD FROM INTFS
 def drive_velocity(param_dict, intf_files, coh_files):
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
     [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
-    velocities = nsbas.Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
+    velocities, metrics = nsbas.Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr',
                               param_dict["ts_output_dir"] + '/velo_nsbas.grd');
     read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dict["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
@@ -121,33 +119,19 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
     # For general use, please provide a file with [lon, lat, row, col, name]
     lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file, intf_files[0],
                                                                              param_dict["geocoded_flag"]);
+    [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
     outdir = param_dict["ts_output_dir"] + "/ts";
-    print("TS OUTPUT DIR IS: " + outdir);
     call(['mkdir', '-p', outdir], shell=False);
     print("Computing TS for %d pixels" % len(lons));
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
+    nsbas.initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict)
     datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.date_pairs_julian);
-    reference_pixel_vector = intf_tuple.zvalues[:, param_dict["rowref"], param_dict["colref"]];
 
     for i in range(len(rows)):
-        pixel_value = intf_tuple.zvalues[:, rows[i], cols[i]];
-        pixel_value = np.subtract(pixel_value, reference_pixel_vector);  # with respect to the reference pixel. 
-        coh_value = None;
-        if coh_tuple is not None:
-            coh_value = coh_tuple.zvalues[:, rows[i], cols[i]];
-        sbas_testing.io_functions.write_testing_pixel(intf_tuple, pixel_value, coh_value,
-                                                      outdir+'/test_pixel_'+str(i)+'.txt');
-        ts_vector = nsbas.do_nsbas_pixel(pixel_value, intf_tuple.date_pairs_julian,
-                                         param_dict["wavelength"], datestrs, coh_value=coh_value);
-
-        if param_dict["dem_error"]:  # If we are implementing a DEM error correction.
-            # Shouldn't be done on Weighted least squares.
-            ts_vector, Kz_error = dem_error_correction.driver(ts_vector, datestrs, baseline_tuple);
-        if param_dict["sbas_smoothing"] > 0:  # Smoothing after the time series has been created
-            ts_vector = nsbas.temporal_smoothing_ts(ts_vector, param_dict["sbas_smoothing"]);
-
-        nsbas.nsbas_ts_points_outputs(x_dts, ts_vector, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
+        TS, nanflag, output_metrics_dict = nsbas.compute_TS(rows[i], cols[i], param_dict, intf_tuple,
+                                                            signal_spread_tuple, baseline_tuple, coh_tuple, datestrs)
+        nsbas.nsbas_ts_points_outputs(x_dts, TS, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;
 
 

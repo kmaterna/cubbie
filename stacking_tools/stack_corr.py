@@ -47,7 +47,7 @@ def dummy_signal_spread(intfs, output_dir, output_filename):
     a = np.add(np.zeros(np.shape(zdata)), 100);
     netcdf_read_write.produce_output_netcdf(xdata, ydata, a, 'Percentage', output_filename, dtype=np.float32)
     netcdf_plots.produce_output_plot(output_filename, 'Signal Spread', output_dir + '/signalspread.png',
-                            'Percentage of coherence (out of ' + str(len(intfs)) + ' images)', aspect=1.2);
+                                     'Percentage of coherence (out of ' + str(len(intfs)) + ' images)', aspect=1.2);
     return;
 
 
@@ -72,19 +72,20 @@ def drive_signal_spread_calculation(corr_files, cutoff, output_dir, output_filen
     a = stack_corr(mytuple, cutoff)  # if unwrapped files, we use Nan to show when it was unwrapped successfully.
     netcdf_read_write.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', output_file)
     netcdf_plots.produce_output_plot(output_file, 'Signal Spread', output_dir + '/signalspread.png',
-                            'Percentage of coherence (out of ' + str(len(corr_files)) + ' images)', aspect=1.2);
+                                     'Percentage of coherence (out of ' + str(len(corr_files)) + ' images)',
+                                     aspect=1.2);
     return;
 
 
 def drive_signal_spread_isce(corr_files, cutoff, output_dir, output_filename):
     cor_data = rmd.reader_isce(corr_files);
     a = stack_corr(cor_data, cutoff);
-    netcdf_read_write.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', output_dir+'/'+output_filename);
+    netcdf_read_write.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', output_dir+'/' +
+                                            output_filename);
     netcdf_plots.produce_output_plot(output_dir + '/' + output_filename, 'Signal Spread above cor=' + str(cutoff),
-                                                                output_dir + '/signalspread_full.png', 'Percentage of coherence', aspect=1 / 4,
-                                                                invert_yaxis=False);
+                                     output_dir + '/signalspread_full.png', 'Percentage of coherence', aspect=1 / 4,
+                                     invert_yaxis=False);
     return;
-
 
 
 if __name__ == "__main__":

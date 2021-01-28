@@ -5,7 +5,7 @@ import nsbas_accessing
 import Super_Simple_Stack as sss
 import coseismic_stack
 import stack_corr
-import stacking_functions_isce
+import workflow_isce_with_uavsar
 
 
 # --------------- STEP 0: Setting up ------------ # 
@@ -32,7 +32,7 @@ def make_corrections(config_params):
         return;
     print("Start Stage 1 - optional atm and unwrapping corrections");
     if config_params.custom_unwrapping:
-        stacking_functions_isce.custom_isce_unwrapping(config_params);
+        workflow_isce_with_uavsar.custom_isce_unwrapping(config_params);
     # This is where we would implement GACOS, APS, topo-detrending, or unwrapping errors if we had them.
     print("End Stage 1 - optional atm corrections\n");
     return;
@@ -45,18 +45,14 @@ def get_ref(config_params):
         return;
     if config_params.endstage < 2:  # if we're ending at intf, we don't do this.
         return;
-
     print("Start Stage 2 - Finding Files and Reference Pixel");
 
-    # Very general, takes all files and doesn't discriminate. 
-    intf_file_tuples = stacking_utilities.get_list_of_intf_all(config_params);
-    intf_files = [x[2] for x in intf_file_tuples];
+    # Very general, returns the filenames of all interferograms, doesn't discriminate
+    intfs = stacking_utilities.get_list_of_intf_all(config_params, returnval='intf_files');
 
-    # Here we need to get ref_idx if we don't have it already
-    stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs,
-                                     intf_files);
+    # Here we get ref_idx if we don't have it already
+    stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs, intfs);
 
-    # Could consider doing stack_corr here when it's all done.
     print("End Stage 2 - Finding Files and Reference Pixel\n");
     return;
 
@@ -72,12 +68,11 @@ def vels_and_ts(config_params):
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
 
     # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
-    # We make the signal spread again after excludes have taken place.
-    # stack_corr for isce might not work so well yet.
+    # We make the signal spread after excludes have taken place.
     intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
     stacking_utilities.make_igram_stick_plot(intf_file_tuples, config_params.ts_output_dir);
-    # stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
-    #                                            config_params.signal_spread_filename);
+    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
+                                               config_params.signal_spread_filename);
 
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")
@@ -101,7 +96,7 @@ def geocode_vels(config_params):
         return;
     print("Start Stage 4 - Geocoding");
     if config_params.SAT == "UAVSAR":
-        stacking_functions_isce.geocode_isce_uavsar(config_params);
+        workflow_isce_with_uavsar.geocode_isce_uavsar(config_params);
 
     # vel_name = "velo_nsbas"
     # outfile=open("geocoding.txt",'w');

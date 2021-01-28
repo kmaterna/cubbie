@@ -11,14 +11,13 @@ import matplotlib.cm as cm
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
 from intf_generating import sentinel_utilities
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def produce_min_max(filename, xyz=False):
     if not xyz:
         x, y, z = netcdf_read_write.read_netcdf4(filename);
     else:
-        x, y, z = read_netcdf3(filename);
+        x, y, z = netcdf_read_write.read_netcdf3(filename);
     print("File:", filename);
     print("Max: ", np.nanmax(z));
     print("Min: ", np.nanmin(z));
@@ -31,11 +30,11 @@ def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
     # Given a co-registered stack
     # If a pixel is above the outlier cutoff in any image of the stack, make a nanmask that masks that pixel.
     filename = filelist[1]
-    x, y, z = read_netcdf3(filename)  # just to get the shape of the outputs
+    x, y, z = netcdf_read_write.read_netcdf3(filename)  # just to get the shape of the outputs
     crazy_mask = np.ones(np.shape(z));
     for ifile in filelist:
         print(ifile);
-        x, y, ztemp = read_netcdf3(ifile);
+        x, y, ztemp = netcdf_read_write.read_netcdf3(ifile);
         for i in range(len(y)):
             for j in range(len(x)):
                 if abs(ztemp[i][j]) > outlier_cutoff:
@@ -52,8 +51,8 @@ def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
     A basic function that takes two co-registered grids and subtracts them, showing residuals in the third panel
     and histogram of residuals in separate plot.
     """
-    data1 = read_netcdf3(file1)[2];
-    data2 = read_netcdf3(file2)[2];
+    data1 = netcdf_read_write.read_netcdf3(file1)[2];
+    data2 = netcdf_read_write.read_netcdf3(file2)[2];
     if flip_sign1:
         data1 = -1 * data1;
     if flip_sign2:
@@ -118,8 +117,8 @@ def plot_two_general_grids(file1, file2, plotname,
     If readfile=True: then we read files. Otherwise, those two arguments are actually data
     """
     if readfile:
-        data1 = read_netcdf3(file1)[2];
-        data2 = read_netcdf3(file2)[2];
+        data1 = netcdf_read_write.read_netcdf3(file1)[2];
+        data2 = netcdf_read_write.read_netcdf3(file2)[2];
     else:
         data1 = file1;
         data2 = file2;
@@ -174,7 +173,7 @@ def histogram_of_grd_file_values(filename, varname='Deviation', plotname='histog
     """
     simple plot to make a histogram of a grid file
     """
-    z = read_netcdf3(filename)[2];
+    z = netcdf_read_write.read_netcdf3(filename)[2];
     z_vector = np.reshape(z, (np.shape(z)[0] * np.shape(z)[1],))
     plt.figure(dpi=250, figsize=(8, 7));
     plt.hist(z_vector, bins=50, color='orange');
