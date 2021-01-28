@@ -25,6 +25,28 @@ def produce_min_max(filename, xyz=False):
     return;
 
 
+def how_many_nans(filename):
+    [_, _, zdata] = netcdf_read_write.read_netcdf3(filename);
+    nan_pixels = np.count_nonzero(np.isnan(zdata));
+    total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1];
+    print("For file %s: %d pixels of %d are NaNs (%f percent)." % (filename, nan_pixels, total_pixels,
+                                                                   100*float(nan_pixels/float(total_pixels))) )
+    return [nan_pixels, total_pixels];
+
+
+def number_below_value(filename, value):
+    [xdata, ydata, zdata] = netcdf_read_write.read_netcdf3(filename);
+    count = 0;
+    for i in range(len(ydata)):
+        for j in range(len(xdata)):
+            if zdata[i][j] < value:
+                count = count+1;
+    total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1];
+    print("For file %s: %d pixels of %d are below %f (%f percent)." % (filename, count, total_pixels, value,
+                                                                       100*float(count/float(total_pixels))) )
+    return;
+
+
 def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
     # Make a mask that is ones and nans
     # Given a co-registered stack

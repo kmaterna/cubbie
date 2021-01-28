@@ -10,7 +10,7 @@ Dislcaimer: this library is under development and is frequently updated.  Noneth
 Here we perform a simple calculation to interpolate GNSS velocities across a study region and then project that calculation simply into LOS veiwing geometries. We assume a single incidence angle and flight angle for the whole field, which is a simplification of the actual picture (the incidence angle changes from near range to far range). 
 
 GNSS Velocities projected into ascending and descending viewing geometries, and interpolated:
-![Footprint](https://github.com/kmaterna/S1_batches/blob/master/InSAR_GPS_Combo/testing_and_results/LOS.png)
+![Footprint](https://github.com/kmaterna/S1_batches/blob/master/InSAR_GPS_Combo/test/LOS.png)
 
 ## Example
 In another example, we can project a GAGE-provided 3D velocity field (e.g., from ftp://data-out.unavco.org/pub/products/velocity/) into LOS using grids of variable look vectors. This code depends on the S1_batches repository and the GNSS_Timeseries_Viewers repository for read functions. Configuration and driver is shown below. 

@@ -16,8 +16,7 @@ def read_testing_pixel(ifile, coherence=True):
                                                    'formats': ('U15', np.float, np.float)});
     else:
         [juldays, phase] = np.loadtxt(ifile, usecols=(1, 2), unpack=True,
-                                            dtype={'names': ('juldays', 'phase'),
-                                                   'formats': ('U15', np.float)});
+                                      dtype={'names': ('juldays', 'phase'), 'formats': ('U15', np.float)});
         corr = None;
     day1 = [dt.datetime.strptime(x[0:7], "%Y%j") for x in juldays];
     day2 = [dt.datetime.strptime(x[8:], "%Y%j") for x in juldays];
