@@ -316,6 +316,7 @@ def nsbas_ts_points_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir)
     plt.savefig(outdir + '/' + str(name) + '_' + str(lon) + '_' + str(lat) + '_disp.eps');
 
     ofile = open(outdir + '/' + str(name) + '_' + str(row) + '_' + str(col) + '_record.txt', 'w');
+    print("Writing file %s " % outdir + '/' + str(name) + '_' + str(row) + '_' + str(col) + '_record.txt');
     for i in range(len(dts)):
         ofile.write("%s %f %f %d %d " % (name, lon, lat, row, col));
         ofile.write(dt.datetime.strftime(dts[i], "%Y-%m-%d"));

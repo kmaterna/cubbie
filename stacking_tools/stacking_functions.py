@@ -71,8 +71,9 @@ def vels_and_ts(config_params):
     # We make the signal spread after excludes have taken place.
     intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
     stacking_utilities.make_igram_stick_plot(intf_file_tuples, config_params.ts_output_dir);
-    stack_corr.drive_signal_spread_calculation(corr_files, 0.1, config_params.ts_output_dir,
-                                               config_params.signal_spread_filename);
+    if config_params.make_signal_spread:
+        stack_corr.drive_signal_spread_calculation(corr_files, config_params.signal_cor_cutoff, 
+            config_params.ts_output_dir, config_params.signal_spread_filename);
 
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")

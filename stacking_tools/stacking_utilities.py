@@ -103,6 +103,7 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
     # Get the index of the reference pixel (generally using merged-subswath files)
     # If you don't have the reference pixel in the config file, 
     # the program will stop execution so you can write it there.
+    # intf_files are a list of tuples of (dt, dt, filename, filename)
     print("Identifying reference pixel:");
     if ref_idx == "" and ref_loc == "":
         get_100p_pixels_manually_choose(intf_files);
@@ -115,11 +116,11 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
         lon = float(ref_loc.split('/')[0])
         lat = float(ref_loc.split('/')[1])
         if geocoded_flag:   # Second preference: Extract the lat/lon from already-geocoded intf_files
-            rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0]);
+            rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0][2]);
             # Would use uavsar_from_lonlat_get_rowcol if doing UAVSAR here.
         else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
             trans_dat = "merged/trans.dat";
-            rowref, colref = get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, intf_files[0]);
+            rowref, colref = get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, intf_files[0][2]);
         print("\nSTOP! Please write the reference row/col %d/%d into your config file. \n" % (rowref, colref))
         sys.exit(1);
     return rowref, colref;
@@ -395,6 +396,7 @@ def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
         print("Error! Data Cube has more than 50% NaNs for your reference pixel. What do you want to do?  ");
         sys.exit(0);
     reference_ss = signal_spread_data[rowref, colref];
+    print("Intf Stack has %f percent non-nan interferograms for ref pixel %d, %d" % (100*num_nans/num_intfs, rowref, colref) )
     print("Signal Spread has %f percent coherent igrams for ref pixel %d, %d" % (reference_ss, rowref, colref) );
     if signal_spread_data[rowref, colref] < 50:
         print("Error! Reference Pixel has less than 50% coherent interferograms. What do you want to do? ");

@@ -7,7 +7,7 @@ Params = collections.namedtuple('Params',
                                 ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'ref_loc', 'ref_idx',
                                  'ts_type', 'file_format',
                                  'custom_unwrapping', 'detrend_atm_topo', 'gacos', 'aps', 'dem_error',
-                                 'sbas_smoothing', 'ts_format',
+                                 'sbas_smoothing', 'ts_format', 'make_signal_spread', 'signal_coh_cutoff', 
                                  'nsbas_min_intfs', 'intf_filename', 'corr_filename', 'geocoded_intfs', 'baseline_file',
                                  'start_time', 'end_time', 'coseismic', 'intf_timespan', 'gps_file', 'flight_angle',
                                  'look_angle', 'skip_file', 'signal_spread_filename',
@@ -82,6 +82,8 @@ def read_config_general():
     intf_filename = config.get('py-config', 'intf_filename');
     corr_filename = config.get('py-config', 'corr_filename');
     signal_spread_filename = config.get('py-config', 'signal_spread_filename');
+    make_signal_spread = config.getint('py-config', 'make_signal_spread') if config.has_option('py-config', 'make_signal_spread') else 1;
+    signal_coh_cutoff = config.getfloat('py-config', 'signal_coh_cutoff') if config.has_option('py-config', 'signal_coh_cutoff') else 0.1;
     baseline_file = config.get('py-config', 'baseline_file') if config.has_option('py-config', 'baseline_file') else 0;
     geocoded_intfs = config.getint('py-config', 'geocoded_intfs') if config.has_option('py-config', 'geocoded_intfs') else 0;
     start_time = config.get('py-config', 'start_time') if config.has_option('py-config', 'start_time') else '19900101';
@@ -118,6 +120,7 @@ def read_config_general():
                            start_time=start_time, end_time=end_time, coseismic=coseismic, intf_timespan=intf_timespan,
                            gps_file=gps_file, flight_angle=flight_angle, look_angle=look_angle,
                            skip_file=skip_file, signal_spread_filename=signal_spread_filename, 
+                           make_signal_spread=make_signal_spread, signal_coh_cutoff=signal_coh_cutoff, 
                            ts_points_file=ts_points_file, intf_dir=intf_dir,
                            ts_output_dir=ts_output_dir);
 

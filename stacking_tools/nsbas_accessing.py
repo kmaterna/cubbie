@@ -119,19 +119,20 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
     # For general use, please provide a file with [lon, lat, row, col, name]
     lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file, intf_files[0],
                                                                              param_dict["geocoded_flag"]);
-    [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
+    # [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);  # not used right now.
     outdir = param_dict["ts_output_dir"] + "/ts";
     call(['mkdir', '-p', outdir], shell=False);
     print("Computing TS for %d pixels" % len(lons));
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
+    signal_spread_tuple = 100 * np.ones(np.shape(intf_tuple.zvalues[0]))
     nsbas.initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict)
     datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.date_pairs_julian);
 
     for i in range(len(rows)):
         TS, nanflag, output_metrics_dict = nsbas.compute_TS(rows[i], cols[i], param_dict, intf_tuple,
                                                             signal_spread_tuple, baseline_tuple, coh_tuple, datestrs)
-        nsbas.nsbas_ts_points_outputs(x_dts, TS, rows[i], cols[i], names[i], lons[i], lats[i], outdir);
+        nsbas.nsbas_ts_points_outputs(x_dts, TS[0], rows[i], cols[i], names[i], lons[i], lats[i], outdir);
     return;
 
 
