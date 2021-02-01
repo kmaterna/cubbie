@@ -5,13 +5,14 @@
 # Parse inputs
 if [[ "$#" -eq 0 ]]; then
   echo ""
-  echo "This script queries the copernicus scihub for Sentinel-1 SLC images"
+  echo "This script queries the copernicus scihub for Sentinel-1 SLC TOPS-mode images"
   echo "Usage: ./scihub_search_s1_data.sh -options"
   echo "Example: ./scihub_search_s1_data.sh -s 2015-08-01 -e NOW -r -123.0/-123.3/40.0/40.2 -d Descending"
   echo "  Input options:"
   echo " -s start_time [yyyy-mm-dd or NOW]"
   echo " -e end_time [yyyy-mm-dd or NOW]"
-  echo " -r region_box [lonW/lonE/latS/latN]"
+  echo " -b bounding_box [lonW/lonE/latS/latN]"
+  echo " -r region (4 sided) [lon1/lat1/lon2/lat2/lon3/lat3/lon4/lat4]"
   echo " -c coordinate [lon/lat]"
   echo " -o orbit_number [0-175]"
   echo " -d direction [Ascending/Descending]"
@@ -29,7 +30,7 @@ if [[ "$#" -eq 0 ]]; then
   echo "    scihub_password: your_password"
   echo ""
   echo " Note: The scihub system will only print a maximum of 100 results to a file."
-  echo "    If you want to see more than 100 results, this script will cat them, but only up to a three hundred right now."
+  echo "    If you want to see more than 100 results, this script will cat them, but only up to five hundred right now."
   echo "    More details at https://scihub.copernicus.eu/twiki/do/view/SciHubUserGuide/5APIsAndBatchScripting#URI_components"
   echo ""
   exit 1
@@ -49,10 +50,10 @@ while getopts :s:e:r:c:o:d:b:z:u:p: opt; do
       echo "-e was triggered, parameter: $OPTARG" >&2
       endtime=$OPTARG
       ;;
-    r)  # the region
-      echo "-r was triggered, parameter: $OPTARG" >&2
-      region=$OPTARG
-      components=$(echo $region | tr "/" "\n")  # the '/' symbol is the delimiter
+    b)  # the box
+      echo "-b was triggered, parameter: $OPTARG" >&2
+      box=$OPTARG
+      components=$(echo $box | tr "/" "\n")  # the '/' symbol is the delimiter
       temp=( $components )
       lonW=${temp[0]}
       lonE=${temp[1]}
@@ -73,6 +74,28 @@ while getopts :s:e:r:c:o:d:b:z:u:p: opt; do
       if (( $(echo "$latS >= 90.0" | bc -l) )); then
       	echo "Error! latS not in bounds!"
       	exit 1
+      fi
+      ;;
+    r)  # the region (4 arbitrary points)
+      echo "-r was triggered, parameter: $OPTARG" >&2
+      region=$OPTARG
+      components=$(echo $region | tr "/" "\n")  # the '/' symbol is the delimiter
+      temp=( $components )
+      lon1=${temp[0]}
+      lat1=${temp[1]}
+      lon2=${temp[2]}
+      lat2=${temp[3]}
+      lon3=${temp[4]}
+      lat3=${temp[5]}
+      lon4=${temp[6]}
+      lat4=${temp[7]}
+      if (( $(echo "$lat1 >= 90.0" | bc -l) )); then
+        echo "Error! lat1 not in bounds!"
+        exit 1
+      fi      
+      if (( $(echo "$lat1 >= 90.0" | bc -l) )); then
+        echo "Error! lat1 not in bounds!"
+        exit 1
       fi
       ;;
     c)  # the coordinate 
@@ -165,13 +188,23 @@ if [ ! -z "$starttime" ]; then
 fi
 
 # Searching based on a bounding box LonW/LonE/LatS/LatN
-if [ ! -z "$region" ]; then
+if [ ! -z "$box" ]; then
 	search_query+=" AND footprint:\"intersects(POLYGON(("
 	search_query+="$lonW $latN,"
 	search_query+="$lonE $latN,"
 	search_query+="$lonE $latS,"
 	search_query+="$lonW $latS,"
 	search_query+="$lonW $latN)))\""
+fi
+
+# Searching based on a four-sided polygon Lon1/Lat1/Lon2/Lat2/Lon3/Lat3/Lon4/Lat4
+if [ ! -z "$region" ]; then
+  search_query+=" AND footprint:\"intersects(POLYGON(("
+  search_query+="$lon1 $lat1,"
+  search_query+="$lon2 $lat2,"
+  search_query+="$lon3 $lat3,"
+  search_query+="$lon4 $lat4,"
+  search_query+="$lon1 $lat1)))\""
 fi
 
 # Searching based on a point
@@ -189,6 +222,9 @@ if [ ! -z "$direction" ]; then
 	search_query+=" AND orbitdirection:$direction"
 fi
 
+# TOPS Mode instead of strip-map
+search_query+=" AND sensoroperationalmode:IW"
+
 
 # how many rows to display and where to start? 
 # Max rows = 100 (slightly annoying rule from the Copernicus server)
@@ -203,16 +239,29 @@ num_results=`grep 'title>S1' $output_file | wc -l`
 
 # Execute again if we think there's more search results to be found (100-200 and 200-300 range). 
 if [ $num_results -eq "100" ]; then
-  echo "We have 100 results... automatically searching for results #100-200"
+  echo "We have 100+ results... automatically searching for results #100-200"
   search_query1=$search_query"&start=100&rows=100"
   wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query1" -O ->> $output_file
 fi
 num_results=`grep 'title>S1' $output_file | wc -l`
 if [ $num_results -eq "200" ]; then
-  echo "We have 100 results... automatically searching for results #200-300"
+  echo "We have 200+ results... automatically searching for results #200-300"
   search_query2=$search_query"&start=200&rows=100"
   wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query2" -O ->> $output_file
 fi
+num_results=`grep 'title>S1' $output_file | wc -l`
+if [ $num_results -eq "300" ]; then
+  echo "We have 300+ results... automatically searching for results #300-400"
+  search_query3=$search_query"&start=300&rows=100"
+  wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query3" -O ->> $output_file
+fi
+num_results=`grep 'title>S1' $output_file | wc -l`
+if [ $num_results -eq "400" ]; then
+  echo "We have 400+ results... automatically searching for results #400-500"
+  search_query4=$search_query"&start=400&rows=100"
+  wget --no-check-certificate --auth-no-challenge --user=$username --password=$password "$search_query4" -O ->> $output_file
+fi
+
 
 
 # Displaying a summary of the results 

@@ -96,7 +96,7 @@ latmax=`awk '{if(min==""){min=max=$2}; if($2>max) {max=$2}; if($2<min) {min=$2};
 
 # Make GMT plot of footprints 
 # In the best case scenario I would also plot a timeseries of the acquisition dates (nice and fancy)
-projection="M6.1i"
+projection="M4.5i"
 range="$lonmin/$lonmax/$latmin/$latmax"
 echo $range
 echo "Results displayed: " $num_results
@@ -115,12 +115,16 @@ fi
 
 
 # Make the timing plot
-projection="X10iTi/4i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
-region="2014-10-01T00:00/2020-12-30T00:00/0.1/1"  # The beginning and end of Sentinel. 
+projection="X10iTi/2i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
+region1="2014-10-01T00:00/2018-10-01T00:00/0.1/1"  # The beginning and end of Sentinel. 
+region2="2018-01-01T00:00/2022-10-01T00:00/0.1/1"  # The beginning and end of Sentinel. 
 
-gmt psbasemap -R$region -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K --FORMAT_DATE_MAP=mm/dd > $timing_file
+gmt psbasemap -R$region1 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K -Y10 --FORMAT_DATE_MAP=mm/dd > $timing_file
 # -Bpx = primary x-axis; -Bs = secondary. a6O means primary annotate every 6 months; f2O means secondary annotate every 2 months
-gmt psxy $timing -R$region -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
+gmt psxy $timing -R$region1 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
+
+gmt psbasemap -R$region2 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn -Bsxa1YS -K -O -Y-8 --FORMAT_DATE_MAP=mm/dd >> $timing_file
+gmt psxy $timing -R$region2 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
 
 rm gmt.history new_footprints.txt
 rm $footprints
