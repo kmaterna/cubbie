@@ -1,5 +1,5 @@
 import collections
-import os, sys, shutil, argparse, time, configparser, glob
+import os, sys, shutil, argparse, configparser, glob
 import numpy as np
 from subprocess import call, check_output
 import datetime as dt
@@ -91,8 +91,9 @@ def read_config():
         # check master in data.in
         dataDotIn = np.genfromtxt('F' + str(swath) + '/raw/data.in', dtype='str')
         oldmaster = dataDotIn[0]
-        if '-' + master[
-                 3:11] + 't' not in oldmaster:  # For sentinel, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...; master is formatted like S1A20171213_ALL_F1
+        if '-' + master[3:11] + 't' not in oldmaster:
+            # For sentinel, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...;
+            # master is formatted like S1A20171213_ALL_F1
             print('Warning: The master specified in the config file disagrees with the old master in data.in.')
             # print('We will re-run starting from pre-processing with the master from the config file.')
             # startstage = 1
@@ -109,7 +110,7 @@ def read_config():
         endstage = startstage
 
     # logtime is the timestamp added to all logfiles created during this run
-    logtime = time.strftime("%Y_%m_%d-%H_%M_%S")
+    # logtime = time.strftime("%Y_%m_%d-%H_%M_%S")
     # config_file = 'batch.run.' + logtime + '.cfg'
     # with open(config_file, 'w') as configfilehandle:
     #     config.write(configfilehandle)
@@ -154,9 +155,10 @@ def stitch_frames(config_params):
         outfile.write("echo RUNNING make_frame_commands.sh...\n");
         outfile.write("cd FRAMES\n");
         outfile.write("if [ -z \"$(ls . )\" ]; then\n");  # if the directory is empty, then we make more frames.
-        outfile.write(
-            "  greadlink -f ../DATA/*.SAFE > data.list\n");  # I needed to change readlink --> greadlink for mac (readlink for linux)
-        outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame1_def[0], frame1_def[1]));  # write the near-range edges of the frame to frame.ll
+        outfile.write("  greadlink -f ../DATA/*.SAFE > data.list\n");
+        # I needed to change readlink --> greadlink for mac (readlink for linux)
+        outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame1_def[0], frame1_def[1]));
+        # write the near-range edges of the frame to frame.ll
         outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame2_def[0], frame2_def[1]));
         outfile.write("  make_s1a_frame.csh data.list frames.ll\n");
         outfile.write("  echo \"Assembling new frames!\"\n")
@@ -169,10 +171,13 @@ def stitch_frames(config_params):
         call(['./make_frame_commands.sh'], shell=False)
         # call(['rm','make_frame_commands.sh'],shell=False)
 
-        # Copy the scenes where only one scene is exactly covering the pre-defined frame (otherwise will be skipped because there's no combining to do)
-        # It turns out that sometimes, the second scene that covers the frame doesn't exist, so there's only one scene for that given date.  
+        # Copy the scenes where only one scene is exactly covering the pre-defined frame
+        # (otherwise will be skipped because there's no combining to do)
+        # It turns out that sometimes, the second scene that covers the frame doesn't exist, so there's only
+        # one scene for that given date.
         # Other times, one scene covers the whole frame. 
-        # Thankfully, make_s1a_frame.csh already copies the orbit files into the FRAMES directory, even if the .SAFE isn't copied. 
+        # Thankfully, make_s1a_frame.csh already copies the orbit files into the FRAMES directory,
+        # even if the .SAFE isn't copied.
 
         # Make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
         call('compare_frames_acquisitions.sh', shell=True);
@@ -249,10 +254,10 @@ def check_raw_orig_sanity(swath):
     print('number of safes is %d ' % number_of_safes);
     print('number of EOFs is %d ' % number_of_EOFs);
     if number_of_tiffs != number_of_safes:
-        raise sentinel_utilities.Directory_error(
+        raise sentinel_utilities.DirectoryError(
             'Huge error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!');
     if number_of_tiffs != number_of_EOFs:
-        raise sentinel_utilities.Directory_error(
+        raise sentinel_utilities.DirectoryError(
             'Huge error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
     return;
 
@@ -279,7 +284,7 @@ def preprocess(config_params):
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath,
                                     config_params.master);  # makes data.in the first time, with no super_master
     write_preproc_mode1(config_params.swath);  # writes the bottom of README_prep
-    # call("./README_prep.txt",shell=True);  # This is the first time through- just get baseline plot to pick super-master.
+    # call("./README_prep.txt",shell=True);  # First time through- just get baseline plot to pick super-master.
 
     # Automatically decide on super-master and pop it to the front of data.in. 
     masterid = sentinel_utilities.choose_master_image(config_params.master, config_params.swath);
@@ -388,7 +393,8 @@ def get_total_intf_all(config_params):
                                                                        3);  # 3 years
     if not intf_pairs:
         print(
-            "config_params.intf_type is probably not a valid intf_type [combinations of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
+            "config_params.intf_type is probably not a valid intf_type "
+            "[combinations of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
         sys.exit(1);
     intf_pairs = sentinel_utilities.reduce_by_start_end_time(intf_pairs, config_params.start_time,
                                                              config_params.end_time);
@@ -431,16 +437,19 @@ def make_interferograms(config_params):
         if os.path.isfile(outdir + expected_folder + "/phasefilt.grd"):
             continue;
         else:
-            new_item = item.replace("_F1",
-                                    "_F" + config_params.swath);  # in case we're using one swath to generate intf_all for other swaths
+            new_item = item.replace("_F1", "_F" + config_params.swath);
+            # in case we're using one swath to generate intf_all for other swaths
             outfile.write('echo "' + new_item + '" >> intf_record.in\n');
             outfile.write('echo "' + new_item + '" >> intf' + str(np.mod(i, config_params.numproc)) + '.in\n');
             # outfile.write('echo "' + item +'" >> intf_record.in\n');
-        # outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n'); # Write out in all cases. 
+        # outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');
+        # Write out in all cases.
     outfile.write("\n# Process the interferograms.\n\n")
     outfile.write(
-        "ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} " + config_params.config_file + "'\n\n\n");  # If you have parallel on your box
-    # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");  # if you don't have parallel 
+        "ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} " + config_params.config_file + "'\n\n\n");
+    # If you have parallel on your box^^
+    # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");
+    # if you don't have parallel
     outfile.write("cd ../\n");
     outfile.close();
     print("Ready to call README_proc.txt.")
@@ -473,8 +482,8 @@ def unwrapping(config_params):
     # For merging multiple swaths
     sentinel_utilities.set_up_merge_unwrap(config_params);  # just set up the merged directory. 
     intf_all = get_total_intf_all(config_params);  # Make selection of interferograms to form. 
-    sentinel_utilities.write_merge_batch_input(intf_all,
-                                               config_params.master);  # write the intfs and PRM files into an input file.
+    sentinel_utilities.write_merge_batch_input(intf_all, config_params.master);
+    # write the intfs and PRM files into an input file.
 
     # Make plots of phasefilt.grd files. 
     # phasefilt_plot.top_level_driver('manual_remove.txt');
@@ -482,8 +491,10 @@ def unwrapping(config_params):
 
     unwrap_sh_file = "README_unwrap.txt";
     sentinel_utilities.write_merge_unwrap(unwrap_sh_file);
-    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
-    # sentinel_utilities.write_select_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file, config_params.config_file);
+    # sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
+    #                                               config_params.config_file);
+    # sentinel_utilities.write_select_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
+    #                                            config_params.config_file);
 
     print("Ready to call " + unwrap_sh_file)
     call(['chmod', '+x', unwrap_sh_file], shell=False);

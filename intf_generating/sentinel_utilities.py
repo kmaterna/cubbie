@@ -471,7 +471,7 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname):
         im2_dt = [];
         # Making a list of acquisition dates
         for i in range(len(tbaseline)):
-            dtarray.append(dt.datetime.strptime(str(int(tbaseline[i]+1)), '%Y%j') );
+            dtarray.append(dt.datetime.strptime(str(int(tbaseline[i]+1)), '%Y%j'));
 
         # Make the list of datetimes for the images. 
         for i in range(len(intf_pairs)):
@@ -580,9 +580,9 @@ def check_intf_all_sanity():
 #
 
 # A special exception for when a directory is poorly situated, and is going to fail. 
-class Directory_error(Exception):
+class DirectoryError(Exception):
     def __init__(self, value):
         self.value = value;
 
     def __str__(self):
-        return (repr(self.value));
+        return repr(self.value);
