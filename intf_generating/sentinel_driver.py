@@ -1,10 +1,11 @@
+#!/usr/bin/env python3
 """
     Kathryn's S1A SBAS driver.py
     For this toolbox of scripts to perform GMTSAR SBAS processing on S1A/S1B images,
     your starting configuration should be:
 
-    --DATA (has a pile of .SAFE directories, each 3.5 or 7.0 GB)
-    --batch.config   (very important file!)
+    --DATA (has a pile of .SAFE directories)
+    --batch.config  (very important file!)
     --topo
         >> dem.grd
         >>  If you've already run dem2topo_ra once before, you will also have other files related to topographic phase:

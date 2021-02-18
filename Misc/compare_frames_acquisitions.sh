@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Compare the results of FRAMES with the initial acquisitions
+# Might be extraneous... Mostly done in python now.
 
 # Get initial acquisitions
 # Find descriptive numbers for summarizing the search results

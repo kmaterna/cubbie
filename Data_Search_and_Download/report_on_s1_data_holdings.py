@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-The purpose of this script is to compare a directory of SAFE files with the region you might want.
+The purpose of this script is to compare a directory of SAFE files on one track with the region you might want.
 Did you get all the data you wanted? How many bursts?
 Did every day cover the entire domain of interest?
 Are there extraneous files in your directory?
@@ -101,13 +101,13 @@ def determine_continuous_safes(safe_files):
             datestr = child.find('sensingTime').text;   # an Element 'sensingTime'
             total_burst_times.append(dt.datetime.strptime(datestr[0:19], "%Y-%m-%dT%H:%M:%S"));
 
-    continuous = 1;
+    continuous = 'continuous';
     total_burst_times = sorted(set(total_burst_times));
     for i in range(len(total_burst_times)-1):
         time_diff = total_burst_times[i+1] - total_burst_times[i];
         if time_diff.seconds > 5:  # If there are more than 5 seconds between bursts, we have a discontinuity.
             print(total_burst_times[i+1], total_burst_times[i], ": DISCONTINUOUS OBSERVATIONS");
-            continuous = 0;
+            continuous = 'gaps';
 
     return len(total_burst_times), continuous;
 
@@ -135,9 +135,9 @@ def determine_total_coverage(safe_files, polygon):
 
     if lon_min < np.min(polygon_lons) and lat_min < np.min(polygon_lats) and lon_max > np.max(polygon_lons) \
             and lat_max > np.max(polygon_lats):
-        total_coverage = 1;
+        total_coverage = 'covered';
     else:
-        total_coverage = 0;
+        total_coverage = 'missing';
         print("Lacking total coverage...")
 
     return total_coverage;
@@ -174,7 +174,7 @@ def write_table(list_of_desired_dates, information_tuples, outfile):
     list_of_present_dates = [x[0] for x in information_tuples];
     total_dates = list(sorted(set(list_of_desired_dates + list_of_present_dates)));
     ofile.write("# Dates: desired=%d, downloaded=%d, total=%d\n" % (len(list_of_desired_dates),
-                                                                    len(information_tuples), len(total_dates) ));
+                                                                    len(information_tuples), len(total_dates)));
     for one_date in total_dates:
         date_as_string = dt.datetime.strftime(one_date, "%Y%m%d");
         if one_date in list_of_desired_dates:
@@ -183,8 +183,8 @@ def write_table(list_of_desired_dates, information_tuples, outfile):
             ofile.write("         | ");
         if one_date in list_of_present_dates:
             idx = list_of_present_dates.index(one_date);
-            ofile.write("%s %d %d %d %d\n" % (date_as_string, information_tuples[idx][1], information_tuples[idx][2],
-                                              information_tuples[idx][3], information_tuples[idx][4] ) );
+            ofile.write("%s %d %d %s %s\n" % (date_as_string, information_tuples[idx][1], information_tuples[idx][2],
+                                              information_tuples[idx][3], information_tuples[idx][4]));
         else:
             ofile.write("\n");
     ofile.close();

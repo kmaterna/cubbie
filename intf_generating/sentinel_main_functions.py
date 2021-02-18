@@ -2,18 +2,14 @@ import collections
 import os, sys, shutil, argparse, configparser, glob
 import numpy as np
 from subprocess import call, check_output
-import datetime as dt
 from intf_generating import sentinel_utilities, rose_baseline_plot
 from intf_atm_tools import flattentopo_driver
 
 Params = collections.namedtuple('Params',
-                                ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'master', 'orbit_dir',
+                                ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'master',
+                                 'orbit_dir', 'DATA_dir', 'FRAMES_dir',
                                  'tbaseline', 'xbaseline', 'annual_crit_days', 'annual_crit_baseline', 'restart',
-                                 'mode', 'swath', 'polarization', 'frame1', 'frame2', 'numproc', 'intf_type',
-                                 'start_time', 'end_time',
-                                 'solve_unwrap_errors', 'detrend_atm_topo', 'gacos', 'use_aps', 'threshold_snaphu',
-                                 'flight_angle', 'look_angle']);
-
+                                 'swath', 'polarization', 'frame1', 'frame2', 'numproc', 'threshold_snaphu']);
 
 def read_config():
     ################################################
@@ -45,25 +41,17 @@ def read_config():
     endstage = config.getint('py-config', 'endstage')
     master = config.get('csh-config', 'master_image')
     orbit_dir = config.get('py-config', 'orbit_dir')
+    DATA_dir = config.get('py-config', 'DATA_dir')
+    FRAMES_dir = config.get('py-config', 'FRAMES_dir')
     tbaseline = config.getint('py-config', 'max_timespan')
     xbaseline = config.getint('py-config', 'max_baseline')
     annual_crit_days = config.getint('py-config', 'annual_crit_days')
     annual_crit_baseline = config.getint('py-config', 'annual_crit_baseline')
     restart = config.getboolean('py-config', 'restart')
-    mode = config.get('py-config', 'mode')
     swath = config.get('py-config', 'swath')
     polarization = config.get('py-config', 'polarization')
     frame_nearrange1 = config.get('py-config', 'frame_nearrange1')
     frame_nearrange2 = config.get('py-config', 'frame_nearrange2')
-    intf_type = config.get('timeseries-config', 'intf_type')
-    start_time = config.get('timeseries-config', 'start_time')
-    end_time = config.get('timeseries-config', 'end_time')
-    solve_unwrap_errors = config.getint('timeseries-config', 'solve_unwrap_errors');
-    gacos = config.getint('timeseries-config', 'gacos');
-    use_aps = config.getint('timeseries-config', 'aps');
-    detrend_atm_topo = config.getint('timeseries-config', 'detrend_atm_topo');
-    flight_angle = config.getfloat('timeseries-config', 'flight_angle');
-    look_angle = config.getfloat('timeseries-config', 'look_angle');
     threshold_snaphu = config.getfloat('csh-config', 'threshold_snaphu');
 
     # print config options
@@ -77,14 +65,6 @@ def read_config():
         print(config.write(sys.stdout))
 
     print("Running sentinel batch processing, starting with stage %d" % startstage);
-
-    # only valid option for mode is 'scan'    
-    if mode != '' and mode != 'scan':
-        print('warning: invalid option mode = %s in config file, using blank' % mode)
-        mode = ''
-
-    start_time = dt.datetime.strptime(start_time, "%Y%m%d");
-    end_time = dt.datetime.strptime(end_time, "%Y%m%d");
 
     # if master specified in the config file disagrees with existing data.in, we must re-do the pre-processing.
     if master and startstage > 1 and os.path.isfile('F' + str(swath) + '/raw/data.in'):
@@ -109,7 +89,7 @@ def read_config():
         print('Warning: endstage is less than startstage. Setting endstage = startstage.')
         endstage = startstage
 
-    # logtime is the timestamp added to all logfiles created during this run
+    # adding a timed log was getting annoying so I commented it out.
     # logtime = time.strftime("%Y_%m_%d-%H_%M_%S")
     # config_file = 'batch.run.' + logtime + '.cfg'
     # with open(config_file, 'w') as configfilehandle:
@@ -117,71 +97,78 @@ def read_config():
 
     config_params = Params(config_file=config_file_orig, SAT=SAT, wavelength=wavelength, startstage=startstage,
                            endstage=endstage, master=master,
-                           orbit_dir=orbit_dir, tbaseline=tbaseline, xbaseline=xbaseline,
+                           orbit_dir=orbit_dir, DATA_dir=DATA_dir, FRAMES_dir=FRAMES_dir,
+                           tbaseline=tbaseline, xbaseline=xbaseline,
                            annual_crit_days=annual_crit_days, annual_crit_baseline=annual_crit_baseline,
-                           restart=restart, mode=mode, swath=swath, polarization=polarization, frame1=frame_nearrange1,
-                           frame2=frame_nearrange2,
-                           numproc=numproc, intf_type=intf_type, start_time=start_time, end_time=end_time,
-                           solve_unwrap_errors=solve_unwrap_errors, gacos=gacos, use_aps=use_aps,
-                           detrend_atm_topo=detrend_atm_topo, threshold_snaphu=threshold_snaphu,
-                           flight_angle=flight_angle, look_angle=look_angle);
+                           restart=restart, swath=swath, polarization=polarization, frame1=frame_nearrange1,
+                           frame2=frame_nearrange2, numproc=numproc, threshold_snaphu=threshold_snaphu);
 
     return config_params;
 
 
-# --------------- STEP -1: Making frames from bursts (will skip if FRAMES contains data) ------------ # 
+# --------------- STEP -1: Making frames from bursts ------------ #
 def compile_frame_from_bursts(config_params):
+    # Will assemble frames if pins are provided.
     if config_params.startstage > -1:  # don't need to set up if we're starting mid-stream.
         return;
     if config_params.endstage < -1:  # don't need to do this step
         return;
-    stitch_frames(config_params);
-    # will assemble frames if necessary. Otherwise will just return the DATA/*.SAFE files
-    return;
 
+    if config_params.frame1:
+        print("Assembling frames based on pins. ")
+        pins_filename = config_params.FRAMES_dir+'/pins_ll.txt';
+        auto_script = config_params.FRAMES_dir+'/auto_frame_commands.sh';
 
-def stitch_frames(config_params):
-    # This will read the batch.config file, make frames, and put the results into the file_list 
-    # (for later porting into raw_orig)
-    if config_params.frame1 != '':
-        # Here we want a frame to be made. 
-        call(['mkdir', '-p', 'FRAMES'], shell=False);
-        frame1_def = config_params.frame1.split('/');
-        frame2_def = config_params.frame2.split('/');
+        # Here we want a frame to be made. We write the near-range pins.
+        call(['mkdir', '-p', config_params.FRAMES_dir], shell=False);
+        if len(glob.glob(config_params.FRAMES_dir+'/*.SAFE')) > 0:
+            print("Looks like we already have frames assembled. End stage -1.");
+            sentinel_utilities.compare_frames_with_safes(config_params);
+            return;
 
-        # # write the data list to data.list
-        outfile = open("make_frame_commands.sh", 'w');
-        outfile.write("#!/bin/bash\n")
-        outfile.write("echo RUNNING make_frame_commands.sh...\n");
-        outfile.write("cd FRAMES\n");
-        outfile.write("if [ -z \"$(ls . )\" ]; then\n");  # if the directory is empty, then we make more frames.
-        outfile.write("  greadlink -f ../DATA/*.SAFE > data.list\n");
-        # I needed to change readlink --> greadlink for mac (readlink for linux)
-        outfile.write("  echo \"%s %s 0\" > frames.ll\n" % (frame1_def[0], frame1_def[1]));
-        # write the near-range edges of the frame to frame.ll
-        outfile.write("  echo \"%s %s 0\" >> frames.ll\n" % (frame2_def[0], frame2_def[1]));
-        outfile.write("  make_s1a_frame.csh data.list frames.ll\n");
-        outfile.write("  echo \"Assembling new frames!\"\n")
-        outfile.write("else\n")
-        outfile.write("  echo \"FRAMES contains files already... not assembling new frames\"\n")
-        outfile.write("fi\n")
-        outfile.write("cd ../\n");
+        pins_file = open(pins_filename, 'w');
+        pins_file.write(config_params.frame1.replace('/', ' ')+'\n');
+        pins_file.write(config_params.frame2.replace('/', ' ')+'\n');
+        pins_file.close();
+        if config_params.polarization == 'vh':
+            mode = 2;
+        else:
+            mode = 1;
+
+        # Write:
+        # --- data in a file, in chronological order, for each date
+        # --- eof file
+        # --- polarization
+        outfile = open(auto_script, 'w');
+        outfile.write("#!/bin/bash\n\n");
+        dirlist, datelist = sentinel_utilities.get_all_safes(config_params.DATA_dir);
+        unique_datelist = sorted(set(datelist));
+        for onedate in unique_datelist:
+            ordered_safes = sentinel_utilities.get_safes_of_date(config_params.DATA_dir, onedate);
+            satellite = ordered_safes[0].split('/')[-1][0:3]
+            orbit_file = sentinel_utilities.get_eof_from_date_sat(onedate, satellite, config_params.orbit_dir);
+            outfile.write("rm safes.txt\n")
+            for item in ordered_safes:
+                outfile.write("echo " + item + " >> safes.txt\n");
+            outfile.write("create_frame_tops.csh safes.txt " + "../" + orbit_file + " pins_ll.txt "+str(mode)+"\n\n");
+            # Putting ../ in front of orbit dir because we're down from the processing directory.
         outfile.close();
-        call(['chmod', '+x', 'make_frame_commands.sh'], shell=False);
-        call(['./make_frame_commands.sh'], shell=False)
-        # call(['rm','make_frame_commands.sh'],shell=False)
 
-        # Copy the scenes where only one scene is exactly covering the pre-defined frame
+        call(['chmod', '+x', auto_script], shell=False);
+        os.chdir(config_params.FRAMES_dir);
+        call(['./auto_frame_commands.sh'], shell=False)
+        os.chdir('../')
+
+        # Manually copy the scenes where only one scene is exactly covering the pre-defined frame
         # (otherwise will be skipped because there's no combining to do)
         # It turns out that sometimes, the second scene that covers the frame doesn't exist, so there's only
-        # one scene for that given date.
-        # Other times, one scene covers the whole frame. 
-        # Thankfully, make_s1a_frame.csh already copies the orbit files into the FRAMES directory,
-        # even if the .SAFE isn't copied.
+        # one scene for that given date.  At other times, one scene covers the whole frame.
 
-        # Make a list of dates in FRAMES/*.safe and compare with dates in the data directories. 
-        call('compare_frames_acquisitions.sh', shell=True);
-        print("Please check the frames and acquisitions and see if all your data has been included. ");
+        # Output verification.
+        sentinel_utilities.compare_frames_with_safes(config_params);
+    else:
+        print("No frames requested; moving on.")
+    print("End stage -1.");
     return;
 
 

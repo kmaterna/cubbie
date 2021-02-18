@@ -27,6 +27,31 @@ def get_manifest_safe_names(directory):
     mansafe = glob.glob(directory + '/manifest.safe');
     return mansafe;
 
+def get_all_safes(directory):
+    # A directory that contains a bunch of safe files. Give us the list of files and the dates they go with.
+    # Matching lengths
+    dirlist = glob.glob(directory + '/*.SAFE');
+    datelist = [];
+    for item in dirlist:
+        datelist.append(safe_to_dates(item));
+    return dirlist, datelist;
+
+def safe_to_dates(filename):
+    temp = filename.split('/')[-1];
+    datestr = temp[17:25];
+    dtobj = dt.datetime.strptime(datestr, "%Y%m%d");
+    return dtobj;
+
+def get_safes_of_date(dirname, one_date):
+    # Return all safes that happened on a particular day
+    dirlist, datelist = get_all_safes(dirname);
+    retval = [];
+    for item, date in zip(dirlist, datelist):
+        if date == one_date:
+            retval.append(item);
+    retval = sorted(retval);
+    return retval;
+
 
 def get_all_tiff_names(directory, polarization, swath):
     pathname1 = directory + "/*-vv-*-00" + swath + ".tiff";
@@ -92,8 +117,11 @@ def yj2ymd(yj):
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
-        It takes something like 20171204, s1a, eof_dir 
+        It takes something like 20171204, s1a, eof_dir
+        It can also take something like dt.datetime, s1a, eof_dir
     """
+    if type(mydate) == dt.datetime:   # if you pass a datetime object
+        mydate = dt.datetime.strftime(mydate, "%Y%m%d");
     [previous_day, following_day] = get_previous_and_following_day(mydate);
     eof_name = glob.glob(eof_dir + "/" + sat.upper() + "*" + previous_day + "*" + following_day + "*.EOF");
     if not eof_name:
@@ -112,6 +140,16 @@ def glob_intf_computed():
     for item in full_names:
         intf_computed.append(item[9:]);
     return intf_computed;
+
+
+def compare_frames_with_safes(config_params):
+    # checking for output consistency after frames are created.
+    print("Checking the frames and acquisitions and see if all your data has been included. ");
+    dirlist, datelist = get_all_safes(config_params.DATA_dir);
+    frames_dirlist, frames_datelist = get_all_safes(config_params.FRAMES_dir);
+    print("BEGIN: %d SAFES from %d unique dates." % (len(dirlist), len(set(datelist))));
+    print("END: %d SAFES from %d unique dates." % (len(frames_dirlist), len(set(frames_datelist))));
+    return;
 
 
 def make_data_in(polarization, swath, master_date="00000000"):
