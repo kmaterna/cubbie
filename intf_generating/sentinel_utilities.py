@@ -489,7 +489,12 @@ def get_chain_subsets(baseline_tuple_list):
 
 
 def filter_intf_start_end(intf_pairs, startdate, enddate):
-    # Take a list of interferograms and return the ones that fall within a given time window. 
+    # Take a list of interferograms and return the ones that fall within a given time window.
+    # Startdate and enddate are YYYYMMDD strings
+    if startdate == "" and enddate == "":
+        return intf_pairs;
+    startdate = dt.datetime.strptime(startdate, "%Y%m%d");
+    enddate = dt.datetime.strptime(enddate, "%Y%m%d");
     intf_all = [];
     for item in intf_pairs:
         date1 = item[3:11];
@@ -600,14 +605,14 @@ def check_intf_all_sanity():
     print(duplicates);
 
     # Collect the actual intf_all directories
-    actual_intfs = subprocess.check_output('ls -d intf_all/201*_201* ', shell=True);
+    actual_intfs = str(subprocess.check_output('ls -d intf_all/201*_201* ', shell=True));
     actual_intfs = actual_intfs.split('\n');
     actual_intfs = [value for value in actual_intfs if value != ''];
     actual_intfs = [i.split('/')[-1] for i in actual_intfs];
     print("  actual interferograms: %d from intf_all directory " % len(actual_intfs));
 
     # Collect the unwrap.grd files
-    actual_unwraps = subprocess.check_output('ls intf_all/unwrap.grd/*_unwrap.grd', shell=True);
+    actual_unwraps = str(subprocess.check_output('ls intf_all/unwrap.grd/*_unwrap.grd', shell=True));
     actual_unwraps = actual_unwraps.split('\n');
     actual_unwraps = [value for value in actual_unwraps if value != ''];
     actual_unwraps = [i.split('/')[-1] for i in actual_unwraps];

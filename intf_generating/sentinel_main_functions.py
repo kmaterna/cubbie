@@ -7,8 +7,8 @@ from intf_atm_tools import flattentopo_driver
 
 Params = collections.namedtuple('Params',
                                 ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'master',
-                                 'orbit_dir', 'DATA_dir', 'FRAMES_dir',
-                                 'tbaseline', 'xbaseline', 'annual_crit_days', 'annual_crit_baseline', 'restart',
+                                 'orbit_dir', 'DATA_dir', 'FRAMES_dir', 'intf_type', 'starttime', 'endtime',
+                                 'tbaseline', 'xbaseline', 'annual_crit_days', 'annual_crit_baseline',
                                  'swath', 'polarization', 'frame1', 'frame2', 'numproc', 'threshold_snaphu']);
 
 def read_config():
@@ -18,10 +18,8 @@ def read_config():
     # read command line arguments and parse config file.
     parser = argparse.ArgumentParser(
         description='Run GMTSAR batch processing. Default automatically determines master, does alignment, '
-                    'and runs all possible interferograms.')
+                    'and runs desired interferograms.')
     parser.add_argument('config', type=str, help='supply name of config file to setup processing options. Required.')
-    parser.add_argument('--mpi', action='store_true',
-                        help='Use MPI (default: false, uses python multiprocessing library instead).')
     parser.add_argument('--debug', action='store_true', help='Print extra debugging messages (default: false)')
     args = parser.parse_args()
 
@@ -45,16 +43,16 @@ def read_config():
     FRAMES_dir = config.get('py-config', 'FRAMES_dir')
     tbaseline = config.getint('py-config', 'max_timespan')
     xbaseline = config.getint('py-config', 'max_baseline')
+    starttime = config.get('py-config', 'starttime');
+    endtime = config.get('py-config', 'endtime');
+    intf_type = config.get('py-config', 'intf_type');
     annual_crit_days = config.getint('py-config', 'annual_crit_days')
     annual_crit_baseline = config.getint('py-config', 'annual_crit_baseline')
-    restart = config.getboolean('py-config', 'restart')
     swath = config.get('py-config', 'swath')
     polarization = config.get('py-config', 'polarization')
     frame_nearrange1 = config.get('py-config', 'frame_nearrange1')
     frame_nearrange2 = config.get('py-config', 'frame_nearrange2')
     threshold_snaphu = config.getfloat('csh-config', 'threshold_snaphu');
-
-    # FOR TOMORROW: ADD BACK: intf_type, starttime, endtime
 
     # print config options
     if args.debug:
@@ -70,16 +68,14 @@ def read_config():
 
     # if master specified in the config file disagrees with existing data.in, we must re-do the pre-processing.
     if master and startstage > 1 and os.path.isfile('F' + str(swath) + '/raw/data.in'):
-        # check master in data.in
         dataDotIn = np.genfromtxt('F' + str(swath) + '/raw/data.in', dtype='str')
         oldmaster = dataDotIn[0]
         if '-' + master[3:11] + 't' not in oldmaster:
-            # For sentinel, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...;
+            # sometimes, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...;
             # master is formatted like S1A20171213_ALL_F1
-            print('Warning: The master specified in the config file disagrees with the old master in data.in.')
-            # print('We will re-run starting from pre-processing with the master from the config file.')
-            # startstage = 1
-            # restart = True
+            print('Error: The master specified in the config file disagrees with the old master in data.in. Exiting.')
+            print('You should re-run starting from pre-processing with the master from the config file.')
+            sys.exit(0);
 
     # if data.in is not found, we must do pre-processing.
     if startstage > 1 and not os.path.isfile('F' + str(swath) + '/raw/data.in'):
@@ -100,9 +96,10 @@ def read_config():
     config_params = Params(config_file=config_file_orig, SAT=SAT, wavelength=wavelength, startstage=startstage,
                            endstage=endstage, master=master,
                            orbit_dir=orbit_dir, DATA_dir=DATA_dir, FRAMES_dir=FRAMES_dir,
-                           tbaseline=tbaseline, xbaseline=xbaseline,
+                           tbaseline=tbaseline, xbaseline=xbaseline, starttime=starttime, endtime=endtime,
+                           intf_type=intf_type,
                            annual_crit_days=annual_crit_days, annual_crit_baseline=annual_crit_baseline,
-                           restart=restart, swath=swath, polarization=polarization, frame1=frame_nearrange1,
+                           swath=swath, polarization=polarization, frame1=frame_nearrange1,
                            frame2=frame_nearrange2, numproc=numproc, threshold_snaphu=threshold_snaphu);
 
     return config_params;
