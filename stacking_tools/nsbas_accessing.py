@@ -2,6 +2,7 @@ from subprocess import call
 import numpy as np
 import glob, sys
 import read_write_insar_utilities.netcdf_plots
+from intf_generating import sentinel_utilities
 import stacking_utilities
 import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
@@ -15,7 +16,7 @@ def reader_function_gmtsar(intf_files, coh_files, baseline_file, ts_type, dem_er
     else:
         coh_tuple = None;
     if dem_error:
-        baseline_tuple = stacking_utilities.read_baseline_table(baseline_file);
+        baseline_tuple = sentinel_utilities.read_baseline_table(baseline_file);
     else:
         baseline_tuple = None;
     intf_tuple = rmd.reader(intf_files);
@@ -30,7 +31,7 @@ def reader_function_isce(intf_files, coh_files, baseline_file, ts_type, dem_erro
     else:
         coh_tuple = None;
     if dem_error:
-        baseline_tuple = stacking_utilities.read_baseline_table(baseline_file);
+        baseline_tuple = sentinel_utilities.read_baseline_table(baseline_file);
     else:
         baseline_tuple = None;
     return intf_tuple, coh_tuple, baseline_tuple;

@@ -11,30 +11,8 @@ import re
 from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write
 import readmytupledata
-from intf_generating import get_ra_rc_from_ll, sentinel_utilities
+from intf_generating import get_ra_rc_from_ll
 from Tectonic_Utils.geodesy import haversine
-
-
-def read_baseline_table(baseline_file):
-    # Returns a list of tuples of datetimes and baseline values
-    # Example: (150.2, dt, 2015230)...
-    if baseline_file == '':
-        print("Error! No baseline file provided in stacking.config. Exiting...");
-        sys.exit(0);
-    [_, times, baselines, _] = sentinel_utilities.read_baseline_table(baseline_file);
-    dtarray = []; datestrs = [];
-    for i in range(len(times)):
-        dtarray.append(dt.datetime.strptime(str(int(times[i] + 1)), '%Y%j'));
-        datestrs.append(str(times[i] + 1)[0:7]);   # string with format "2014361"
-
-    # Re-order times and baselines in chronological order
-    baselines = [x for _, x in sorted(zip(dtarray, baselines))];
-    datestrs = [x for _, x in sorted(zip(dtarray, datestrs))];
-    dtarray = sorted(dtarray);
-    baseline_tuple_list = [];
-    for i in range(len(baselines)):
-        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i]));
-    return baseline_tuple_list;
 
 
 def get_list_of_intf_all(config_params, returnval='all'):
@@ -233,14 +211,14 @@ def get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, example_grd):
 
 def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
     # Find the nearest pixel to a reference point in a geocoded grid
-    print("  Finding coordinate %.4f, %.4f in geocoded interferograms %s" % (ref_lon, ref_lat, ifile) );
+    print("  Finding coordinate %.4f, %.4f in geocoded interferograms %s" % (ref_lon, ref_lat, ifile));
     [xdata, ydata, _] = netcdf_read_write.read_netcdf4(ifile);
     if xdata[0] > 180:   # If numbers are in the range above 180, turn them into -180 to 180
         xdata = [i-360 for i in xdata];
     row_idx = np.argmin(np.abs(np.array(ydata) - ref_lat));
     col_idx = np.argmin(np.abs(np.array(xdata) - ref_lon));
     if row_idx == 0 or row_idx == len(ydata) or col_idx == 0 or col_idx == len(xdata):
-        print("WARNING: Coordinate %f %f may be near edge of domain." % (ref_lon, ref_lat) );
+        print("WARNING: Coordinate %f %f may be near edge of domain." % (ref_lon, ref_lat));
         row_idx = np.nan;
         col_idx = np.nan; 
     print("  Found Coordinates at row/col: %d/%d " % (row_idx, col_idx));
@@ -248,6 +226,8 @@ def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
 
 
 # Exclude and Include criteria
+# The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
+# For all of these functions.
 def exclude_intfs_manually(total_intf_tuple, skip_file):
     print("Excluding intfs based on manual_exclude file %s." % skip_file);
     print(" Started with %d total interferograms. " % (len(total_intf_tuple)));
@@ -396,8 +376,8 @@ def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
         print("Error! Data Cube has more than 50% NaNs for your reference pixel. What do you want to do?  ");
         sys.exit(0);
     reference_ss = signal_spread_data[rowref, colref];
-    print("Intf Stack has %f percent non-nan interferograms for ref pixel %d, %d" % (100*num_nans/num_intfs, rowref, colref) )
-    print("Signal Spread has %f percent coherent igrams for ref pixel %d, %d" % (reference_ss, rowref, colref) );
+    print("Intf Stack has %f percent non-nan interferograms for ref pixel %d, %d" % (100*num_nans/num_intfs, rowref, colref))
+    print("Signal Spread has %f percent coherent igrams for ref pixel %d, %d" % (reference_ss, rowref, colref));
     if signal_spread_data[rowref, colref] < 50:
         print("Error! Reference Pixel has less than 50% coherent interferograms. What do you want to do? ");
         sys.exit(0);
@@ -406,7 +386,7 @@ def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
 
 def report_on_refpixel(rowref, colref, signal_spread_data, outdir):
     ofile = open(outdir+"/metrics_report.txt", 'w');
-    ofile.write("Refpixel is Row/col %d %d \n" % (rowref, colref) );
+    ofile.write("Refpixel is Row/col %d %d \n" % (rowref, colref));
     ofile.write("Percentage of good interferograms at that pixel: %f \n" % signal_spread_data[rowref, colref]);
     ofile.close();
     return;

@@ -15,7 +15,10 @@ def top_level_driver():
     crit_days = 30;  # days
     crit_baseline = 20;  # meters
 
-    [stems, times, baselines, _] = sentinel_utilities.read_baseline_table(baselinefile);
+    baseline_tuple_list = sentinel_utilities.read_baseline_table(baselinefile);
+    stems = [x[3] for x in baseline_tuple_list];
+    times = [x[2] for x in baseline_tuple_list];
+    baselines = [x[0] for x in baseline_tuple_list];
     intf_pairs_initial = sentinel_utilities.read_intf_table(intf_file);
     intf_pairs_initial = list(intf_pairs_initial);
 
@@ -35,13 +38,10 @@ def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, num_yea
     crit_theta = 2 * np.pi * (crit_days / 365.25);  # days
     count = 0;
 
-    times_dict = {};
-    days_dict = {};
-    radius_dict = {};
-    theta_dict = {};
+    times_dict, days_dict = {}, {};
+    radius_dict, theta_dict = {}, {};
     color_dict = {};
-    r_points = [];
-    th_points = [];
+    r_points, th_points = [], [];
     new_intfs = [];
     color_order = 'bgrkc';
 

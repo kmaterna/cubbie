@@ -155,7 +155,7 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     return W, E, S, N;
 
 
-def create_isce_stack_unw_geo(geocoded_dir, W, E, S, N):
+def create_isce_stack_unw_geo(geocoded_dir, w, e, s, n):
     # With pixel-wise lat and lon and lookvector information,
     # Can we make isce geocoded unwrapped .unw.geo / .unw.geo.xml
     # geocodeGdal.py -l cut_lat.gdal -L cut_lon.gdal -f cut_something.gdal -b "S N W E"
@@ -169,7 +169,7 @@ def create_isce_stack_unw_geo(geocoded_dir, W, E, S, N):
         datafile = glob.glob(folder_i + "/*.unw");
         datafile = datafile[0]
         command = "geocodeGdal.py -l " + geocoded_dir + "/cut_lat.gdal -L " + geocoded_dir + "/cut_lon.gdal " + "-f " +\
-                  datafile + " -b \"" + str(S) + " " + str(N) + " " + str(W) + " " + str(E) + "\" -x 0.00025 -y 0.00025"
+                  datafile + " -b \"" + str(s) + " " + str(n) + " " + str(w) + " " + str(e) + "\" -x 0.00025 -y 0.00025"
         print(command);
         print("\n");
         call(command, shell=True);
@@ -186,19 +186,19 @@ def create_isce_stack_unw_geo(geocoded_dir, W, E, S, N):
     return;
 
 
-def create_isce_stack_rdr_geo(geocoded_dir, W, E, S, N):
+def create_isce_stack_rdr_geo(geocoded_dir, w, e, s, n):
     # Create a geocoded azimuth and geocoded incidence file
     # Then concatenate them into a two-band-file (los.rdr.geo)
     # Then update the xml metadata.
     print("Creating los.rdr.geo")
     datafile = geocoded_dir + "/cut_azimuth.gdal"
     command = "geocodeGdal.py -l " + geocoded_dir + "/cut_lat.gdal -L " + geocoded_dir + "/cut_lon.gdal " + "-f " + \
-              datafile + " -b \"" + str(S) + " " + str(N) + " " + str(W) + " " + str(E) + "\" -x 0.00025 -y 0.00025"
+              datafile + " -b \"" + str(s) + " " + str(n) + " " + str(w) + " " + str(e) + "\" -x 0.00025 -y 0.00025"
     print(command + "\n");
     call(command, shell=True);
     datafile = geocoded_dir + "/cut_incidence.gdal"
     command = "geocodeGdal.py -l " + geocoded_dir + "/cut_lat.gdal -L " + geocoded_dir + "/cut_lon.gdal " + "-f " + \
-              datafile + " -b \"" + str(S) + " " + str(N) + " " + str(W) + " " + str(E) + "\" -x 0.00025 -y 0.00025"
+              datafile + " -b \"" + str(s) + " " + str(n) + " " + str(w) + " " + str(s) + "\" -x 0.00025 -y 0.00025"
     call(command, shell=True);
     grid_inc = isce_read_write.read_scalar_data(geocoded_dir + "/cut_incidence.gdal.geo", flush_zeros=False);
     grid_az = isce_read_write.read_scalar_data(geocoded_dir + "/cut_azimuth.gdal.geo", flush_zeros=False);

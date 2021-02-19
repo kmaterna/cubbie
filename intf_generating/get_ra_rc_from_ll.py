@@ -135,10 +135,8 @@ def get_ll_from_row_col(row, col, example_grd, trans_dat):
 if __name__ == "__main__":
     trans_dat = "topo/trans.dat";
     example_grd = "stacking/unwrapped/2015157_2018177_unwrap.grd"
-    lon, lat = -116.572, 35.321;  # P617
-    ra = 10296.8986328
-    az = 5984.77251953
-    [ra, az] = get_ra_from_ll(trans_dat, lon, lat);
+    lon, lat = [-116.572], [35.321];  # P617. Corresponding RA maybe equal to: ra = 10296.8986328, az = 5984.77251953
+    [ra, az] = get_ra_from_ll(trans_dat, example_grd, lon, lat);
     [lon1, lat1] = get_ll_from_ra(trans_dat, ra, az);
     [row, col] = get_nearest_row_col(example_grd, ra, az);
     print(row, col)

@@ -19,7 +19,9 @@ def analyze_coherence_function():
     # Correlation vs. Other Things.
     calc_write_corr_results(corr_dirlist, corr_file);  # ONLY NEED TO DO AT THE BEGINNING
     [stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results(corr_file);
-    [stems_blt, _, xbaseline, _] = sentinel_utilities.read_baseline_table(baseline_table);
+    bl_tuples =  sentinel_utilities.read_baseline_table(baseline_table);
+    stems_blt = [x[3] for x in bl_tuples];
+    xbaseline = [x[0] for x in bl_tuples];
     make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline, plotname);
 
     # # Histograms, in 12-panel figures, one small panel for each interferogram

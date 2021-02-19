@@ -109,6 +109,8 @@ def read_config():
 # --------------- STEP -1: Making frames from bursts ------------ #
 def compile_frame_from_bursts(config_params):
     # Will assemble frames if pins are provided.
+    # Would be good to check the total status of the download before doing this
+    # (report_on_s1_data_holdings.py)
     if config_params.startstage > -1:  # don't need to set up if we're starting mid-stream.
         return;
     if config_params.endstage < -1:  # don't need to do this step
@@ -141,7 +143,7 @@ def compile_frame_from_bursts(config_params):
         # --- polarization
         outfile = open(auto_script, 'w');
         outfile.write("#!/bin/bash\n\n");
-        dirlist, datelist = sentinel_utilities.get_all_safes(config_params.DATA_dir);
+        dirlist, datelist = sentinel_utilities.get_all_safes_in_dir(config_params.DATA_dir);
         unique_datelist = sorted(set(datelist));
         for onedate in unique_datelist:
             ordered_safes = sentinel_utilities.get_safes_of_date(config_params.DATA_dir, onedate);
@@ -176,14 +178,15 @@ def compile_frame_from_bursts(config_params):
 def manifest2raw_orig_eof(config_params):
     # This will set up the raw_orig directory from the DATA/.SAFE directories
     # Will also go into orbit directory and make copies of the right orbit files into the raw_orig directory.
+    # Happens for each swath.
 
     if config_params.startstage > 0:  # don't need to set up if we're starting mid-stream.
         return;
     if config_params.endstage < 0:  # don't need to do this step
         return;
 
-    file_list = get_SAFE_list(config_params);  # gets list of SAFE from FRAMES or DATA
-    print(file_list);
+    # get SAFEs from FRAMES/ or DATA/ and their associated datetimes
+    safe_file_list, dt_list = sentinel_utilities.get_SAFE_list_for_raw_orig(config_params);
 
     # When starting from preprocess, the system will often find a new super-master and re-align
     # To make this possible, we start from empty raw and raw-orig directories to avoid conflict.
@@ -199,33 +202,29 @@ def manifest2raw_orig_eof(config_params):
         print("Error: %s - %s." % (e.filename, e.strerror));
 
     # Unpack the .SAFE directories into raw_orig
-    call(["mkdir", "-p", "F" + str(swath)])
     call(["mkdir", "-p", "F" + str(swath) + "/raw_orig"], shell=False);
     print("Copying xml files into raw_orig...")
     print("Copying manifest.safe files into raw_orig...")
     print("Copying tiff files into raw_orig...")
-    # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space. 
-    for onefile in file_list:
-        xml_files = sentinel_utilities.get_all_xml_names(onefile + '/annotation', config_params.polarization,
-                                                         config_params.swath);
-        call(['cp', xml_files[0], 'F' + str(swath) + '/raw_orig'], shell=False);
-        manifest_safe_file = sentinel_utilities.get_manifest_safe_names(onefile);
-        yyyymmdd = sentinel_utilities.get_date_from_xml(xml_files[0]);
-        call(['cp', manifest_safe_file[0], 'F' + str(swath) + '/raw_orig/' + yyyymmdd + '_manifest.safe'], shell=False);
-        tiff_files = sentinel_utilities.get_all_tiff_names(onefile + '/measurement', config_params.polarization,
-                                                           config_params.swath);
+    # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space.
+    for onefile, onedt in zip(safe_file_list, dt_list):
+        # Step 1: Get the names for tiff, xml, and eof files
+        xmls, yyyymmdd = sentinel_utilities.get_all_xml_names(onefile+'/annotation', config_params.polarization, swath);
+        manifest_safe_file = onefile+'/manifest.safe';
+        sat = sentinel_utilities.get_sat_from_xml(xmls[0]);
+        eof_name = sentinel_utilities.get_eof_from_date_sat(onedt, sat, config_params.orbit_dir);
+
+        # Copy various files
+        call(['cp', xmls[0], 'F' + str(swath) + '/raw_orig'], shell=False);
+        call(['cp', manifest_safe_file, 'F' + str(swath) + '/raw_orig/' + yyyymmdd + '_manifest.safe'], shell=False);
+        tiff_files = sentinel_utilities.get_all_tiff_names(onefile + '/measurement', config_params.polarization, swath);
+        # only copy the tiff files if they don't already exist.
         one_tiff_file = tiff_files[0].split("/")[-1];
         if not os.path.isfile('F' + str(swath) + '/raw_orig/' + one_tiff_file):
-            call(['cp', tiff_files[0], 'F' + str(swath) + '/raw_orig'],
-                 shell=False);  # only copy the tiff files if they don't already exist.
+            call(['cp', tiff_files[0], 'F' + str(swath) + '/raw_orig'], shell=False);
 
-        # STEP 2: get orbit files into the raw_orig directory
-    for onefile in file_list:
-        xml_name = glob.glob(onefile + '/annotation/*vv*.xml')[0];
-        mydate = sentinel_utilities.get_date_from_xml(xml_name);
-        sat = sentinel_utilities.get_sat_from_xml(xml_name);
-        eof_name = sentinel_utilities.get_eof_from_date_sat(mydate, sat, config_params.orbit_dir);
-        print("Copying %s to raw_orig..." % eof_name);
+        # copy orbit files into the raw_orig directory
+        print("Copying %s and associated tiff/xml/manifest.safe to raw_orig..." % eof_name);
         call(['cp', eof_name, 'F' + str(swath) + '/raw_orig'], shell=False);
     print("copying s1a-aux-cal.xml to raw_orig...");
     call(['cp', config_params.orbit_dir + '/s1a-aux-cal.xml', 'F' + str(swath) + '/raw_orig'], shell=False);
@@ -242,55 +241,48 @@ def check_raw_orig_sanity(swath):
     print('number of EOFs is %d ' % number_of_EOFs);
     if number_of_tiffs != number_of_safes:
         raise sentinel_utilities.DirectoryError(
-            'Huge error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!');
+            'error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!');
     if number_of_tiffs != number_of_EOFs:
         raise sentinel_utilities.DirectoryError(
-            'Huge error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
+            'error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
     return;
-
-
-# Return the files we're going to put into raw_orig
-def get_SAFE_list(config_params):
-    if config_params.frame1 != '':
-        file_list = glob.glob("FRAMES/FRAME_1/*.SAFE");  # if we're assembling frames, we use the FRAMES directory. 
-    else:
-        file_list = glob.glob("DATA/*.SAFE");  # if we're not assembling frames, we use the DATA directory.
-    return file_list;
 
 
 # --------------- STEP 1: Pre-processing (also aligning for Sentinel) ------------ # 
 def preprocess(config_params):
     if config_params.startstage > 1:  # don't need to pre-process if we're starting at topo or intf.
         return;
-    if config_params.endstage < 1:  # don't need to pre-process if we're just doing frames (stage 0)
+    if config_params.endstage < 1:  # don't need to pre-process if we're doing stage 0
         return;
 
-    # # MODE 1: Before you know your super-master
-    write_xml_prep(config_params.polarization,
-                   config_params.swath);  # writes the beginning, common part of README_prep.txt
-    sentinel_utilities.make_data_in(config_params.polarization, config_params.swath,
-                                    config_params.master);  # makes data.in the first time, with no super_master
-    write_preproc_mode1(config_params.swath);  # writes the bottom of README_prep
-    # call("./README_prep.txt",shell=True);  # First time through- just get baseline plot to pick super-master.
+    # Make data.in, may or may not have proper master.
+    sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);
 
-    # Automatically decide on super-master and pop it to the front of data.in. 
-    masterid = sentinel_utilities.choose_master_image(config_params.master, config_params.swath);
-    print("master image is...")
-    print(masterid);
+    # MODE 1: Before you know your super-master
+    if config_params.master == "":
+        write_xml_prep(config_params.polarization, config_params.swath);  # writes common part of README_prep.txt
 
-    # MODE 2: Now you have picked a super-master. 
-    # sentinel_utilities.write_super_master_batch_config(masterid);
-    write_xml_prep(config_params.polarization,
-                   config_params.swath);  # writes the beginning, common part of README_prep.txt
+        write_preproc_mode1(config_params.swath);  # writes the bottom of README_prep
+        call("./README_prep.txt", shell=True);  # First time through- just get baseline plot to pick super-master.
+
+        # Automatically decide on super-master and pop it to the front of data.in.
+        masterid = sentinel_utilities.choose_master_image(config_params.master, config_params.swath);
+        # THIS will edit data.in to put the super-master first.
+        print("master image is...")
+        print(masterid);
+        sentinel_utilities.write_super_master_batch_config(masterid);  # automatically put super-master in batch.config
+        print("Please check to confirm that you are happy with this. ")
+        sys.exit(0);
+
+    # MODE 2: Now you have picked a super-master.
+    write_xml_prep(config_params.polarization, config_params.swath);  # writes common part of README_prep.txt
     write_preproc_mode2(config_params.swath);  # This writes the bottom of README_prep
-    call("./README_prep.txt",
-         shell=True);  # This calls preproc_batch_tops.csh the second time.  Aligning will happen!
-    # NOTE: We automatically put the super-master into batch_tops.config (format is like [S1A20160829_ALL_F2])   
+    # call("./README_prep.txt", shell=True);  # preproc_batch_tops.csh the second time.  Aligning will happen!
     return;
 
 
 def write_xml_prep(polarization, swath):
-    list_of_xml = sentinel_utilities.get_all_xml_names('F' + str(swath) + '/raw_orig', polarization, swath);
+    list_xml, list_datestrs = sentinel_utilities.get_all_xml_names('F' + str(swath) + '/raw_orig', polarization, swath);
     print("Writing xmls in README_prep.txt");
     outfile = open("README_prep.txt", 'w');
     outfile.write("# First, prepare the files.\n");
@@ -300,8 +292,7 @@ def write_xml_prep(polarization, swath):
     outfile.write(
         "# in order to correct for Elevation Antenna Pattern Change, cat the manifest and aux files to the xmls\n");
     outfile.write("# delete the first line of the manifest file as it's not a typical xml file.\n\n");
-    for item in list_of_xml:
-        mydate = sentinel_utilities.get_date_from_xml(item);
+    for item, mydate in zip(list_xml, list_datestrs):
         item = item.split("/")[-1];  # getting rid of the directory names
         outfile.write("awk 'NR>1 {print $0}' < ../raw_orig/" + mydate + "_manifest.safe > tmp_file\n");
         outfile.write("cat ../raw_orig/" + item + " tmp_file ../raw_orig/s1a-aux-cal.xml > ./" + item + "\n");
@@ -353,8 +344,11 @@ def topo2ra(config_params):
 
 def get_total_intf_all(config_params):
     # Make a selection of interferograms to form. 
-    [stems, times, baselines, _] = sentinel_utilities.read_baseline_table(
-        'F1' + '/raw/baseline_table.dat');  # hard coding for consistency.
+    # hard coding for consistency.
+    baseline_tuple_list = sentinel_utilities.read_baseline_table('F1/raw/baseline_table.dat');
+    stems = [x[3] for x in baseline_tuple_list];
+    times = [x[2] for x in baseline_tuple_list];
+    baselines = [x[0] for x in baseline_tuple_list];
 
     # Retrieving interferogram pairs based on settings in config_files. 
     intf_pairs = [];

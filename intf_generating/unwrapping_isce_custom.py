@@ -149,7 +149,8 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     axarr = add_plot(axarr, 4, comps_cut, 'Connected Components', colormap='rainbow', aspect=plot_aspect, is_complex=0,
                      vmin=0, vmax=8);
     if np.sum(np.isnan(cor_cut)) != 0:
-        print("Error! There are %d nans in the Correlation grid!" % (np.sum(np.isnan(cor_cut))) ); sys.exit(0);
+        print("Error! There are %d nans in the Correlation grid!" % (np.sum(np.isnan(cor_cut))));
+        sys.exit(0);
 
     # Step 3: Perform appropriate mask
     coherence_mask = mask_and_interpolate.make_coherence_mask(cor_cut, coherence_cutoff);

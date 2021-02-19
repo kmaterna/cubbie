@@ -14,37 +14,35 @@ matplotlib.use('Agg')
 
 
 def get_all_xml_names(directory, polarization, swath):
-    pathname1 = directory + "/*-vv-*-00" + swath + ".xml";
-    pathname2 = directory + "/*-vv-*-00" + str(int(swath) + 3) + ".xml";
+    # Returns a matching list of filenames and datestrs (yyyymmdd)
+    pathname1 = directory + "/*-"+polarization+"-*-00" + swath + ".xml";
+    pathname2 = directory + "/*-"+polarization+"-*-00" + str(int(swath) + 3) + ".xml";
     list_of_images_temp = glob.glob(pathname1) + glob.glob(pathname2);
     list_of_images = []
+    list_of_datestrs = [];
     for item in list_of_images_temp:
         list_of_images.append(item[:])
-    return list_of_images;
+        list_of_datestrs.append(get_date_from_xml(item[:]));
+    return list_of_images, list_of_datestrs;
 
-
-def get_manifest_safe_names(directory):
-    mansafe = glob.glob(directory + '/manifest.safe');
-    return mansafe;
-
-def get_all_safes(directory):
-    # A directory that contains a bunch of safe files. Give us the list of files and the dates they go with.
+def get_all_safes_in_dir(directory):
+    # A directory that contains a bunch of safe files. Give us the list of files and the datetimes they go with.
     # Matching lengths
     dirlist = glob.glob(directory + '/*.SAFE');
     datelist = [];
     for item in dirlist:
-        datelist.append(safe_to_dates(item));
+        datelist.append(safe_to_date(item));
     return dirlist, datelist;
 
-def safe_to_dates(filename):
+def safe_to_date(filename):
     temp = filename.split('/')[-1];
     datestr = temp[17:25];
     dtobj = dt.datetime.strptime(datestr, "%Y%m%d");
     return dtobj;
 
 def get_safes_of_date(dirname, one_date):
-    # Return all safes that happened on a particular day
-    dirlist, datelist = get_all_safes(dirname);
+    # Return all safes that happened on a particular datetime
+    dirlist, datelist = get_all_safes_in_dir(dirname);
     retval = [];
     for item, date in zip(dirlist, datelist):
         if date == one_date:
@@ -52,10 +50,20 @@ def get_safes_of_date(dirname, one_date):
     retval = sorted(retval);
     return retval;
 
+def get_SAFE_list_for_raw_orig(config_params):
+    # Return the files we're going to put into raw_orig
+    # Location depends on whether we've made frames or not.
+    if config_params.frame1 != '':
+        file_list, dt_list = get_all_safes_in_dir(config_params.FRAMES_dir);
+        # if we're assembling frames, we use the FRAMES directory.
+    else:
+        file_list, dt_list = get_all_safes_in_dir(config_params.DATA_dir);
+        # if we're not assembling frames, we use the DATA directory.
+    return file_list, dt_list;
 
 def get_all_tiff_names(directory, polarization, swath):
-    pathname1 = directory + "/*-vv-*-00" + swath + ".tiff";
-    pathname2 = directory + "/*-vv-*-00" + str(int(swath) + 3) + ".tiff";
+    pathname1 = directory + "/*-"+polarization+"-*-00" + swath + ".tiff";
+    pathname2 = directory + "/*-"+polarization+"-*-00" + str(int(swath) + 3) + ".tiff";
     list_of_images_temp = glob.glob(pathname1) + glob.glob(pathname2);
     list_of_images = []
     for item in list_of_images_temp:
@@ -117,6 +125,7 @@ def yj2ymd(yj):
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
+        eof_dir can be relative or absolute
         It takes something like 20171204, s1a, eof_dir
         It can also take something like dt.datetime, s1a, eof_dir
     """
@@ -145,42 +154,38 @@ def glob_intf_computed():
 def compare_frames_with_safes(config_params):
     # checking for output consistency after frames are created.
     print("Checking the frames and acquisitions and see if all your data has been included. ");
-    dirlist, datelist = get_all_safes(config_params.DATA_dir);
-    frames_dirlist, frames_datelist = get_all_safes(config_params.FRAMES_dir);
+    dirlist, datelist = get_all_safes_in_dir(config_params.DATA_dir);
+    frames_dirlist, frames_datelist = get_all_safes_in_dir(config_params.FRAMES_dir);
     print("BEGIN: %d SAFES from %d unique dates." % (len(dirlist), len(set(datelist))));
     print("END: %d SAFES from %d unique dates." % (len(frames_dirlist), len(set(frames_datelist))));
     return;
 
 
-def make_data_in(polarization, swath, master_date="00000000"):
+def make_data_in(polarization, swath, master_date=""):
     """
     data.in is a reference table that links the xml file with the correct orbit file.
     """
-    list_of_images = get_all_xml_names("F" + str(swath) + "/raw_orig", polarization, swath);
+    list_of_images, list_of_datestrs = get_all_xml_names("F" + str(swath) + "/raw_orig", polarization, swath);
     outfile = open("F" + str(swath) + "/data.in", 'w');
-    if master_date == "00000000":
-        for item in list_of_images:
+    if master_date == "":
+        for item, mydate in zip(list_of_images, list_of_datestrs):
             item = item.split("/")[-1];  # getting rid of the directory
-            mydate = get_date_from_xml(item);
             sat = get_sat_from_xml(item);
             eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
             outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
     else:
         # write the master date first. 
-        for item in list_of_images:
-            mydate = get_date_from_xml(item);
+        for item, mydate in zip(list_of_images, list_of_datestrs):
             if mydate == master_date:
                 item = item.split("/")[-1];  # getting rid of the directory
-                mydate = get_date_from_xml(item);
                 sat = get_sat_from_xml(item);
                 eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
                 outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
+                break;
         # then write the other dates. 
-        for item in list_of_images:
-            mydate = get_date_from_xml(item);
+        for item, mydate in zip(list_of_images, list_of_datestrs):
             if mydate != master_date:
                 item = item.split("/")[-1];  # getting rid of the directory
-                mydate = get_date_from_xml(item);
                 sat = get_sat_from_xml(item);
                 eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
                 outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
@@ -190,11 +195,11 @@ def make_data_in(polarization, swath, master_date="00000000"):
 
 
 def read_baseline_table(baselinefilename):
-    # Returns:
-    # stems as string (format: S1_20150514_ALL_F2)
-    # times as float
-    # missiondays as str
-    # baseline as float
+    # Returns a chronologically sorted list of tuples of (baseline, datetime, datestr, stem) values
+    # Example: [(150.2, dt, 2015230, S1_20150514_ALL_F2), (etc)...]
+    if baselinefilename == '':
+        print("Error! No baseline file provided. Exiting...");
+        sys.exit(0);
     baselineFile = np.genfromtxt(baselinefilename, dtype=str);
     stems = baselineFile[:, 0].astype(str);
     if len(stems[0]) > 60:  # adapting for a different format of baseline_table.dat sometimes happens.
@@ -206,9 +211,23 @@ def read_baseline_table(baselinefilename):
             new_stems.append("S1_" + item[15:23] + "_ALL_F" + str(swath));
         stems = new_stems;
     times = baselineFile[:, 1].astype(float);
-    missiondays = baselineFile[:, 2].astype(str);
     baselines = baselineFile[:, 4].astype(float);
-    return [stems, times, baselines, missiondays];
+
+    dtarray, datestrs = [], [];
+    for i in range(len(times)):
+        dtarray.append(dt.datetime.strptime(str(int(times[i] + 1)), '%Y%j'));
+        datestrs.append(str(times[i] + 1)[0:7]);   # string with format "2014361"
+
+    # Re-order times and baselines in chronological order, and re-package
+    baselines = [x for _, x in sorted(zip(dtarray, baselines))];
+    datestrs = [x for _, x in sorted(zip(dtarray, datestrs))];
+    stems = [x for _, x in sorted(zip(stems, datestrs))];
+    dtarray = sorted(dtarray);
+    baseline_tuple_list = [];
+    for i in range(len(baselines)):
+        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i], stems[i]));
+
+    return baseline_tuple_list;
 
 
 def read_intf_table(tablefilename):
@@ -262,8 +281,7 @@ def choose_master_image(default_master, swath):
     # put masterId in the first line of data.in
     dataDotIn.pop(dataDotIn.index(masterID))
     dataDotIn.insert(0, masterID)
-    master_shortform = shortform_names[
-        minID];  # because GMTSAR initially puts the baseline_table and data.in in the same order.
+    master_shortform = shortform_names[minID];  # because GMTSAR initially puts baseline_table / data.in in same order.
 
     os.rename('F' + str(swath) + '/raw/data.in', 'F' + str(swath) + '/raw/data.in.old')
     np.savetxt('F' + str(swath) + '/raw/data.in', dataDotIn, fmt='%s')

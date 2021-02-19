@@ -3,9 +3,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from . import io_functions
-import nsbas
-import stacking_utilities
-import dem_error_correction
+from stacking_tools import nsbas
+from stacking_tools import dem_error_correction
+from intf_generating import sentinel_utilities
 
 
 def outputs(x_axis_days, ts):
@@ -47,7 +47,7 @@ def test_real_pixel_dem_error():
     # Testing the baseline correction of Fattahi and Amelung, 2013 on an example pixel
     ifile = 'Testing_Data/testing_pixel_3.txt';
     baseline_table = 'Testing_Data/baseline_table.dat'
-    baseline_tuple = stacking_utilities.read_baseline_table(baseline_table);
+    baseline_tuple = sentinel_utilities.read_baseline_table(baseline_table);
     Igrams = io_functions.read_testing_pixel(ifile, coherence=False);
     ts = nsbas.do_nsbas_pixel(Igrams.phase, Igrams.juldays, 56, Igrams.datestrs);
     ts_corrected, K_z_error = dem_error_correction.driver(ts, Igrams.datestrs, baseline_tuple);
@@ -64,7 +64,7 @@ def test_synthetic_pixel_dem_error():
     # A synthetic test that isolates the DEM error correction.
     baseline_table = 'Testing_Data/Fattahi_Fig1/baseline_table.dat'
     pixel_file = 'Testing_Data/Fattahi_Fig1/pixel_value.txt'
-    baseline_tuple = stacking_utilities.read_baseline_table(baseline_table);
+    baseline_tuple = sentinel_utilities.read_baseline_table(baseline_table);
     [datestrs, ts] = np.loadtxt(pixel_file, unpack=True, dtype={'names': ('a', 'b'), 'formats': ('U7', np.float)});
     ts_corrected, K_z_error = dem_error_correction.driver(ts, datestrs, baseline_tuple);
     print("DEM ERROR: %.10f*rsintheta m " % K_z_error);
