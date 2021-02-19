@@ -39,7 +39,7 @@ def read_config():
     wavelength = config.getfloat('py-config', 'wavelength')
     startstage = config.getint('py-config', 'startstage')
     endstage = config.getint('py-config', 'endstage')
-    master = config.get('csh-config', 'master_image')
+    master = config.get('csh-config', 'master_image').split()[0]
     orbit_dir = config.get('py-config', 'orbit_dir')
     DATA_dir = config.get('py-config', 'DATA_dir')
     FRAMES_dir = config.get('py-config', 'FRAMES_dir')
@@ -267,7 +267,7 @@ def preprocess(config_params):
 
         # Automatically decide on super-master and pop it to the front of data.in.
         masterid = sentinel_utilities.choose_master_image(config_params.master, config_params.swath);
-        # THIS will edit data.in to put the super-master first.
+        # This will edit data.in to put the super-master first.
         print("master image is...")
         print(masterid);
         sentinel_utilities.write_super_master_batch_config(masterid);  # automatically put super-master in batch.config

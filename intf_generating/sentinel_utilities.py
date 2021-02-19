@@ -168,6 +168,7 @@ def make_data_in(polarization, swath, master_date=""):
     list_of_images, list_of_datestrs = get_all_xml_names("F" + str(swath) + "/raw_orig", polarization, swath);
     outfile = open("F" + str(swath) + "/data.in", 'w');
     if master_date == "":
+        print("No master date selected by the user. Printing in random order.")
         for item, mydate in zip(list_of_images, list_of_datestrs):
             item = item.split("/")[-1];  # getting rid of the directory
             sat = get_sat_from_xml(item);
@@ -177,6 +178,7 @@ def make_data_in(polarization, swath, master_date=""):
         # write the master date first. 
         for item, mydate in zip(list_of_images, list_of_datestrs):
             if mydate == master_date:
+                print("Found master date %s in config file. Putting it on first line." % master_date);
                 item = item.split("/")[-1];  # getting rid of the directory
                 sat = get_sat_from_xml(item);
                 eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
