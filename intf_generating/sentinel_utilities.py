@@ -12,6 +12,12 @@ import numpy as np
 import collections
 matplotlib.use('Agg')
 
+"""
+Note: Baseline_tuple_list has format like: [(150.2, dt, 2015230, S1_20150514_ALL_F2), (etc)...]
+Baseline_tuple_list: [(baseline, dt.dt, datestr, stem),]
+Note: intf_list has format like: 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'
+"""
+
 
 def get_all_xml_names(directory, polarization, swath):
     # Returns a matching list of filenames and datestrs (yyyymmdd)
@@ -435,19 +441,17 @@ def remove_nans_array(myarray):
     return numarray;
 
 
-def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbaseline_max):
+def get_small_baseline_subsets(baseline_tuple_list, tbaseline_max, xbaseline_max):
     """ Grab all the pairs that are below the critical baselines in space and time. 
     Return format is a list of strings like 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'. 
-    You can adjust this if you have specific processing needs. 
     """
-    print("SBAS: Getting small baseline subsets with bperp_max = %f m and t_max = %f days"
+    print("Getting small baseline subsets with bperp_max = %f m and t_max = %f days"
           % (xbaseline_max, tbaseline_max));
-    nacq = len(stems);
+    nacq = len(baseline_tuple_list);
     intf_pairs = [];
-    datetimearray = [];
-    for k in tbaseline:
-        datetimearray.append(dt.datetime.strptime(str(int(k) + 1), "%Y%j"));  # convert to datetime arrays.
-    # print(datetimearray);
+    stems = [x[3] for x in baseline_tuple_list];
+    datetimearray = [x[1] for x in baseline_tuple_list];
+    xbaseline = [x[0] for x in baseline_tuple_list];
     for i in range(0, nacq - 1):
         for j in range(i + 1, nacq):
             dtdelta = datetimearray[i] - datetimearray[j];
@@ -472,19 +476,19 @@ def get_small_baseline_subsets(stems, tbaseline, xbaseline, tbaseline_max, xbase
     return intf_pairs;
 
 
-def get_chain_subsets(stems, tbaseline):
+def get_chain_subsets(baseline_tuple_list):
     # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs.
     # future idea: implement a bypass option, where we can ignore some acquisitions
     print("CHAIN Pairs: Getting chain connections. ");
     intf_pairs = [];
-    sorted_stems = [x for _, x in sorted(zip(tbaseline, stems))];  # sort by increasing t value
-    for i in range(len(sorted_stems) - 1):
-        intf_pairs.append(sorted_stems[i] + ':' + sorted_stems[i + 1]);
-    print("CHAIN Pairs: Returning %d interferograms to compute from %d images. " % (len(intf_pairs), len(stems)));
+    for i in range(len(baseline_tuple_list) - 1):
+        intf_pairs.append(baseline_tuple_list[i][3] + ':' + baseline_tuple_list[i+1][3]);  # stems in ascending order
+    print("CHAIN Pairs: Returning %d interferograms to compute from %d images. "
+          % (len(intf_pairs), len(baseline_tuple_list)));
     return intf_pairs;
 
 
-def reduce_by_start_end_time(intf_pairs, startdate, enddate):
+def filter_intf_start_end(intf_pairs, startdate, enddate):
     # Take a list of interferograms and return the ones that fall within a given time window. 
     intf_all = [];
     for item in intf_pairs:
@@ -497,19 +501,19 @@ def reduce_by_start_end_time(intf_pairs, startdate, enddate):
     return intf_all;
 
 
-def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname):
-    # intf_pairs is a list of strings, has two possible formats
-    # stems is a list of strings, has format "S1_20150514_ALL_F2"
-    # tbaseline is list of floats, as format 2015133.5774740
-    # xbaseline is list of floats, in meters
+def make_network_plot(intf_pairs, baseline_tuple_list, plotname):
+    # intf_pairs is a list of strings, has two possible formats.
+    # baseline_tuple_list has format given at top.
     print("Printing network plot with %d intfs" % (len(intf_pairs)));
     if len(intf_pairs) == 0:
         print("Error! Cannot make network plot because there are no interferograms. ");
         sys.exit(1);
-
+    stems = [x[3] for x in baseline_tuple_list];
+    datetimearray = [x[1] for x in baseline_tuple_list];
+    xbaseline = [x[0] for x in baseline_tuple_list];
     xstart, xend, tstart, tend = [], [], [], [];
 
-    # For intf_pairs, if there's a format like "S1A20160817_ALL_F2:S1A20160829_ALL_F2"
+    # If there's intf_pairs format like "S1A20160817_ALL_F2:S1A20160829_ALL_F2"
     if "S1" in intf_pairs[0]:
         for item in intf_pairs:
             scene1 = item[0:18];  # has some format like S1A20160817_ALL_F2
@@ -517,36 +521,25 @@ def make_network_plot(intf_pairs, stems, tbaseline, xbaseline, plotname):
             for x in range(len(stems)):
                 if stems[x] == scene1:
                     xstart.append(xbaseline[x]);
-                    tstart.append(dt.datetime.strptime(str(int(tbaseline[x]) + 1), '%Y%j'));
+                    tstart.append(datetimearray[x]);
                 if stems[x] == scene2:
                     xend.append(xbaseline[x]);
-                    tend.append(dt.datetime.strptime(str(int(tbaseline[x]) + 1), '%Y%j'));
+                    tend.append(datetimearray[x]);
 
-    # If there's a format like "2017089:2018101"....
+    # If there's intf_pairs format like "2017089:2018101"....
     if len(intf_pairs[0]) == 15:
-        dtarray = [];
-        im1_dt = [];
-        im2_dt = [];
-        # Making a list of acquisition dates
-        for i in range(len(tbaseline)):
-            dtarray.append(dt.datetime.strptime(str(int(tbaseline[i]+1)), '%Y%j'));
-
-        # Make the list of datetimes for the images. 
         for i in range(len(intf_pairs)):
             scene1 = intf_pairs[i][0:7];
             scene2 = intf_pairs[i][8:15];
-            im1_dt.append(dt.datetime.strptime(scene1, '%Y%j'));
-            im2_dt.append(dt.datetime.strptime(scene2, '%Y%j'));
-
-        # Find the appropriate image pairs and baseline pairs
-        for i in range(len(intf_pairs)):
-            for x in range(len(dtarray)):
-                if dtarray[x] == im1_dt[i]:
+            im1_dt = dt.datetime.strptime(scene1, '%Y%j');
+            im2_dt = dt.datetime.strptime(scene2, '%Y%j');
+            for x in range(len(stems)):
+                if datetimearray[x] == im1_dt:
                     xstart.append(xbaseline[x]);
-                    tstart.append(dtarray[x]);
-                if dtarray[x] == im2_dt[i]:
+                    tstart.append(datetimearray[x]);
+                if datetimearray[x] == im2_dt:
                     xend.append(xbaseline[x]);
-                    tend.append(dtarray[x]);
+                    tend.append(datetimearray[x]);
 
     plt.figure();
     plt.plot_date(tstart, xstart, '.b');

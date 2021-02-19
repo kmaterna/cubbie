@@ -54,6 +54,8 @@ def read_config():
     frame_nearrange2 = config.get('py-config', 'frame_nearrange2')
     threshold_snaphu = config.getfloat('csh-config', 'threshold_snaphu');
 
+    # FOR TOMORROW: ADD BACK: intf_type, starttime, endtime
+
     # print config options
     if args.debug:
         print('Running gmtsar_app.py:')
@@ -255,16 +257,14 @@ def preprocess(config_params):
     if config_params.endstage < 1:  # don't need to pre-process if we're doing stage 0
         return;
 
-    # Make data.in, may or may not have proper master.
+    # Make data.in. May or may not have proper master.
     sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);
+    write_xml_prep(config_params.polarization, config_params.swath);  # writes common part of README_prep.txt
+    write_preproc_mode1(config_params.swath);  # writes the bottom of README_prep
+    call("./README_prep.txt", shell=True);  # First time through- just get baseline plot.
 
     # MODE 1: Before you know your super-master
     if config_params.master == "":
-        write_xml_prep(config_params.polarization, config_params.swath);  # writes common part of README_prep.txt
-
-        write_preproc_mode1(config_params.swath);  # writes the bottom of README_prep
-        call("./README_prep.txt", shell=True);  # First time through- just get baseline plot to pick super-master.
-
         # Automatically decide on super-master and pop it to the front of data.in.
         masterid = sentinel_utilities.choose_master_image(config_params.master, config_params.swath);
         # This will edit data.in to put the super-master first.
@@ -346,45 +346,38 @@ def get_total_intf_all(config_params):
     # Make a selection of interferograms to form. 
     # hard coding for consistency.
     baseline_tuple_list = sentinel_utilities.read_baseline_table('F1/raw/baseline_table.dat');
-    stems = [x[3] for x in baseline_tuple_list];
-    times = [x[2] for x in baseline_tuple_list];
-    baselines = [x[0] for x in baseline_tuple_list];
 
     # Retrieving interferogram pairs based on settings in config_files. 
     intf_pairs = [];
     if "SBAS" in config_params.intf_type:
-        intf_pairs = intf_pairs + sentinel_utilities.get_small_baseline_subsets(stems, times, baselines,
+        intf_pairs = intf_pairs + sentinel_utilities.get_small_baseline_subsets(baseline_tuple_list,
                                                                                 config_params.tbaseline,
                                                                                 config_params.xbaseline);
     if "CHAIN" in config_params.intf_type:
-        intf_pairs = intf_pairs + sentinel_utilities.get_chain_subsets(stems, times);
+        intf_pairs = intf_pairs + sentinel_utilities.get_chain_subsets(baseline_tuple_list);
     if "1YR" in config_params.intf_type:
-        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(stems, times, baselines,
+        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(baseline_tuple_list,
                                                                        config_params.annual_crit_days,
-                                                                       config_params.annual_crit_baseline, 1);  # 1 year
+                                                                       config_params.annual_crit_baseline, 1);  # 1 yr
     if "2YR" in config_params.intf_type:
-        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(stems, times, baselines,
+        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(baseline_tuple_list,
                                                                        config_params.annual_crit_days,
-                                                                       config_params.annual_crit_baseline,
-                                                                       2);  # 2 years
+                                                                       config_params.annual_crit_baseline, 2);  # 2 yrs
     if "3YR" in config_params.intf_type:
-        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(stems, times, baselines,
+        intf_pairs = intf_pairs + rose_baseline_plot.compute_new_pairs(baseline_tuple_list,
                                                                        config_params.annual_crit_days,
-                                                                       config_params.annual_crit_baseline,
-                                                                       3);  # 3 years
+                                                                       config_params.annual_crit_baseline, 3);  # 3 yrs
     if not intf_pairs:
-        print(
-            "config_params.intf_type is probably not a valid intf_type "
-            "[combinations of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
+        print("No intf_pairs found. Cannot make any interferograms.");
+        print("make sure config_params.intf_type is [combos of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
         sys.exit(1);
-    intf_pairs = sentinel_utilities.reduce_by_start_end_time(intf_pairs, config_params.start_time,
-                                                             config_params.end_time);
+    intf_pairs = sentinel_utilities.filter_intf_start_end(intf_pairs, config_params.start_time, config_params.end_time);
     intf_all = list(set(intf_pairs));  # removing duplicates. 
     print("Finding %d unique interferograms. " % len(intf_all));
 
     # Make the stick plot of baselines 
-    sentinel_utilities.make_network_plot(intf_all, stems, times, baselines,
-                                         "F" + str(config_params.swath) + "/Total_Network_Geometry.eps");
+    sentinel_utilities.make_network_plot(intf_all, baseline_tuple_list,
+                                         "F" + str(config_params.swath) + "/Network_Geometry.eps");
     return intf_all;
 
 
@@ -430,7 +423,7 @@ def make_interferograms(config_params):
         "ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} " + config_params.config_file + "'\n\n\n");
     # If you have parallel on your box^^
     # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");
-    # if you don't have parallel
+    # if you don't have parallel^^
     outfile.write("cd ../\n");
     outfile.close();
     print("Ready to call README_proc.txt.")

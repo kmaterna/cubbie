@@ -16,25 +16,22 @@ def top_level_driver():
     crit_baseline = 20;  # meters
 
     baseline_tuple_list = sentinel_utilities.read_baseline_table(baselinefile);
-    stems = [x[3] for x in baseline_tuple_list];
-    times = [x[2] for x in baseline_tuple_list];
-    baselines = [x[0] for x in baseline_tuple_list];
     intf_pairs_initial = sentinel_utilities.read_intf_table(intf_file);
     intf_pairs_initial = list(intf_pairs_initial);
 
-    # Computing new pairs.
-    new_intfs = compute_new_pairs(stems, times, baselines, crit_days, crit_baseline);
-
-    # Combining the existing and new interferogram lists.
-    all_intfs = intf_pairs_initial + new_intfs;
+    # Computing new pairs, adding to list of intfs.
+    all_intfs = intf_pairs_initial + compute_new_pairs(baseline_tuple_list, crit_days, crit_baseline, 1);
 
     # Outputs
-    sentinel_utilities.make_network_plot(all_intfs, stems, times, baselines, 'network_plot.png');
+    sentinel_utilities.make_network_plot(all_intfs, baseline_tuple_list, 'network_plot.png');
     sentinel_utilities.write_intf_table(all_intfs, intf_file_out);
     return;
 
 
-def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, num_years=1):
+def compute_new_pairs(baseline_tuple_list, crit_days, crit_baseline, num_years=1):
+    stems = [x[3] for x in baseline_tuple_list];
+    times = [x[2] for x in baseline_tuple_list];
+    baselines = [x[0] for x in baseline_tuple_list];
     crit_theta = 2 * np.pi * (crit_days / 365.25);  # days
     count = 0;
 
@@ -92,12 +89,12 @@ def compute_new_pairs(stems, times, baselines, crit_days, crit_baseline, num_yea
     print("Year-long: Returning %d %d-year-long interferograms within %.1f days and %.1f meters" %
           (count, num_years, crit_days, crit_baseline));
 
-    rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points);
+    rose_plot(days_dict, radius_dict, theta_dict, color_dict, r_points, th_points);
 
     return new_intfs;
 
 
-def rose_plot(times_dict, days_dict, radius_dict, theta_dict, color_dict, r_points, th_points):
+def rose_plot(days_dict, radius_dict, theta_dict, color_dict, r_points, th_points):
     # Make the polar plot.
     plt.figure();
     dots = [];
