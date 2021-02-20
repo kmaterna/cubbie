@@ -77,10 +77,10 @@ def compute_new_pairs(baseline_tuple_list, crit_days, crit_baseline, num_years=1
                         # print("%f %f %f meters" % (times_dict[this_year][j], times_dict[next_year][k],
                         #                            abs(radius_dict[this_year][j]-radius_dict[next_year][k])) );
                         # We have a close pair.
-                        indx1 = np.where(times == times_dict[this_year][j]);
-                        indx2 = np.where(times == times_dict[next_year][k]);
-                        stem1 = stems[indx1[0][0]];  # oct 2019 added a second [0]
-                        stem2 = stems[indx2[0][0]];
+                        indx1 = times.index(times_dict[this_year][j]);
+                        indx2 = times.index(times_dict[next_year][k]);
+                        stem1 = stems[indx1];
+                        stem2 = stems[indx2];
                         r_points.append([radius_dict[this_year][j], radius_dict[next_year][k]]);
                         th_points.append([theta_dict[this_year][j], theta_dict[next_year][k]]);
                         new_intf = stem1 + ':' + stem2;
@@ -96,7 +96,7 @@ def compute_new_pairs(baseline_tuple_list, crit_days, crit_baseline, num_years=1
 
 def rose_plot(days_dict, radius_dict, theta_dict, color_dict, r_points, th_points):
     # Make the polar plot.
-    plt.figure();
+    plt.figure(dpi=300);
     dots = [];
     for myyear in sorted(radius_dict):
         dots.append(plt.polar(theta_dict[myyear], radius_dict[myyear], '.', color=color_dict[myyear], label=myyear));
@@ -112,5 +112,5 @@ def rose_plot(days_dict, radius_dict, theta_dict, color_dict, r_points, th_point
                      color=color_dict[labelyear]);
 
     plt.legend(loc=4);
-    plt.savefig('roseplot.eps');
+    plt.savefig('roseplot.png');
     return;

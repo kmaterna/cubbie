@@ -1,7 +1,7 @@
 import collections
 import os, sys, shutil, argparse, configparser, glob
 import numpy as np
-from subprocess import call, check_output
+from subprocess import call
 from intf_generating import sentinel_utilities, rose_baseline_plot
 from intf_atm_tools import flattentopo_driver
 
@@ -68,11 +68,12 @@ def read_config():
 
     # if master specified in the config file disagrees with existing data.in, we must re-do the pre-processing.
     if master and startstage > 1 and os.path.isfile('F' + str(swath) + '/raw/data.in'):
+        master_datestr = sentinel_utilities.format_image_name_as_datestr(master);
         dataDotIn = np.genfromtxt('F' + str(swath) + '/raw/data.in', dtype='str')
-        oldmaster = dataDotIn[0]
-        if '-' + master[3:11] + 't' not in oldmaster:
+        oldmaster = dataDotIn[0].split(':')[0];
+        if master_datestr not in oldmaster:
             # sometimes, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...;
-            # master is formatted like S1A20171213_ALL_F1
+            # master_datestr is formatted like 20171213; master is S1_20171213_F1_ALL
             print('Error: The master specified in the config file disagrees with the old master in data.in. Exiting.')
             print('You should re-run starting from pre-processing with the master from the config file.')
             sys.exit(0);
@@ -227,46 +228,34 @@ def manifest2raw_orig_eof(config_params):
         call(['cp', eof_name, 'F' + str(swath) + '/raw_orig'], shell=False);
     print("copying s1a-aux-cal.xml to raw_orig...");
     call(['cp', config_params.orbit_dir + '/s1a-aux-cal.xml', 'F' + str(swath) + '/raw_orig'], shell=False);
-    check_raw_orig_sanity(swath);
+    sentinel_utilities.check_raw_orig_sanity(swath);
     return;
 
 
-def check_raw_orig_sanity(swath):
-    number_of_tiffs = int(check_output('ls F' + str(swath) + '/raw_orig/*.tiff | wc -l', shell=True));
-    number_of_safes = int(check_output('ls F' + str(swath) + '/raw_orig/*.safe | wc -l', shell=True));
-    number_of_EOFs = int(check_output('ls F' + str(swath) + '/raw_orig/*.EOF | wc -l', shell=True));
-    print('number of tiffs is %d ' % number_of_tiffs);
-    print('number of safes is %d ' % number_of_safes);
-    print('number of EOFs is %d ' % number_of_EOFs);
-    if number_of_tiffs != number_of_safes:
-        raise sentinel_utilities.DirectoryError(
-            'error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!');
-    if number_of_tiffs != number_of_EOFs:
-        raise sentinel_utilities.DirectoryError(
-            'error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
-    return;
-
-
-# --------------- STEP 1: Pre-processing (also aligning for Sentinel) ------------ # 
+# --------------- STEP 1: Pre-processing (also aligning for Sentinel) ------------ #
 def preprocess(config_params):
     if config_params.startstage > 1:  # don't need to pre-process if we're starting at topo or intf.
         return;
     if config_params.endstage < 1:  # don't need to pre-process if we're doing stage 0
         return;
 
-    # Make data.in. May or may not have proper master.
-    sentinel_utilities.make_data_in(config_params.polarization, config_params.swath, config_params.master);
+    # Make data.in. Proper master not required.
+    sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, config_params.master,
+                                     "F" + config_params.swath);
     write_xml_prep(config_params.polarization, config_params.swath);  # writes common part of README_prep.txt
     write_preproc_mode1(config_params.swath);  # writes the bottom of README_prep
-    call("./README_prep.txt", shell=True);  # First time through- just get baseline plot.
+    call(["./README_prep.txt"], shell=False);  # First time through- just get baseline plot and baseline table.
 
     # MODE 1: Before you know your super-master
     if config_params.master == "":
         # Automatically decide on super-master and pop it to the front of data.in.
-        masterid = sentinel_utilities.choose_master_image(config_params.master, config_params.swath);
-        # This will edit data.in to put the super-master first.
-        print("master image is...")
-        print(masterid);
+        baseline_table_file = 'F'+config_params.swath+'/raw/baseline_table.dat';
+        masterid = sentinel_utilities.choose_master_image(baseline_table_file);
+        sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, masterid,
+                                         target_dir="F"+config_params.swath);
+        sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, masterid,
+                                         target_dir="F"+config_params.swath+'/raw');
+        print("master image is... "+masterid);
         sentinel_utilities.write_super_master_batch_config(masterid);  # automatically put super-master in batch.config
         print("Please check to confirm that you are happy with this. ")
         sys.exit(0);
@@ -274,7 +263,7 @@ def preprocess(config_params):
     # MODE 2: Now you have picked a super-master.
     write_xml_prep(config_params.polarization, config_params.swath);  # writes common part of README_prep.txt
     write_preproc_mode2(config_params.swath);  # This writes the bottom of README_prep
-    # call("./README_prep.txt", shell=True);  # preproc_batch_tops.csh the second time.  Aligning will happen!
+    call(["./README_prep.txt"], shell=False);  # preproc_batch_tops.csh the second time.  Aligning will happen!
     return;
 
 
@@ -342,7 +331,7 @@ def topo2ra(config_params):
 def get_total_intf_all(config_params):
     # Make a selection of interferograms to form. 
     # hard coding for consistency.
-    baseline_tuple_list = sentinel_utilities.read_baseline_table('F1/raw/baseline_table.dat');
+    baseline_tuple_list = sentinel_utilities.read_baseline_table('F'+config_params.swath+'/raw/baseline_table.dat');
 
     # Retrieving interferogram pairs based on settings in config_files. 
     intf_pairs = [];
@@ -366,15 +355,15 @@ def get_total_intf_all(config_params):
                                                                        config_params.annual_crit_baseline, 3);  # 3 yrs
     if not intf_pairs:
         print("No intf_pairs found. Cannot make any interferograms.");
-        print("make sure config_params.intf_type is [combos of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
+        print("Make sure config_params.intf_type is [combos of SBAS, CHAIN, 1YR, SBAS+CHAIN, etc.]");
         sys.exit(1);
-    intf_pairs = sentinel_utilities.filter_intf_start_end(intf_pairs, config_params.start_time, config_params.end_time);
+    intf_pairs = sentinel_utilities.filter_intf_start_end(intf_pairs, config_params.starttime, config_params.endtime);
     intf_all = list(set(intf_pairs));  # removing duplicates. 
     print("Finding %d unique interferograms. " % len(intf_all));
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_all, baseline_tuple_list,
-                                         "F" + str(config_params.swath) + "/Network_Geometry.eps");
+                                         "F"+config_params.swath+"/Network_Geometry.eps");
     return intf_all;
 
 
@@ -389,7 +378,7 @@ def make_interferograms(config_params):
     if config_params.endstage < 4:  # if we're ending at topo, we don't do this.
         return;
 
-    intf_all = get_total_intf_all(config_params);  # Make selection of interferograms to form. 
+    intf_all = get_total_intf_all(config_params);  # Make selection of interferograms to form.
 
     # Write the intf.in files
     outdir = "F" + str(config_params.swath + "/intf_all/");
@@ -408,26 +397,23 @@ def make_interferograms(config_params):
         if os.path.isfile(outdir + expected_folder + "/phasefilt.grd"):
             continue;
         else:
-            new_item = item.replace("_F1", "_F" + config_params.swath);
             # in case we're using one swath to generate intf_all for other swaths
+            new_item = item.replace("_F1", "_F" + config_params.swath);
             outfile.write('echo "' + new_item + '" >> intf_record.in\n');
             outfile.write('echo "' + new_item + '" >> intf' + str(np.mod(i, config_params.numproc)) + '.in\n');
-            # outfile.write('echo "' + item +'" >> intf_record.in\n');
-        # outfile.write('echo "' + item +'" >> intf'+str(np.mod(i,config_params.numproc))+'.in\n');
         # Write out in all cases.
     outfile.write("\n# Process the interferograms.\n\n")
-    outfile.write(
-        "ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} " + config_params.config_file + "'\n\n\n");
-    # If you have parallel on your box^^
-    # outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");
-    # if you don't have parallel^^
+    if int(config_params.numproc) > 1:   # parallel processing if you have GNU parallel on your box.
+        outfile.write("ls intf?.in | parallel --eta 'intf_batch_tops_mod.csh {} "+config_params.config_file+"'\n\n\n");
+    else:   # you don't have GNU parallel on your box
+        outfile.write("intf_batch_tops_mod.csh intf_record.in "+config_params.config_file+"\n\n\n");
     outfile.write("cd ../\n");
     outfile.close();
     print("Ready to call README_proc.txt.")
-    call("chmod +x README_proc.txt", shell=True);
+    call(["chmod", "+x", "README_proc.txt"], shell=False);
 
     # The money line
-    call("./README_proc.txt", shell=True);
+    call(["./README_proc.txt"], shell=False);
 
     # print("Summarizing correlation for all interferograms.")
     # analyze_coherence.analyze_coherence_function();
@@ -443,7 +429,7 @@ def unwrapping(config_params):
     if config_params.endstage < 5:  # if we're ending at intf, we don't do this.
         return;
 
-        # This isn't so smooth right now with handling merged as well as single interferograms.
+    # This isn't so smooth right now with handling merged as well as single interferograms.
     # Future work. 
 
     # Marie-Pierre's atmosphere correction 
@@ -451,7 +437,7 @@ def unwrapping(config_params):
         flattentopo_driver.main_function();
 
     # For merging multiple swaths
-    sentinel_utilities.set_up_merge_unwrap(config_params);  # just set up the merged directory. 
+    sentinel_utilities.set_up_merge_unwrap();  # just set up the merged directory.
     intf_all = get_total_intf_all(config_params);  # Make selection of interferograms to form. 
     sentinel_utilities.write_merge_batch_input(intf_all, config_params.master);
     # write the intfs and PRM files into an input file.

@@ -1,10 +1,11 @@
 # Sentinel Utilities
 
 import subprocess
-import os
 import sys
 import glob
+import re
 import datetime as dt
+from subprocess import check_output
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -14,7 +15,7 @@ matplotlib.use('Agg')
 
 """
 Note: Baseline_tuple_list has format like: [(150.2, dt, 2015230, S1_20150514_ALL_F2), (etc)...]
-Baseline_tuple_list: [(baseline, dt.dt, datestr, stem),]
+Baseline_tuple_list: [(baseline, dt.dt, datedoystr, stem),]
 Note: intf_list has format like: 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'
 """
 
@@ -166,28 +167,38 @@ def compare_frames_with_safes(config_params):
     print("END: %d SAFES from %d unique dates." % (len(frames_dirlist), len(set(frames_datelist))));
     return;
 
+def format_image_name_as_datestr(master_image):
+    # Takes something like 'S1_20190616_ALL_F1' or 's1b-iw1-slc-vv-20190616t014910-20190616t015028-016715-01f75e-004'
+    # Returns YYYYMMDD
+    master_datestr = re.findall(r"\d\d\d\d\d\d\d\d", master_image);  # example: ['20150607']
+    master_datestr = master_datestr[0];
+    return master_datestr;
 
-def make_data_in(polarization, swath, master_date=""):
+
+def write_data_in(polarization, swath, master_date="", target_dir="F1"):
     """
     data.in is a reference table that links the xml file with the correct orbit file.
+    swath is str
+    master_date has format S1_20170204_ALL or 20170204
     """
-    list_of_images, list_of_datestrs = get_all_xml_names("F" + str(swath) + "/raw_orig", polarization, swath);
-    outfile = open("F" + str(swath) + "/data.in", 'w');
+    list_of_images, list_of_datestrs = get_all_xml_names("F" + swath + "/raw_orig", polarization, swath);
+    outfile = open(target_dir + "/data.in", 'w');
     if master_date == "":
         print("No master date selected by the user. Printing in random order.")
         for item, mydate in zip(list_of_images, list_of_datestrs):
             item = item.split("/")[-1];  # getting rid of the directory
             sat = get_sat_from_xml(item);
-            eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
+            eof_name = get_eof_from_date_sat(mydate, sat, "F" + swath + "/raw_orig");
             outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
     else:
-        # write the master date first. 
+        # write the master date first.
+        master_date = format_image_name_as_datestr(master_date);
         for item, mydate in zip(list_of_images, list_of_datestrs):
             if mydate == master_date:
-                print("Found master date %s in config file. Putting it on first line." % master_date);
+                print("Found master date %s. Putting it on first line." % master_date);
                 item = item.split("/")[-1];  # getting rid of the directory
                 sat = get_sat_from_xml(item);
-                eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
+                eof_name = get_eof_from_date_sat(mydate, sat, "F" + swath + "/raw_orig");
                 outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
                 break;
         # then write the other dates. 
@@ -195,15 +206,15 @@ def make_data_in(polarization, swath, master_date=""):
             if mydate != master_date:
                 item = item.split("/")[-1];  # getting rid of the directory
                 sat = get_sat_from_xml(item);
-                eof_name = get_eof_from_date_sat(mydate, sat, "F" + str(swath) + "/raw_orig");
+                eof_name = get_eof_from_date_sat(mydate, sat, "F" + swath + "/raw_orig");
                 outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
     outfile.close();
-    print("data.in successfully printed.")
+    print(target_dir+"/data.in successfully printed.")
     return;
 
 
 def read_baseline_table(baselinefilename):
-    # Returns a chronologically sorted list of tuples of (baseline, datetime, datestr, stem) values
+    # Returns a chronologically sorted list of tuples of (baseline, datetime, datedoystr, stem) values
     # Example: [(150.2, dt, 2015230, S1_20150514_ALL_F2), (etc)...]
     if baselinefilename == '':
         print("Error! No baseline file provided. Exiting...");
@@ -229,13 +240,18 @@ def read_baseline_table(baselinefilename):
     # Re-order times and baselines in chronological order, and re-package
     baselines = [x for _, x in sorted(zip(dtarray, baselines))];
     datestrs = [x for _, x in sorted(zip(dtarray, datestrs))];
-    stems = [x for _, x in sorted(zip(stems, datestrs))];
+    stems = [x for _, x in sorted(zip(dtarray, stems))];
     dtarray = sorted(dtarray);
     baseline_tuple_list = [];
     for i in range(len(baselines)):
         baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i], stems[i]));
 
     return baseline_tuple_list;
+
+
+def read_dataDotIn(filename):
+    dataDotIn = np.genfromtxt(filename, dtype='str').tolist()
+    return dataDotIn;
 
 
 def read_intf_table(tablefilename):
@@ -254,46 +270,27 @@ def write_intf_table(intf_all, tablefilename):
 
 # after running the baseline calculation from the first pre_proc_batch,
 # choose a new master that is close to the median baseline and timespan.
-def choose_master_image(default_master, swath):
-    print("Selecting master image; default_master is %s" % default_master);
+# Feb 2021: Check that it works later.
+def choose_master_image(baseline_table_file):
+    print("Selecting master image; default_master is none");
 
     # load baseline table
-    baselineFile = np.genfromtxt('F' + str(swath) + '/raw/baseline_table.dat', dtype=str)
-    time = baselineFile[:, 1].astype(float)
-    baseline = baselineFile[:, 4].astype(float)
-    shortform_names = baselineFile[:, 0].astype(str);
+    baseline_tuple_list = read_baseline_table(baseline_table_file);
+    time = [x[2] for x in baseline_tuple_list];
+    baseline = [x[0] for x in baseline_tuple_list];
+    shortform_names = [x[3] for x in baseline_tuple_list];  # format S1_20170304_F1_ALL
 
-    # GMTSAR (currently) guarantees that this file has the same order of lines as baseline_table.dat.
-    dataDotIn = np.genfromtxt('F' + str(swath) + '/raw/data.in', dtype='str').tolist()
-    print(dataDotIn);
+    # calculate shortest distance from median to scenes
+    consider_time = True
+    if consider_time:
+        time_baseline_scale = 1  # arbitrary scaling factor, units of (meters/day)
+        sceneDistance = np.sqrt(
+            ((time - np.median(time)) / time_baseline_scale) ** 2 + (baseline - np.median(baseline)) ** 2)
+    else:
+        sceneDistance = np.sqrt((baseline - np.median(baseline)) ** 2)
 
-    if default_master == "":
-        # calculate shortest distance from median to scenes
-        consider_time = True
-        if consider_time:
-            time_baseline_scale = 1  # arbitrary scaling factor, units of (meters/day)
-            sceneDistance = np.sqrt(
-                ((time - np.median(time)) / time_baseline_scale) ** 2 + (baseline - np.median(baseline)) ** 2)
-        else:
-            sceneDistance = np.sqrt((baseline - np.median(baseline)) ** 2)
-
-        minID = np.argmin(sceneDistance)
-        masterID = dataDotIn[minID]
-
-    else:  # if the user has selected a master on purpose
-        for x in range(len(dataDotIn)):
-            if default_master in dataDotIn[x]:
-                masterID = dataDotIn[x];
-                minID = x;
-
-    # put masterId in the first line of data.in
-    dataDotIn.pop(dataDotIn.index(masterID))
-    dataDotIn.insert(0, masterID)
-    master_shortform = shortform_names[minID];  # because GMTSAR initially puts baseline_table / data.in in same order.
-
-    os.rename('F' + str(swath) + '/raw/data.in', 'F' + str(swath) + '/raw/data.in.old')
-    np.savetxt('F' + str(swath) + '/raw/data.in', dataDotIn, fmt='%s')
-    np.savetxt('F' + str(swath) + '/data.in', dataDotIn, fmt='%s')
+    minID = np.argmin(sceneDistance)[0];
+    master_shortform = shortform_names[minID];
     return master_shortform
 
 
@@ -312,10 +309,9 @@ def write_super_master_batch_config(masterid):
     return;
 
 
-def set_up_merge_unwrap(config_params):
+def set_up_merge_unwrap():
     subprocess.call(["mkdir", "-p", "merged"], shell=False);
-    subprocess.call(["cp", "topo/dem.grd", "merged"],
-                    shell=False);  # I needed to actually copy it, not just soft link.
+    subprocess.call(["cp", "topo/dem.grd", "merged"], shell=False);  # need to actually copy, not just soft link.
     subprocess.call(["cp", "batch.config", "merged"], shell=False);
     return;
 
@@ -367,7 +363,6 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
 
     stem1_ordered = [x for y, x in sorted(zip(mean_corr, stem1), reverse=True)];
     stem2_ordered = [x for y, x in sorted(zip(mean_corr, stem2), reverse=True)];
-    mean_corr_ordered = sorted(mean_corr, reverse=True);
 
     outfile = open(sh_file, 'w');
     outfile.write("#!/bin/bash\n");
@@ -561,7 +556,6 @@ def make_network_plot(intf_pairs, baseline_tuple_list, plotname):
     print("Finished printing network plot");
     return;
 
-
 #
 # Reporting and defensive programming
 #
@@ -575,6 +569,22 @@ def compare_intended_list_with_directory(intended_array, actual_array, errormsg)
         else:
             print("ERROR! %s expected, but not found in actual array." % item);
             print(errormsg);
+    return;
+
+
+def check_raw_orig_sanity(swath):
+    number_of_tiffs = int(check_output('ls F' + swath + '/raw_orig/*.tiff | wc -l', shell=True));
+    number_of_safes = int(check_output('ls F' + swath + '/raw_orig/*.safe | wc -l', shell=True));
+    number_of_EOFs = int(check_output('ls F' + swath + '/raw_orig/*.EOF | wc -l', shell=True));
+    print('number of tiffs is %d ' % number_of_tiffs);
+    print('number of safes is %d ' % number_of_safes);
+    print('number of EOFs is %d ' % number_of_EOFs);
+    if number_of_tiffs != number_of_safes:
+        raise DirectoryError(
+            'error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!');
+    if number_of_tiffs != number_of_EOFs:
+        raise DirectoryError(
+            'error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
     return;
 
 
@@ -629,7 +639,6 @@ def check_intf_all_sanity():
         compare_intended_list_with_directory(intended_intfs, actual_unwraps, 'is not unwrapped.');
 
     return;
-
 
 #
 # Exceptions and Exception handling
