@@ -183,6 +183,8 @@ if ($stage <= 2) then
     rm display_amp.grd
     rm display_amp.cpt
     rm filtcorr.grd
+    rm imag_tmp.grd  # added kzm
+    rm real_tmp.grd  # added kzm
 #
 # geocoding
 #

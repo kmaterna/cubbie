@@ -111,6 +111,7 @@ def compile_frame_from_bursts(config_params):
     # Will assemble frames if pins are provided.
     # Would be good to check the total status of the download before doing this
     # (report_on_s1_data_holdings.py)
+    # Works for all 3 swaths at once.
     if config_params.startstage > -1:  # don't need to set up if we're starting mid-stream.
         return;
     if config_params.endstage < -1:  # don't need to do this step
@@ -193,41 +194,43 @@ def manifest2raw_orig_eof(config_params):
     swath = config_params.swath
     print("Removing raw/ and raw_orig to proceed fresh. ");
     try:
-        shutil.rmtree("F" + str(swath) + "/raw_orig");
+        shutil.rmtree("F" + swath + "/raw_orig");
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror));
     try:
-        shutil.rmtree("F" + str(swath) + "/raw");
+        shutil.rmtree("F" + swath + "/raw");
     except OSError as e:
         print("Error: %s - %s." % (e.filename, e.strerror));
 
     # Unpack the .SAFE directories into raw_orig
-    call(["mkdir", "-p", "F" + str(swath) + "/raw_orig"], shell=False);
+    call(["mkdir", "-p", "F" + swath + "/raw_orig"], shell=False);
     print("Copying xml files into raw_orig...")
     print("Copying manifest.safe files into raw_orig...")
     print("Copying tiff files into raw_orig...")
     # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space.
     for onefile, onedt in zip(safe_file_list, dt_list):
         # Step 1: Get the names for tiff, xml, and eof files
-        xmls, yyyymmdd = sentinel_utilities.get_all_xml_names(onefile+'/annotation', config_params.polarization, swath);
+        xmls, yyyymmdd = sentinel_utilities.get_all_xml_tiff_names(onefile + '/annotation', config_params.polarization,
+                                                                   swath, filetype='xml');
         manifest_safe_file = onefile+'/manifest.safe';
         sat = sentinel_utilities.get_sat_from_xml(xmls[0]);
         eof_name = sentinel_utilities.get_eof_from_date_sat(onedt, sat, config_params.orbit_dir);
 
         # Copy various files
-        call(['cp', xmls[0], 'F' + str(swath) + '/raw_orig'], shell=False);
-        call(['cp', manifest_safe_file, 'F' + str(swath) + '/raw_orig/' + yyyymmdd + '_manifest.safe'], shell=False);
-        tiff_files = sentinel_utilities.get_all_tiff_names(onefile + '/measurement', config_params.polarization, swath);
+        call(['cp', xmls[0], 'F' + swath + '/raw_orig'], shell=False);
+        call(['cp', manifest_safe_file, 'F' + swath + '/raw_orig/' + yyyymmdd[0] + '_manifest.safe'], shell=False);
+        tiff_files, _ = sentinel_utilities.get_all_xml_tiff_names(onefile + '/measurement', config_params.polarization,
+                                                                  swath, filetype='tiff');
         # only copy the tiff files if they don't already exist.
         one_tiff_file = tiff_files[0].split("/")[-1];
-        if not os.path.isfile('F' + str(swath) + '/raw_orig/' + one_tiff_file):
-            call(['cp', tiff_files[0], 'F' + str(swath) + '/raw_orig'], shell=False);
+        if not os.path.isfile('F' + swath + '/raw_orig/' + one_tiff_file):
+            call(['cp', tiff_files[0], 'F' + swath + '/raw_orig'], shell=False);
 
         # copy orbit files into the raw_orig directory
         print("Copying %s and associated tiff/xml/manifest.safe to raw_orig..." % eof_name);
-        call(['cp', eof_name, 'F' + str(swath) + '/raw_orig'], shell=False);
+        call(['cp', eof_name, 'F' + swath + '/raw_orig'], shell=False);
     print("copying s1a-aux-cal.xml to raw_orig...");
-    call(['cp', config_params.orbit_dir + '/s1a-aux-cal.xml', 'F' + str(swath) + '/raw_orig'], shell=False);
+    call(['cp', config_params.orbit_dir + '/s1a-aux-cal.xml', 'F' + swath + '/raw_orig'], shell=False);
     sentinel_utilities.check_raw_orig_sanity(swath);
     return;
 
@@ -238,6 +241,17 @@ def preprocess(config_params):
         return;
     if config_params.endstage < 1:  # don't need to pre-process if we're doing stage 0
         return;
+
+    # CHECK HERE: IF THE NUMBER OF SLCs IS EQUAL TO THE NUMBER OF SCENES, PLEASE STOP.
+    # WE WANT TO AVOID RE-DOING THE ENTIRE CALCULATION BY ACCIDENT.
+    outdir = 'F'+config_params.swath + '/raw'  # the output of this process
+    if os.path.isdir(outdir):
+        slc_list = glob.glob(outdir+'/*.SLC');
+        number_of_images = sentinel_utilities.read_dataDotIn(outdir+'/data.in');
+        if len(number_of_images) == len(slc_list) and len(number_of_images) > 0:
+            print("You have %d images and %d SLC's.  Assuming you do not want to reprocess from stage 0. Exiting." %
+                  (len(number_of_images), len(slc_list)));
+            sys.exit(0);
 
     # Make data.in. Proper master not required.
     sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, config_params.master,
@@ -268,11 +282,12 @@ def preprocess(config_params):
 
 
 def write_xml_prep(polarization, swath):
-    list_xml, list_datestrs = sentinel_utilities.get_all_xml_names('F' + str(swath) + '/raw_orig', polarization, swath);
+    list_xml, list_datestrs = sentinel_utilities.get_all_xml_tiff_names('F'+swath+'/raw_orig', polarization, swath);
     print("Writing xmls in README_prep.txt");
     outfile = open("README_prep.txt", 'w');
+    outfile.write("#!/bin/bash\n");
     outfile.write("# First, prepare the files.\n");
-    outfile.write("cd F" + str(swath) + "\n");
+    outfile.write("cd F" + swath + "\n");
     outfile.write("mkdir -p raw\n");
     outfile.write("cd raw\n");
     outfile.write(
@@ -290,8 +305,8 @@ def write_xml_prep(polarization, swath):
 
 
 def write_preproc_mode1(swath):
-    outfile = open("README_prep.txt", 'a')
-    outfile.write("cd F" + str(swath) + "\n");
+    outfile = open("README_prep.txt", 'a');
+    outfile.write("cd F"+swath+"\n");
     outfile.write("cd raw\n");
     outfile.write("mv ../data.in .\n");
     outfile.write("echo 'Calling preproc_batch_tops.csh data.in ../topo/dem.grd 1'\n");
@@ -299,20 +314,20 @@ def write_preproc_mode1(swath):
     outfile.write("cd ../../\n");
     outfile.close();
     print("Ready to call README_prep.txt in Mode 1.")
-    call("chmod +x README_prep.txt", shell=True);
+    call(["chmod", "+x", "README_prep.txt"], shell=False);
     return;
 
 
 def write_preproc_mode2(swath):
     outfile = open("README_prep.txt", 'a')
-    outfile.write("cd F" + str(swath) + "\n");
+    outfile.write("cd F"+swath+"\n");
     outfile.write("cd raw\n");
     outfile.write("echo 'Calling preproc_batch_tops.csh data.in ../topo/dem.grd 2'\n");
     outfile.write("preproc_batch_tops.csh data.in ../topo/dem.grd 2\n\n");
     outfile.write("cd ../../\n");
     outfile.close();
     print("Ready to call README_prep.txt in Mode 2.")
-    call("chmod +x README_prep.txt", shell=True);
+    call(["chmod", "+x", "README_prep.txt"], shell=False);
     return;
 
 
@@ -322,7 +337,7 @@ def topo2ra(config_params):
         return;
     if config_params.endstage < 3:  # if we're ending at preproc, we don't do this.
         return;
-    call("sentinel_dem2topo_ra.csh " + config_params.config_file, shell=True);
+    call(["sentinel_dem2topo_ra.csh", config_params.config_file], shell=False);
     return;
 
 
@@ -331,7 +346,7 @@ def topo2ra(config_params):
 def get_total_intf_all(config_params):
     # Make a selection of interferograms to form. 
     # hard coding for consistency.
-    baseline_tuple_list = sentinel_utilities.read_baseline_table('F'+config_params.swath+'/raw/baseline_table.dat');
+    baseline_tuple_list = sentinel_utilities.read_baseline_table('F1/raw/baseline_table.dat');
 
     # Retrieving interferogram pairs based on settings in config_files. 
     intf_pairs = [];
@@ -370,8 +385,7 @@ def get_total_intf_all(config_params):
 def make_interferograms(config_params):
     """
     1. form interferogram pairs from baseline_table
-    2. make network plot
-    3. write README_proc.txt
+    2. write README_proc.txt
     """
     if config_params.startstage > 4:  # if we're starting at sbas, we don't do this.
         return;
@@ -389,8 +403,9 @@ def make_interferograms(config_params):
     outfile.write("cd F" + str(config_params.swath) + "\n");
     outfile.write("ln -s ../batch.config .\n");
     outfile.write("rm intf*.in\n");
+    count = 0;
     for i, item in enumerate(intf_all):
-        # Will only create interferograms that don't already exist. This might need to be changed in the future. 
+        # Will only create interferograms that don't already exist.
         date1 = item[3:11];
         date2 = item[22:30];
         expected_folder = sentinel_utilities.ymd2yj(date1) + "_" + sentinel_utilities.ymd2yj(date2);
@@ -400,7 +415,8 @@ def make_interferograms(config_params):
             # in case we're using one swath to generate intf_all for other swaths
             new_item = item.replace("_F1", "_F" + config_params.swath);
             outfile.write('echo "' + new_item + '" >> intf_record.in\n');
-            outfile.write('echo "' + new_item + '" >> intf' + str(np.mod(i, config_params.numproc)) + '.in\n');
+            outfile.write('echo "' + new_item + '" >> intf' + str(np.mod(count, config_params.numproc)) + '.in\n');
+            count = count+1;
         # Write out in all cases.
     outfile.write("\n# Process the interferograms.\n\n")
     if int(config_params.numproc) > 1:   # parallel processing if you have GNU parallel on your box.
@@ -455,6 +471,6 @@ def unwrapping(config_params):
 
     print("Ready to call " + unwrap_sh_file)
     call(['chmod', '+x', unwrap_sh_file], shell=False);
-    call("./" + unwrap_sh_file, shell=True);
+    call(["./"+unwrap_sh_file], shell=False);
 
     return;

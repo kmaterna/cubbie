@@ -20,16 +20,16 @@ Note: intf_list has format like: 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'
 """
 
 
-def get_all_xml_names(directory, polarization, swath):
-    # Returns a matching list of filenames and datestrs (yyyymmdd)
-    pathname1 = directory + "/*-"+polarization+"-*-00" + swath + ".xml";
-    pathname2 = directory + "/*-"+polarization+"-*-00" + str(int(swath) + 3) + ".xml";
+def get_all_xml_tiff_names(directory, polarization, swath, filetype='xml'):
+    # Returns a matching list of xml or tiff filenames, and datestrs(yyyymmdd)
+    pathname1 = directory + "/*-"+polarization+"-*-00" + swath + "." + filetype;
+    pathname2 = directory + "/*-"+polarization+"-*-00" + str(int(swath) + 3) + "." + filetype;
     list_of_images_temp = glob.glob(pathname1) + glob.glob(pathname2);
     list_of_images = []
     list_of_datestrs = [];
     for item in list_of_images_temp:
         list_of_images.append(item[:])
-        list_of_datestrs.append(get_date_from_xml(item[:]));
+        list_of_datestrs.append(get_datestr_from_xml(item[:]));
     return list_of_images, list_of_datestrs;
 
 def get_all_safes_in_dir(directory):
@@ -68,32 +68,14 @@ def get_SAFE_list_for_raw_orig(config_params):
         # if we're not assembling frames, we use the DATA directory.
     return file_list, dt_list;
 
-def get_all_tiff_names(directory, polarization, swath):
-    pathname1 = directory + "/*-"+polarization+"-*-00" + swath + ".tiff";
-    pathname2 = directory + "/*-"+polarization+"-*-00" + str(int(swath) + 3) + ".tiff";
-    list_of_images_temp = glob.glob(pathname1) + glob.glob(pathname2);
-    list_of_images = []
-    for item in list_of_images_temp:
-        list_of_images.append(item[:])
-    return list_of_images;
-
-
-def get_previous_and_following_day(datestring):
-    """ This is a function that takes a date like 20160827 and generates 
-    [20160826, 20160828]: the day before and the day after the date in question. """
-    year = int(datestring[0:4]);
-    month = int(datestring[4:6]);
-    day = int(datestring[6:8]);
-    mydate = dt.date(year, month, day);
+def get_previous_and_following_day(mydate):
+    """ This is a function that takes a dt object and generates
+    [dt1, dt2]: the day before and the day after the date in question. """
     tomorrow = mydate + dt.timedelta(days=1);
     yesterday = mydate - dt.timedelta(days=1);
-    previous_day = pad_string_zeros(yesterday.year) + pad_string_zeros(yesterday.month) + pad_string_zeros(
-        yesterday.day);
-    following_day = pad_string_zeros(tomorrow.year) + pad_string_zeros(tomorrow.month) + pad_string_zeros(tomorrow.day);
-    return [previous_day, following_day];
+    return [yesterday, tomorrow];
 
-
-def get_date_from_xml(xml_name):
+def get_datestr_from_xml(xml_name):
     """
     xml file has name like s1a-iw1-slc-vv-20150121t134413-20150121t134424-004270-005317-001.xml
     We want to return 20150121. 
@@ -102,20 +84,10 @@ def get_date_from_xml(xml_name):
     mydate = xml_name[15:23];
     return mydate;
 
-
 def get_sat_from_xml(xml_name):
     xml_name = xml_name.split('/')[-1];
     sat = xml_name[0:3];
     return sat;
-
-
-def pad_string_zeros(num):
-    if num < 10:
-        numstring = "0" + str(num);
-    else:
-        numstring = str(num);
-    return numstring;
-
 
 def ymd2yj(ymd):
     # Turn something like "20150524" into "2015100", useful for file naming conventions
@@ -123,12 +95,10 @@ def ymd2yj(ymd):
     tdate = tdate - dt.timedelta(days=1);
     return dt.datetime.strftime(tdate, "%Y%j");
 
-
 def yj2ymd(yj):
     yj = int(yj) + 1;
     tdate = dt.datetime.strptime(str(yj), "%Y%j");
     return dt.datetime.strftime(tdate, "%Y%m%d");
-
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
@@ -136,9 +106,11 @@ def get_eof_from_date_sat(mydate, sat, eof_dir):
         It takes something like 20171204, s1a, eof_dir
         It can also take something like dt.datetime, s1a, eof_dir
     """
-    if type(mydate) == dt.datetime:   # if you pass a datetime object
-        mydate = dt.datetime.strftime(mydate, "%Y%m%d");
+    if type(mydate) == str:   # if you pass a string, convert to datetime
+        mydate = dt.datetime.strptime(mydate, "%Y%m%d");
     [previous_day, following_day] = get_previous_and_following_day(mydate);
+    previous_day = dt.datetime.strftime(previous_day, "%Y%m%d");
+    following_day = dt.datetime.strftime(following_day, "%Y%m%d");
     eof_name = glob.glob(eof_dir + "/" + sat.upper() + "*" + previous_day + "*" + following_day + "*.EOF");
     if not eof_name:
         print("ERROR: did not find any EOF files matching the pattern " + eof_dir + "/" + sat.upper() +
@@ -181,7 +153,7 @@ def write_data_in(polarization, swath, master_date="", target_dir="F1"):
     swath is str
     master_date has format S1_20170204_ALL or 20170204
     """
-    list_of_images, list_of_datestrs = get_all_xml_names("F" + swath + "/raw_orig", polarization, swath);
+    list_of_images, list_of_datestrs = get_all_xml_tiff_names("F" + swath + "/raw_orig", polarization, swath);
     outfile = open(target_dir + "/data.in", 'w');
     if master_date == "":
         print("No master date selected by the user. Printing in random order.")
