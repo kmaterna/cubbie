@@ -32,7 +32,7 @@
   set region_cut = `grep region_cut $1 | awk '{print $3}'`
   set switch_land = `grep switch_land $1 | awk '{print $3}'`
   set defomax = `grep defomax $1 | awk '{print $3}'`
-  set swath = `grep swath $1 | awk '{print $3}'` 
+  set swath = `grep swath $1 | awk '{print $3}'`
 
 ##################################
 #  start from make topo_ra  #

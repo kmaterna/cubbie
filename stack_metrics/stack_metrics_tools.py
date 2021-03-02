@@ -10,7 +10,6 @@ import matplotlib
 import matplotlib.cm as cm
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
-from intf_generating import sentinel_utilities
 
 
 def produce_min_max(filename, xyz=False):
@@ -23,6 +22,14 @@ def produce_min_max(filename, xyz=False):
     print("Min: ", np.nanmin(z));
     print("Shape: ", np.shape(z));
     return;
+
+
+def remove_nans_array(myarray):
+    numarray = [];
+    for i in range(len(myarray)):
+        if ~np.isnan(myarray[i]):
+            numarray.append(myarray[i][0]);
+    return numarray;
 
 
 def how_many_nans(filename):
@@ -281,7 +288,7 @@ def some_kind_of_nsbas_outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir
     # Probably hasn't been used in a long time?
     # Visualizing the velocity field in a few different ways.
     zdata2 = np.reshape(vel, [len(xdata) * len(ydata), 1])
-    zdata2 = sentinel_utilities.remove_nans_array(zdata2);
+    zdata2 = remove_nans_array(zdata2);
     plt.figure();
     plt.hist(zdata2, bins=80);
     plt.gca().set_yscale('log');

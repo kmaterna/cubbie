@@ -2,15 +2,13 @@
 
 import subprocess
 import sys
-import glob
-import re
+import glob, os, re
 import datetime as dt
 from subprocess import check_output
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
-import collections
 matplotlib.use('Agg')
 
 """
@@ -100,6 +98,12 @@ def yj2ymd(yj):
     tdate = dt.datetime.strptime(str(yj), "%Y%j");
     return dt.datetime.strftime(tdate, "%Y%m%d");
 
+def yj_to_prm_name(yj, swath):
+    # takes string like "2019166" and converts to "S1_20190516_ALL_F1"
+    ymd = yj2ymd(yj);
+    prm_name = "S1_" + ymd + "_ALL_F"+swath;
+    return prm_name;
+
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
         eof_dir can be relative or absolute
@@ -122,12 +126,34 @@ def get_eof_from_date_sat(mydate, sat, eof_dir):
     return eof_name;
 
 
-def glob_intf_computed():
-    full_names = glob.glob("intf_all/*");
+def glob_intf_computed(parent_dir):
+    # Return format "2016332_2017308" (julian days)
+    full_names = glob.glob(parent_dir+"/intf_all/*");
     intf_computed = [];
     for item in full_names:
-        intf_computed.append(item[9:]);
+        intf_computed.append(item.split('/')[-1]);
     return intf_computed;
+
+
+def get_common_intfs(desired_swaths):
+    # After each swath has made intfs, which interferograms do we have in all desired swaths?
+    # Returns in format '2019082_2019106'
+    print("Checking the progress of common intfs after intf formation. ")
+    intfs_array, all_intfs = [], [];
+    for item in desired_swaths:
+        new_intfs = glob_intf_computed('F'+item);
+        intfs_array.append(new_intfs);
+        print("------- F"+item+" ------- %d intfs" % len(new_intfs))
+        all_intfs = list(set(new_intfs+all_intfs))  # growing list of total interferograms from all swaths
+    print("Total unique interferograms: %d " % len(all_intfs));
+    common_intfs = [];
+    for item in all_intfs:
+        if item in intfs_array[0]:
+            if len(intfs_array) > 1 and item in intfs_array[1]:
+                if len(intfs_array) > 2 and item in intfs_array[2]:
+                    common_intfs.append(item);
+    print("Total common interferograms: %d " % len(common_intfs))
+    return common_intfs;
 
 
 def compare_frames_with_safes(config_params):
@@ -281,46 +307,54 @@ def write_super_master_batch_config(masterid):
     return;
 
 
-def set_up_merge_unwrap():
+def set_up_merge_unwrap(desired_swaths):
+    print("Setting up merged unwrapping for swaths:");
+    print(desired_swaths);
     subprocess.call(["mkdir", "-p", "merged"], shell=False);
-    subprocess.call(["cp", "topo/dem.grd", "merged"], shell=False);  # need to actually copy, not just soft link.
+    subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", "merged"], shell=False);  # need copy, not soft link.
     subprocess.call(["cp", "batch.config", "merged"], shell=False);
-    return;
+    intf_all = get_common_intfs(desired_swaths);
+    check_intf_all_sanity(desired_swaths, intf_all, 'phase.grd');  # defensive programming
+    check_intf_all_sanity(desired_swaths, intf_all, 'corr.grd');  # defensive programming
+    check_intf_all_sanity(desired_swaths, intf_all, 'mask.grd');  # defensive programming
+    return intf_all;
 
 
-def write_merge_batch_input(intf_all, master_image):
-    # Useful for the merge swaths step. 
-    # The master of the first line should be the super master. 
-    # In the future, would be good to defensively check whether each directory contains phasefilt, mask, and corr. 
-    ofile = open("merged/inputfile.txt", "w");
-
+def write_merge_batch_input(intf_all, master_image, desired_swaths=("1", "2", "3")):
+    # Necessary for merge swaths step.
+    # The master of the first line should be the super master.
+    print("\nWriting file 'merged/inputfile.txt'");
+    master_image_in_format = ymd2yj(master_image[3:11])  # putting master image in the format taken by gmtsar dirs
     # Find the super master and stick it to the front.
     for item in intf_all:
-        first_part = item.split(":")[0];
-        if master_image.split()[0][0:-3] in first_part:
+        if master_image_in_format == item[0:7]:
             print("Found master image in intf %s" % item);
             print("Moving this image to the front");
             intf_all.insert(0, intf_all.pop(intf_all.index(item)));
             break;
 
+    ofile = open("merged/inputfile.txt", "w");
     for item in intf_all:
-        first_part = item.split(":")[0];
-        second_part = item.split(":")[1];
-        jd1 = ymd2yj(item[3:11]);  # a string
-        jd2 = ymd2yj(item[22:30]);  # a string
-        ofile.write("../F1/intf_all/%s_%s/:" % (jd1, jd2));
-        ofile.write(first_part + ".PRM:" + second_part + ".PRM,");
-        ofile.write("../F2/intf_all/%s_%s/:" % (jd1, jd2));
-        ofile.write(first_part.replace("_F1", "_F2") + ".PRM:" + second_part.replace("_F1", "_F2") + ".PRM,");
-        ofile.write("../F3/intf_all/%s_%s/:" % (jd1, jd2));
-        ofile.write(first_part.replace("_F1", "_F3") + ".PRM:" + second_part.replace("_F1", "_F3") + ".PRM\n");
+        first_part = yj_to_prm_name(item.split('_')[0], '1');  # first date into PRM format, swath 1
+        second_part = yj_to_prm_name(item.split('_')[1], '1');  # second date into PRM format, swath 1
+        if "1" in desired_swaths:
+            ofile.write("../F1/intf_all/%s/:" % item);
+            ofile.write(first_part + ".PRM:" + second_part + ".PRM,");
+        if "2" in desired_swaths:
+            ofile.write("../F2/intf_all/%s/:" % item);
+            ofile.write(first_part.replace("_F1", "_F2") + ".PRM:" + second_part.replace("_F1", "_F2") + ".PRM,");
+        if "3" in desired_swaths:
+            ofile.write("../F3/intf_all/%s/:" % item);
+            ofile.write(first_part.replace("_F1", "_F3") + ".PRM:" + second_part.replace("_F1", "_F3") + ".PRM\n");
     ofile.close();
+    print("Done writing 'merged/inputfile.txt'");
     return;
 
 
 def write_merge_unwrap(outfile):
     print("Writing unwrap instructions in file %s " % outfile)
     ofile = open(outfile, 'w');
+    ofile.write('#!/bin/bash\n');
     ofile.write("cd merged\n");
     ofile.write("pwd\n");
     ofile.write("ls\n");
@@ -344,25 +378,6 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     for i, item in enumerate(stem1_ordered):
         outfile.write(
             'echo "' + stem1_ordered[i] + ":" + stem2_ordered[i] + '" >> intf' + str(np.mod(i, numproc)) + '.in\n');
-    outfile.write("\n# Unwrap the interferograms.\n\n")
-    outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} " + config_file + "'\n\n\n");
-    outfile.close();
-
-    return;
-
-
-def write_select_unwrapping(numproc, swath, sh_file, config_file):
-    intfs = ["S1_20190411_ALL_F" + swath + ":S1_20190423_ALL_F" + swath,
-             "S1_20190330_ALL_F" + swath + ":S1_20190411_ALL_F" + swath,
-             "S1_20190330_ALL_F" + swath + ":S1_20190423_ALL_F" + swath];
-
-    outfile = open(sh_file, 'w');
-    outfile.write("#!/bin/bash\n");
-    outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
-    outfile.write("cd F" + swath + "\n");
-    outfile.write("rm intf?.in\n");
-    for i, item in enumerate(intfs):
-        outfile.write('echo "' + intfs[i] + '" >> intf' + str(np.mod(i, numproc)) + '.in\n');
     outfile.write("\n# Unwrap the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} " + config_file + "'\n\n\n");
     outfile.close();
@@ -398,14 +413,6 @@ def read_corr_results(corr_file):
     stem1 = [x.split('.')[0] for x in stem1];  # format: S1_20181025_ALL_F1
     stem2 = [x.split('.')[0] for x in stem2];  # format: S1_20181025_ALL_F1
     return [stem1, stem2, mean_corr];
-
-
-def remove_nans_array(myarray):
-    numarray = [];
-    for i in range(len(myarray)):
-        if ~np.isnan(myarray[i]):
-            numarray.append(myarray[i][0]);
-    return numarray;
 
 
 def get_small_baseline_subsets(baseline_tuple_list, tbaseline_max, xbaseline_max):
@@ -532,18 +539,6 @@ def make_network_plot(intf_pairs, baseline_tuple_list, plotname):
 # Reporting and defensive programming
 #
 
-def compare_intended_list_with_directory(intended_array, actual_array, errormsg):
-    # This takes two lists of dates formatted as strings, such as ['2015321_2015345']
-    # It prints out any members that exist in the intended_array but not the actual_array
-    for item in intended_array:
-        if item in actual_array:
-            continue;
-        else:
-            print("ERROR! %s expected, but not found in actual array." % item);
-            print(errormsg);
-    return;
-
-
 def check_raw_orig_sanity(swath):
     number_of_tiffs = int(check_output('ls F' + swath + '/raw_orig/*.tiff | wc -l', shell=True));
     number_of_safes = int(check_output('ls F' + swath + '/raw_orig/*.safe | wc -l', shell=True));
@@ -560,56 +555,16 @@ def check_raw_orig_sanity(swath):
     return;
 
 
-def check_intf_all_sanity():
-    # Figure out whether all intended interferograms were made and unwrapped. 
-    # This makes sense for a single swath, not a merged situation. 
-
-    print("Checking the progress of intf and unwrap steps. ")
-
-    # The hardest part: Fix the differences between datetime formats in intf_record.in
-    intended_intfs = np.genfromtxt('intf_record.in', dtype='str');
-    intended_intfs = [i[3:11] + '_' + i[22:30] for i in
-                      intended_intfs];  # these come in formatted S1A20161206_ALL_F1:S1A20161230_ALL_F1
-    date1 = [dt.datetime.strptime(i[0:8], "%Y%m%d") - dt.timedelta(days=1) for i in intended_intfs];
-    date2 = [dt.datetime.strptime(i[9:17], "%Y%m%d") - dt.timedelta(days=1) for i in intended_intfs];
-    date1 = [dt.datetime.strftime(i, "%Y%j") for i in date1];
-    date2 = [dt.datetime.strftime(i, "%Y%j") for i in date2];
-    intended_intfs = [];
-    for i in range(len(date1)):
-        intended_intfs.append(date1[i] + '_' + date2[i]);
-    num_intended = len(set(intended_intfs));
-    print("  intended interferograms: %d from intf_record.in" % len(intended_intfs));
-    print("  unique intended interferograms: %d " % num_intended);
-
-    # Check for duplicated items in intf_record.in (may exist);
-    duplicates = [item for item, count in collections.Counter(intended_intfs).items() if count > 1];
-    print("  duplicated elements in intf_record.in: ");
-    print(duplicates);
-
-    # Collect the actual intf_all directories
-    actual_intfs = str(subprocess.check_output('ls -d intf_all/201*_201* ', shell=True));
-    actual_intfs = actual_intfs.split('\n');
-    actual_intfs = [value for value in actual_intfs if value != ''];
-    actual_intfs = [i.split('/')[-1] for i in actual_intfs];
-    print("  actual interferograms: %d from intf_all directory " % len(actual_intfs));
-
-    # Collect the unwrap.grd files
-    actual_unwraps = str(subprocess.check_output('ls intf_all/unwrap.grd/*_unwrap.grd', shell=True));
-    actual_unwraps = actual_unwraps.split('\n');
-    actual_unwraps = [value for value in actual_unwraps if value != ''];
-    actual_unwraps = [i.split('/')[-1] for i in actual_unwraps];
-    actual_unwraps = [i.split('_unwrap.grd')[0] for i in actual_unwraps];
-    print('  unwrapped interferograms: %d from intf_all/unwrap.grd directory' % len(actual_unwraps))
-
-    if num_intended == len(actual_intfs):
-        print("Congratulations! All of your interferograms have been made. ");
-    else:
-        compare_intended_list_with_directory(intended_intfs, actual_intfs, 'is not made.');
-    if num_intended == len(actual_unwraps):
-        print("Congratulations! All of your interferograms have been unwrapped. ");
-    else:
-        compare_intended_list_with_directory(intended_intfs, actual_unwraps, 'is not unwrapped.');
-
+def check_intf_all_sanity(intended_swaths, common_intfs, filename='phase.grd'):
+    # Figure out whether all intended interferograms were made.
+    # filename is like 'phase.grd'
+    # common_intfs is in convenient format like '2019082_2019106'
+    # Check that all common interferograms have a given file.
+    for swath in intended_swaths:
+        for igram in common_intfs:
+            if not os.path.isfile("F"+swath+'/intf_all/'+igram+'/'+filename):
+                raise DirectoryError('error: file phase.grd not found in F%s/%s' % (swath, igram));
+    print("Status: %d of %s have been found in all intended swaths. " % (len(common_intfs), filename));
     return;
 
 #
