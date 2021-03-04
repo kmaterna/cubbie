@@ -61,8 +61,6 @@ def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
         print(filepathslist[i])
         # Establish timing and filepath information
         filepaths.append(filepathslist[i]);
-        # datestr = filepathslist[i].split('/')[-1][0:8];
-        # datestr = filepathslist[i].split('/')[-1]
         datestr = re.findall(r"\d\d\d\d\d\d\d\d", filepathslist[i])[0];
         ts_dates.append(datetime.strptime(datestr, "%Y%m%d"));
         # Read in the data, either netcdf3 or netcdf4

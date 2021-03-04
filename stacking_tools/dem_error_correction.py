@@ -9,11 +9,13 @@ import numpy as np
 
 
 def driver(ts_vector, datestrs, baseline_tuple):
-    # A function to implement Fattahi and Amelung's 2013 paper
-    # Right now, this assumes a linear velocity, although more complicated time histories can be implemented.
-    # baselines tuple: baseline (m), dt, str. example (150.2, dt, 2015230)... first baseline 0m by definition.
-    # datestrs format: '2015134' (str, used for shape and consistency with data vector)
-    # ts_vector: usually mm, but we convert to meters for consistency with baselines
+    """
+    A function to implement Fattahi and Amelung's 2013 paper
+    Right now, this assumes a linear velocity, although more complicated time histories can be implemented.
+    baselines tuple: baseline (m), dt, str. example (150.2, dt, 2015230)... first baseline 0m by definition.
+    datestrs format: '2015134' (str, used for shape and consistency with data vector)
+    ts_vector: usually mm, but we convert to meters for consistency with baselines
+    """
 
     if np.sum(np.isnan(ts_vector)) == len(ts_vector):
         return ts_vector, np.nan;

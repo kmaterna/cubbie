@@ -41,7 +41,7 @@
 from intf_generating import sentinel_main_functions
 
 if __name__ == "__main__":
-    config_params = sentinel_main_functions.read_config();
+    config_params = sentinel_main_functions.read_config_argument_parsing();
 
     # Step -1: make frames
     sentinel_main_functions.compile_frame_from_bursts(config_params);

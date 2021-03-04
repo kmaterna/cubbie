@@ -18,8 +18,8 @@ def drive_coseismic_stack(config_params, intf_files):
 
 
 def get_avg_coseismic(intf_tuple, rowref, colref, wavelength):
-    # I could send this into the iterator_func in NSBAS if I wanted to.
-    # Negative sign matches the NSBAS code
+    """I could send this into the iterator_func in NSBAS if I wanted to.
+    Negative sign matches the NSBAS code """
     disp = np.zeros(np.shape(intf_tuple.zvalues[0, :, :]));
     for i in range(len(intf_tuple.yvalues)):
         for j in range(len(intf_tuple.xvalues)):
@@ -29,7 +29,7 @@ def get_avg_coseismic(intf_tuple, rowref, colref, wavelength):
 
 
 def get_coseismic_params(config_params):
-    # Unpack the parameter object into a new parameter dictionary
+    """Unpack the parameter object into a new parameter dictionary"""
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
     if config_params.file_format == 'isce':  # Working with the file formats

@@ -29,7 +29,7 @@ def stack_corr(mytuple, cutoff):
 
 
 def get_signal_spread(data_vector, cutoff):
-    # For a pixel, what is the percentage of good images? 
+    """For a pixel, what is the percentage of good images? """
     if np.isnan(cutoff):
         # for GMTSAR, we usually use this criterion
         # (cutoff has been imposed during unwrapping, and the bad pixels are already nans)
@@ -40,7 +40,7 @@ def get_signal_spread(data_vector, cutoff):
 
 
 def dummy_signal_spread(intfs, output_dir, output_filename):
-    # Make a perfect signal spread for passing to other applications
+    """ Make a perfect signal spread for passing to other applications """
     print("Making a dummy signal spread that matches interferograms' dimensions (perfect 100).");
     output_filename = output_dir + "/" + output_filename;
     [xdata, ydata, zdata] = netcdf_read_write.read_netcdf4(intfs[0]);
@@ -52,7 +52,7 @@ def dummy_signal_spread(intfs, output_dir, output_filename):
 
 
 def signal_spread_to_mask(ss_file, cutoff, mask_file):
-    # Given a signal spread file, make a nice mask that we can use for plotting.
+    """ Given a signal spread file, make a nice mask that we can use for plotting."""
     [xdata, ydata, zdata] = netcdf_read_write.read_netcdf3(ss_file);
     mask_response = np.zeros(np.shape(zdata));
     for i in range(len(ydata)):

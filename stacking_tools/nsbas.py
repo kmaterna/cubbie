@@ -11,10 +11,10 @@ import dem_error_correction
 
 # ------------ UTILITY FUNCTIONS ------------ #
 def get_TS_dates(date_julstrings):
-    # Get me the x axis associated with a certain set of interferograms
-    # Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
-    # Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
-    #   a dt object, and the number of days since first image.
+    """" Get the x axis associated with a certain set of interferograms
+    Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
+    Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
+    a dt object, and the number of days since first image. """
     dates_total = [];
     for i in range(len(date_julstrings)):
         dates_total.append(date_julstrings[i][0:7])
@@ -27,11 +27,7 @@ def get_TS_dates(date_julstrings):
 
 
 def initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict):
-    if np.shape(intf_tuple.zvalues[0]) != np.shape(signal_spread_tuple):
-        print("ERROR: signal spread does not match input data. Stopping immediately. ");
-        print("Shape of signal spread:", np.shape(signal_spread_tuple));
-        print("Shape of data array:", np.shape(intf_tuple.zvalues[0]));
-        sys.exit(1);
+    assert(np.shape(intf_tuple.zvalues[0]) == np.shape(signal_spread_tuple)), ValueError("SS and intf diff shapes");
     if coh_tuple is not None and np.shape(intf_tuple.zvalues[0]) != np.shape(coh_tuple.zvalues[0]):
         print("ERROR: coherence data does not match input data. Stopping immediately. ");
         print("Shape of coherence data:", np.shape(coh_tuple.zvalues[0]));
@@ -41,7 +37,8 @@ def initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, pa
         print("Error! You cannot have weighted least squares and dem_error at the same time.");
         print("Please un-set one of these options. ");
         sys.exit(1);
-    stacking_utilities.check_clean_computation(param_dict["rowref"], param_dict["colref"], intf_tuple, signal_spread_tuple);
+    stacking_utilities.check_clean_computation(param_dict["rowref"], param_dict["colref"], intf_tuple,
+                                               signal_spread_tuple);
     return;
 
 
@@ -56,7 +53,7 @@ def compute_velocity_math(TS, x_axis_days):
 # make an NSBAS matrix describing each image that's a real number (not nan).
 
 def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple):
-    # This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities
+    """This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities"""
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
     retval_main = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
     retval_metrics = [[{} for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
@@ -72,7 +69,7 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
 
 
 def Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple):
-    # This is how you access Time Series solutions from NSBAS
+    """ This is how you access Time Series solutions from NSBAS"""
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
     datestrs, x_dts, _ = get_TS_dates(intf_tuple.date_pairs_julian);
     # Establishing the return array
@@ -90,8 +87,8 @@ def Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tup
 
 
 def Velocities_from_TS(ts_tuple):
-    # The easy function to take a timeseries saved on disk and construct velocities
-    # This one doesn't have a memory leak.
+    """The easy function to take a timeseries saved on disk and construct velocities
+    This one doesn't have a memory leak. """
     retval_main = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues)]);
     retval_metrics = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues)]);
     x_axis_days = [(i - ts_tuple.ts_dates[0]).days for i in ts_tuple.ts_dates];
@@ -104,7 +101,7 @@ def Velocities_from_TS(ts_tuple):
 
 
 def iterator_func(intf_tuple, func, retval, retval_metrics, start_index=0, end_index=None):
-    # This iterator performs a for loop. It assumes the return value can be stored in an array of ixj
+    """ This iterator performs a for loop. It assumes the return value can be stored in an array of ixj"""
     print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)));
     print("Started at: ");
     print(dt.datetime.now());
@@ -154,7 +151,7 @@ def compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tupl
 
 
 def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
-    # What is the velocity of bunch of dates and displacements? ts_tuple in mm; velocity in mm/yr
+    """ What is the velocity of bunch of dates and displacements? ts_tuple in mm; velocity in mm/yr """
     ts_values = ts_tuple.zvalues[:, i, j];
     if sum(np.isnan(ts_values)) > 30:   # under certain degenerate conditions, nanflag=1
         return np.nan, 1, {};
@@ -164,8 +161,8 @@ def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
 
 
 def compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple, datestrs):
-    # For a given pixel, what is the SBAS time series (in mm)?
-    # Apply various corrections
+    """ For a given pixel, what is the SBAS time series (in mm)?
+    Apply various corrections """
     empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
     empty_vector[:] = np.nan;
     output_metrics_dict = {};
@@ -197,7 +194,7 @@ def compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple
 
 # Functions at or near the lowest level
 def pixel_extractor(i, j, param_dict, intf_tuple, signal_spread_tuple, coh_tuple):
-    # Extract a pixel from several 2D arrays, referencing it to the reference pixel
+    """ Extract a pixel from several 2D arrays, referencing it to the reference pixel """
     ss = signal_spread_tuple[i, j];
     pixel_value = intf_tuple.zvalues[:, i, j];
     reference_pixel_value = intf_tuple.zvalues[:, param_dict["rowref"], param_dict["colref"]];
@@ -210,13 +207,15 @@ def pixel_extractor(i, j, param_dict, intf_tuple, signal_spread_tuple, coh_tuple
 
 
 def do_nsbas_pixel(pixel_value, date_pairs, wavelength, datestrs, coh_value=None):
-    # pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram
-    # date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image,
-    #   format 2015157_2018177 (real julian day)
-    # datestrs: a list of the dates we want to invert on, in format 2015157
-    # This solves Gm = d for the movement of the pixel with smoothing.
-    # If coh_value is an array, we do weighted least squares
-    # This function expects the values in the preferred reference system (i.e. reference pixel already implemented).
+    """"
+    pixel_value: if we have 62 intf, this is a (62,) array of the phase values in each interferogram
+    date_pairs: if we have 62 intf, this is a (62) list with the image pairs used in each image,
+      format 2015157_2018177 (real julian day)
+    datestrs: a list of the dates we want to invert on, in format 2015157
+    This solves Gm = d for the movement of the pixel with smoothing.
+    If coh_value is an array, we do weighted least squares
+    This function expects the values in the preferred reference system (i.e. reference pixel already implemented).
+    """
     d = np.array([]);
     diagonals = [];
     date_pairs_used = [];
@@ -230,12 +229,18 @@ def do_nsbas_pixel(pixel_value, date_pairs, wavelength, datestrs, coh_value=None
                 diagonals.append(np.power(coh_value[i], 2));  # using coherence squared as the weighting.
             else:
                 diagonals.append(1);
+        # else:                      # testing code
+        #     print(date_pairs[i]);  # testing code
     model_num = len(datestrs) - 1;
     # The weighting vector
     W = np.diag(diagonals);
 
     # More defensive programming for degenerate cases like disconnected networks
+    # Answer for March 3: broken date in F3, 20180317. Still asking for TS at that date. Not sure how to fix.
+    # cc_num1 = stacking_utilities.connected_components_search(date_pairs, datestrs); # testing code
+    # print(cc_num1);  # testing code
     cc_num = stacking_utilities.connected_components_search(date_pairs_used, datestrs);
+    # print(cc_num)  # testing code
     if cc_num != 1:
         print("SINGULAR MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
         empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
@@ -277,9 +282,9 @@ def do_nsbas_pixel(pixel_value, date_pairs, wavelength, datestrs, coh_value=None
 
 
 def temporal_smoothing_ts(LOS_phase, smoothing):
-    # Implementing temporal smoothing after uncorrected timeseries formation.
-    # I'm doing this as an overconstrained linear inverse problem
-    # This is similar to a Gaussian smoothing.
+    """Implementing temporal smoothing after uncorrected timeseries formation.
+    I'm doing this as an overconstrained linear inverse problem
+    This is similar to a Gaussian smoothing."""
     n_TS = len(LOS_phase);
     G_top = np.eye(n_TS);  # Constructing the G matrix
     alpha_array = np.full((n_TS - 1,), smoothing)
@@ -302,7 +307,7 @@ def temporal_smoothing_ts(LOS_phase, smoothing):
 # ------------ OUTPUTS ------------ #
 
 def nsbas_ts_points_outputs(dts, m_cumulative, row, col, name, lon, lat, outdir):
-    # This outdir is expected to be something like "stacking/nsbas/ts".
+    """ This outdir is expected to be something like "stacking/nsbas/ts". """
 
     mean_disp = np.nanmean(m_cumulative);
     plotting_ts = [i - mean_disp for i in m_cumulative];

@@ -1,13 +1,12 @@
 # Stacking Utilities
 
-import os, sys, glob
+import os, sys, glob, re
 import datetime as dt
 import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-import re
 from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write
 import readmytupledata
@@ -16,11 +15,13 @@ from Tectonic_Utils.geodesy import haversine
 
 
 def get_list_of_intf_all(config_params, returnval='all'):
-    # This is mechanical: just takes the list of interferograms in intf_all. 
-    # It is designed to work with both ISCE and GMTSAR files.
-    # The more advanced selection takes place in make_selection_of_intfs.
-    # By Default, returns a list of tuples like : (dt1, dt2, intf_file, corr_file).
-    # If returnval is set, it can return a subset like a list of intf_filenames.
+    """
+    This is mechanical: just takes the list of interferograms in intf_all.
+    It is designed to work with both ISCE and GMTSAR files.
+    The more advanced selection takes place in make_selection_of_intfs.
+    By Default, returns a list of tuples like : (dt1, dt2, intf_file, corr_file).
+    If returnval is set, it can return a subset like a list of intf_filenames.
+    """
     if config_params.SAT == "S1":
         total_intf_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.intf_filename);
         total_corr_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.corr_filename);
@@ -78,10 +79,12 @@ def get_xdates_from_intf_tuple_dates(date_pairs_dt):
 
 # Reference Pixel Math
 def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
-    # Get the index of the reference pixel (generally using merged-subswath files)
-    # If you don't have the reference pixel in the config file, 
-    # the program will stop execution so you can write it there.
-    # intf_files are a list of tuples of (dt, dt, filename, filename)
+    """
+    Get the index of the reference pixel (generally using merged-subswath files)
+    If you don't have the reference pixel in the config file,
+    the program will stop execution so you can write it there.
+    intf_files are a list of tuples of (dt, dt, filename, filename)
+    """
     print("Identifying reference pixel:");
     if ref_idx == "" and ref_loc == "":
         get_100p_pixels_manually_choose(intf_files);
@@ -105,10 +108,12 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
 
 
 def get_100p_pixels_manually_choose(filenameslist):
-    # This iterative function helps you manually choose a reference pixel.
-    # You might have to run through this function a number of times
-    # To select your boxes and your eventual reference pixel.
-    # I pick one in a stable area, outside of the deformation, ideally in a desert.
+    """
+    This iterative function helps you manually choose a reference pixel.
+    You might have to run through this function a number of times
+    To select your boxes and your eventual reference pixel.
+    I pick one in a stable area, outside of the deformation, ideally in a desert.
+    """
 
     print("Finding the pixels that are 100 percent coherent");
     # Finding pixels that are completely non-nan
@@ -156,11 +161,13 @@ def get_100p_pixels_manually_choose(filenameslist):
 
 
 def uavsar_from_lonlat_get_rowcol(config_params):
-    # An alternative way of choosing a reference pixel with UAVSAR files
-    # Given a ref loc, get the geocoded grids and find the nearest point.
-    # Return its row and column.
-    # Step 1: Geocode properly based on a sample interferogram grid (done)
-    # Step 2: extract nearest pixel (code in Brawley repo)
+    """
+    An alternative way of choosing a reference pixel with UAVSAR files
+    Given a ref loc, get the geocoded grids and find the nearest point.
+    Return its row and column.
+    Step 1: Geocode properly based on a sample interferogram grid (done)
+    Step 2: extract nearest pixel (code in Brawley repo)
+    """
 
     # isce_geocode_tools.geocode_UAVSAR_stack(config_params, 'geocoded');
 
@@ -176,8 +183,10 @@ def uavsar_from_lonlat_get_rowcol(config_params):
 
 
 def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
-    # A very general function
-    # Take a 2D raster of lons and lats and find the grid location closest to the target location
+    """
+    A very general function
+    Take a 2D raster of lons and lats and find the grid location closest to the target location
+    """
     dist = np.zeros(np.shape(raster_lon));
     lon_shape = np.shape(raster_lon);
     for i in range(lon_shape[0]):
@@ -210,7 +219,7 @@ def get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, example_grd):
 
 
 def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
-    # Find the nearest pixel to a reference point in a geocoded grid
+    """ Find the nearest pixel to a reference point in a geocoded grid"""
     print("  Finding coordinate %.4f, %.4f in geocoded interferograms %s" % (ref_lon, ref_lat, ifile));
     [xdata, ydata, _] = netcdf_read_write.read_netcdf4(ifile);
     if xdata[0] > 180:   # If numbers are in the range above 180, turn them into -180 to 180
@@ -260,7 +269,7 @@ def exclude_intfs_manually(total_intf_tuple, skip_file):
 
 
 def include_only_coseismic_intfs(total_intf_tuple, coseismic):
-    # Implements a filter for spanning a coseismic interval, if you include one. 
+    """ Implements a filter for spanning a coseismic interval, if you include one. """
     select_intf_tuple = [];
     if coseismic == "":
         return total_intf_tuple;
@@ -275,8 +284,8 @@ def include_only_coseismic_intfs(total_intf_tuple, coseismic):
 
 
 def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
-    # Here, we look for each interferogram that falls totally within the time range 
-    # given in the config file.
+    """Here, we look for each interferogram that falls totally within the time range
+    given in the config file."""
     if start_time == "" and end_time == "":
         return total_intf_tuple;
     print("Including only interferograms in time range %s to %s." % (dt.datetime.strftime(start_time, "%Y-%m-%d"),
@@ -292,8 +301,8 @@ def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
 
 
 def include_timeinterval_intfs(total_intf_tuple, intf_timespan):
-    # Only include interferograms of a certain time interval (such as shorter than one year, or longer than one year);
-    # intf_timespan is a string with the format '300+' for longer than 300 days etc.
+    """ Only include interferograms of a certain time interval (such as shorter than one year, or longer than one year);
+    intf_timespan is a string with the format '300+' for longer than 300 days etc. """
     if intf_timespan == "":
         return total_intf_tuple;
     select_intf_tuple = [];
@@ -326,12 +335,10 @@ def write_intf_record(intf_tuple_list, record_file):
 
 
 def make_selection_of_intfs(config_params):
-    # ------------------------------ # 
-    # HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
-    # WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT. 
-    # THIS DEPENDS ON YOUR CONFIG SETTINGS
-    # ------------------------------ # 
-    # The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
+    """
+    HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
+    WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT, ETC IN CONFIG SETTINGS.
+    The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)"""
     intf_tuples = get_list_of_intf_all(config_params);
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
@@ -367,20 +374,15 @@ def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
 
 
 def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
-    # This function checks the number of interferograms present in the reference pixel.
-    # It can possibly do other defensive checks as well.
+    """This function checks the quality of the reference pixel."""
     ref_pixel_values = mytuple.zvalues[:, rowref, colref];
     num_nans = np.sum(np.isnan(ref_pixel_values));
     num_intfs = len(ref_pixel_values);
-    if num_nans / num_intfs > 0.5:
-        print("Error! Data Cube has more than 50% NaNs for your reference pixel. What do you want to do?  ");
-        sys.exit(0);
+    assert(num_nans / num_intfs < 0.5), ValueError("DataCube refpixel has >50% nans.")
     reference_ss = signal_spread_data[rowref, colref];
-    print("Intf Stack has %f percent non-nan interferograms for ref pixel %d, %d" % (100*num_nans/num_intfs, rowref, colref))
+    print("Intf Stack has %f percent nan igrams for ref pixel %d, %d" % (100*num_nans/num_intfs, rowref, colref))
     print("Signal Spread has %f percent coherent igrams for ref pixel %d, %d" % (reference_ss, rowref, colref));
-    if signal_spread_data[rowref, colref] < 50:
-        print("Error! Reference Pixel has less than 50% coherent interferograms. What do you want to do? ");
-        sys.exit(0);
+    assert(signal_spread_data[rowref, colref] > 50), ValueError("RefPix has <50% coherent interferograms.")
     return;
 
 
@@ -403,15 +405,17 @@ def find_connected_dates(date_pairs, sample_date):
 
 
 def connected_components_search(date_pairs, datestrs):
-    # Are we inverting a complete network?
-    # This function will catch both 'disconnected networks' and 'bad day' cases.
-    # We want only one connected component with len==len(datestrs).
-    # Otherwise the network should fail.
-    # 1. initialize the queue with the first date
-    # 2. find anything connected to that date, add to the queue.
-    # 3. When all of the dates connected to the first date have been added to queue, pop the first date from queue
-    # 4. Repeat until the queue is gone.
-    # 5. See if all dates have been added to the component.
+    """
+    Are we inverting a complete network?
+    This function will catch both 'disconnected networks' and 'bad day' cases.
+    We want only one connected component with len==len(datestrs).
+    Otherwise the network should fail.
+    1. initialize the queue with the first date
+    2. find anything connected to that date, add to the queue.
+    3. When all of the dates connected to the first date have been added to queue, pop the first date from queue
+    4. Repeat until the queue is gone.
+    5. See if all dates have been added to the component.
+    """
 
     # Initializing first time through
     label = np.zeros(np.shape(datestrs));
@@ -435,7 +439,7 @@ def connected_components_search(date_pairs, datestrs):
 
 # Functions to get TS points in row/col coordinates
 def drive_cache_ts_points(ts_points_file, intf_file_example, geocoded_flag):
-    # If you want to re-compute things, you need to delete the cache. 
+    """ If you want to re-compute things, you need to delete the cache. """
     if os.path.isfile(ts_points_file + ".cache"):
         lons, lats, names, rows, cols = read_ts_points_file(ts_points_file + ".cache");
     elif os.path.isfile(ts_points_file):  # if there's no cache, we will make one.
@@ -451,7 +455,7 @@ def drive_cache_ts_points(ts_points_file, intf_file_example, geocoded_flag):
 
 
 def match_ts_points_row_col(lons, lats, names, rows, cols, example_grd, geocoded_flag):
-    # Find each row and col that hasn't been found before, either in geocoded or radarcoords. 
+    """Find each row and col that hasn't been found before, either in geocoded or radarcoords. """
     trans_dat = "merged/trans.dat";
     for i in range(len(lons)):
         if rows[i] == '':
@@ -465,9 +469,11 @@ def match_ts_points_row_col(lons, lats, names, rows, cols, example_grd, geocoded
 
 
 def read_ts_points_file(ts_points_file):
-    # Here we can use several formats simultaneously. Point name is required. 
-    # Format 1:  -117.76 35.88 313 654 coso1
-    # Format 2:  -117.76 35.90 coso2
+    """
+    Here we can use several formats simultaneously. Point name is required.
+    Format 1:  -117.76 35.88 313 654 coso1
+    Format 2:  -117.76 35.90 coso2
+    """
     print("Reading file %s" % ts_points_file);
     lons, lats, names, rows, cols = [], [], [], [], [];
     ifile = open(ts_points_file, 'r');
@@ -479,7 +485,7 @@ def read_ts_points_file(ts_points_file):
             names.append(temp[2]);
             rows.append('');
             cols.append('');
-        if len(temp) == 5:  # we have provided the lat/lon/row/col/name
+        elif len(temp) == 5:  # we have provided the lat/lon/row/col/name
             if np.isnan(float(temp[2])):  # if the cache has nan for those pixels, we skip. 
                 continue;
             else:
@@ -488,7 +494,11 @@ def read_ts_points_file(ts_points_file):
                 rows.append(int(temp[2]));
                 cols.append(int(temp[3]));
                 names.append(temp[4]);
+        else:
+            print("Format of input ts_points file not recognized. ");
+            sys.exit(0);
     print("  Computing time series at %d geographic points " % (len(lons)));
+    ifile.close();
     return lons, lats, names, rows, cols;
 
 
@@ -503,15 +513,15 @@ def write_ts_points_file(lons, lats, names, rows, cols, ts_points_file):
 
 
 def get_axarr_numbers(cols, idx):
-    # Given an incrementally counting idx number and a subplot dimension, where is our plot? 
-    # total_plots = rows * cols;
+    """Given an incrementally counting idx number and a subplot dimension, where is our plot?
+    total_plots = rows * cols; """
     col_num = np.mod(idx, cols);
     row_num = int(np.floor(idx / cols));
     return row_num, col_num;
 
 
 def plot_full_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, aspect=1):
-    # Make a nice time series plot. 
+    """ Make a nice time series plot. """
     tdata, xdata, ydata, TS_array = netcdf_read_write.read_3D_netcdf(TS_NC_file);
     num_rows_plots = 3;
     num_cols_plots = 4;
@@ -537,8 +547,7 @@ def plot_full_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, 
 
 
 def plot_incremental_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vmax=200, aspect=1):
-    # Make a nice time series plot. 
-    # With incremental displacement data. 
+    """Make a nice incremental displacement time series plot. """
     tdata, xdata, ydata, TS_array = netcdf_read_write.read_3D_netcdf(TS_NC_file);
     num_rows_plots = 3;
     num_cols_plots = 4;

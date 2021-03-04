@@ -17,12 +17,14 @@ def get_nearest_row_col(example_grd, ra, az):
 
 
 def get_ra_from_ll(trans_dat, example_grd, lon, lat):
-    # INPUTS: trans_dat: name of file
-    #         example_grd: name of file
-    #         lon: array or single value
-    #         lat: array or single value
-    # RETURNS: a list of ra/az that matches the dimensions of the input lists.
-    # If the range and azimuth are outside of the range of the file, will return nan.
+    """
+    INPUTS: trans_dat: name of file
+            example_grd: name of file
+            lon: array or single value
+            lat: array or single value
+    RETURNS: a list of ra/az that matches the dimensions of the input lists.
+    If the range and azimuth are outside of the range of the file, will return nan.
+    """
 
     print("converting ll to ra")
     ll_temp = "geo_temp.txt"

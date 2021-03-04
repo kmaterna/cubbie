@@ -1,5 +1,5 @@
 import collections
-import os, sys, shutil, argparse, configparser, glob
+import os, sys, argparse, configparser, glob
 import numpy as np
 from subprocess import call
 from intf_generating import sentinel_utilities, rose_baseline_plot
@@ -12,7 +12,7 @@ Params = collections.namedtuple('Params',
                                  'swath', 'polarization', 'atm_topo_detrend', 'desired_swaths',
                                  'frame1', 'frame2', 'numproc', 'threshold_snaphu']);
 
-def read_config():
+def read_config_argument_parsing():
     ################################################
     # Stage 0: Read and check config parameters
     #
@@ -22,18 +22,24 @@ def read_config():
                     'and runs desired interferograms.')
     parser.add_argument('config', type=str, help='supply name of config file to setup processing options. Required.')
     parser.add_argument('--debug', action='store_true', help='Print extra debugging messages (default: false)')
-    args = parser.parse_args()
+    args = parser.parse_args();
+    config_file = args.config;
+    config, config_params = read_config(config_file)
+    return config_params;
+
+
+def read_config(config_file):
 
     # read config file
     config = configparser.ConfigParser()
     config.optionxform = str  # make the config file case-sensitive
-    config.read(args.config)
+    config.read(config_file)
 
     # Setup gnu parallel multiprocessing tool
     numproc = config.getint('py-config', 'num_processors')
 
     # get options from config file
-    config_file_orig = args.config;
+    config_file_orig = config_file;
     SAT = config.get('py-config', 'satellite')
     wavelength = config.getfloat('py-config', 'wavelength')
     startstage = config.getint('py-config', 'startstage')
@@ -56,16 +62,7 @@ def read_config():
     frame_nearrange1 = config.get('py-config', 'frame_nearrange1')
     frame_nearrange2 = config.get('py-config', 'frame_nearrange2')
     threshold_snaphu = config.getfloat('csh-config', 'threshold_snaphu')
-
-    # print config options
-    if args.debug:
-        print('Running gmtsar_app.py:')
-        if args.mpi:
-            print('  Using MPI')
-        else:
-            print('  Not using MPI')
-        print('  config file:', args.config, 'contains the following options')
-        print(config.write(sys.stdout))
+    threshold_geocode = config.getfloat('csh-config', 'threshold_geocode')
 
     print("Running sentinel batch processing, starting with stage %d" % startstage);
 
@@ -94,6 +91,8 @@ def read_config():
     # Turn '1,2,3' into ['1', '2', '3']
     desired_swaths = desired_swaths_temp.split(',');
 
+    assert(threshold_geocode==0), ValueError("Threshold_geocode should be 0 to skip geocoding. ")
+
     # adding a timed log was getting annoying so I commented it out.
     # logtime = time.strftime("%Y_%m_%d-%H_%M_%S")
     # config_file = 'batch.run.' + logtime + '.cfg'
@@ -110,7 +109,7 @@ def read_config():
                            swath=swath, polarization=polarization, frame1=frame_nearrange1,
                            frame2=frame_nearrange2, numproc=numproc, threshold_snaphu=threshold_snaphu);
 
-    return config_params;
+    return config, config_params;
 
 
 # --------------- STEP -1: Making frames from bursts ------------ #
@@ -197,17 +196,7 @@ def manifest2raw_orig_eof(config_params):
     safe_file_list, dt_list = sentinel_utilities.get_SAFE_list_for_raw_orig(config_params);
 
     # When starting from preprocess, the system will often find a new super-master and re-align
-    # To make this possible, we start from empty raw and raw-orig directories to avoid conflict.
     swath = config_params.swath
-    print("Removing raw/ and raw_orig to proceed fresh. ");
-    try:
-        shutil.rmtree("F" + swath + "/raw_orig");
-    except OSError as e:
-        print("Error: %s - %s." % (e.filename, e.strerror));
-    try:
-        shutil.rmtree("F" + swath + "/raw");
-    except OSError as e:
-        print("Error: %s - %s." % (e.filename, e.strerror));
 
     # Unpack the .SAFE directories into raw_orig
     call(["mkdir", "-p", "F" + swath + "/raw_orig"], shell=False);
@@ -216,6 +205,7 @@ def manifest2raw_orig_eof(config_params):
     print("Copying tiff files into raw_orig...")
     # Copying these files is a lot of space, but it breaks if you only put the links to the files in the space.
     for onefile, onedt in zip(safe_file_list, dt_list):
+
         # Step 1: Get the names for tiff, xml, and eof files
         xmls, yyyymmdd = sentinel_utilities.get_all_xml_tiff_names(onefile + '/annotation', config_params.polarization,
                                                                    swath, filetype='xml');
@@ -249,16 +239,14 @@ def preprocess(config_params):
     if config_params.endstage < 1:  # don't need to pre-process if we're doing stage 0
         return;
 
-    # CHECK HERE: IF THE NUMBER OF SLCs IS EQUAL TO THE NUMBER OF SCENES, PLEASE STOP.
-    # WE WANT TO AVOID RE-DOING THE ENTIRE CALCULATION BY ACCIDENT.
+    # Check: Stop if the number of SLCs is equal to the number of images
     outdir = 'F'+config_params.swath + '/raw'  # the output of this process
     if os.path.isdir(outdir):
         slc_list = glob.glob(outdir+'/*.SLC');
-        number_of_images = sentinel_utilities.read_dataDotIn(outdir+'/data.in');
-        if len(number_of_images) == len(slc_list) and len(number_of_images) > 0:
-            print("You have %d images and %d SLC's.  Assuming you do not want to reprocess from stage 0. Exiting." %
-                  (len(number_of_images), len(slc_list)));
-            sys.exit(0);
+        datadotin = list(sentinel_utilities.np.genfromtxt(outdir+'/data.in', dtype='str'));
+        if len(datadotin) > 0:
+            assert(len(slc_list) < len(datadotin)), AssertionError("You have "+str(len(slc_list))+
+                                                                   " SLCs already; you want to keep them.");
 
     # Make data.in. Proper master not required.
     sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, config_params.master,
@@ -351,8 +339,8 @@ def topo2ra(config_params):
 # --------------- STEP 4: Make Interferograms ------------ #
 
 def get_total_intf_all(config_params):
-    # Make a selection of interferograms to form. 
-    # hard coding for consistency.
+    """Make a selection of interferograms to form.
+    Hard coding which swath for consistency between swaths."""
     baseline_tuple_list = sentinel_utilities.read_baseline_table('F1/raw/baseline_table.dat');
 
     # Retrieving interferogram pairs based on settings in config_files. 

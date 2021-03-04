@@ -64,8 +64,7 @@ def compute_new_pairs(baseline_tuple_list, crit_days, crit_baseline, num_years=1
     # Find candidate interferograms.
     year_list = sorted(set(times_dict));
 
-    for i in range(len(
-            year_list) - num_years):  # Looking for intfs that are close in baseline and time (in the next year)
+    for i in range(len(year_list) - num_years):  # Looking for intfs close in baseline and time (in the next year)
         this_year = year_list[i];
         next_year = year_list[i + num_years];
         for j in range(len(radius_dict[this_year])):  # for each year

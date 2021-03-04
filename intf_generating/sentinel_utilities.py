@@ -19,7 +19,7 @@ Note: intf_list has format like: 'S1A20150310_ALL_F1:S1A20150403_ALL_F1'
 
 
 def get_all_xml_tiff_names(directory, polarization, swath, filetype='xml'):
-    # Returns a matching list of xml or tiff filenames, and datestrs(yyyymmdd)
+    """Returns a matching list of xml or tiff filenames, and datestrs(yyyymmdd)"""
     pathname1 = directory + "/*-"+polarization+"-*-00" + swath + "." + filetype;
     pathname2 = directory + "/*-"+polarization+"-*-00" + str(int(swath) + 3) + "." + filetype;
     list_of_images_temp = glob.glob(pathname1) + glob.glob(pathname2);
@@ -31,8 +31,8 @@ def get_all_xml_tiff_names(directory, polarization, swath, filetype='xml'):
     return list_of_images, list_of_datestrs;
 
 def get_all_safes_in_dir(directory):
-    # A directory that contains a bunch of safe files. Give us the list of files and the datetimes they go with.
-    # Matching lengths
+    """A directory that contains a bunch of safe files.
+    Give us the list of files and the datetimes they go with (matching lengths). """
     dirlist = glob.glob(directory + '/*.SAFE');
     datelist = [];
     for item in dirlist:
@@ -46,7 +46,7 @@ def safe_to_date(filename):
     return dtobj;
 
 def get_safes_of_date(dirname, one_date):
-    # Return all safes that happened on a particular datetime
+    """Return all safes that happened on a particular datetime """
     dirlist, datelist = get_all_safes_in_dir(dirname);
     retval = [];
     for item, date in zip(dirlist, datelist):
@@ -56,8 +56,8 @@ def get_safes_of_date(dirname, one_date):
     return retval;
 
 def get_SAFE_list_for_raw_orig(config_params):
-    # Return the files we're going to put into raw_orig
-    # Location depends on whether we've made frames or not.
+    """Return the files we're going to put into raw_orig
+    Location depends on whether we've made frames or not."""
     if config_params.frame1 != '':
         file_list, dt_list = get_all_safes_in_dir(config_params.FRAMES_dir);
         # if we're assembling frames, we use the FRAMES directory.
@@ -245,11 +245,6 @@ def read_baseline_table(baselinefilename):
         baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i], stems[i]));
 
     return baseline_tuple_list;
-
-
-def read_dataDotIn(filename):
-    dataDotIn = np.genfromtxt(filename, dtype='str').tolist()
-    return dataDotIn;
 
 
 def read_intf_table(tablefilename):
@@ -451,8 +446,8 @@ def get_small_baseline_subsets(baseline_tuple_list, tbaseline_max, xbaseline_max
 
 
 def get_chain_subsets(baseline_tuple_list):
-    # goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs.
-    # future idea: implement a bypass option, where we can ignore some acquisitions
+    """goal: order tbaselines ascending order. Then just take adjacent stems as the intf pairs.
+    future idea: implement a bypass option, where we can ignore some acquisitions """
     print("CHAIN Pairs: Getting chain connections. ");
     intf_pairs = [];
     for i in range(len(baseline_tuple_list) - 1):
@@ -463,8 +458,8 @@ def get_chain_subsets(baseline_tuple_list):
 
 
 def filter_intf_start_end(intf_pairs, startdate, enddate):
-    # Take a list of interferograms and return the ones that fall within a given time window.
-    # Startdate and enddate are YYYYMMDD strings
+    """ Take a list of interferograms and return the ones that fall within a given time window.
+    Startdate, enddate : YYYYMMDD strings """
     if startdate == "" and enddate == "":
         return intf_pairs;
     startdate = dt.datetime.strptime(startdate, "%Y%m%d");
@@ -481,8 +476,8 @@ def filter_intf_start_end(intf_pairs, startdate, enddate):
 
 
 def make_network_plot(intf_pairs, baseline_tuple_list, plotname):
-    # intf_pairs is a list of strings, has two possible formats.
-    # baseline_tuple_list has format given at top.
+    """ intf_pairs is a list of strings, has two possible formats.
+    baseline_tuple_list has format given at top. """
     print("Printing network plot with %d intfs" % (len(intf_pairs)));
     if len(intf_pairs) == 0:
         print("Error! Cannot make network plot because there are no interferograms. ");
@@ -546,20 +541,17 @@ def check_raw_orig_sanity(swath):
     print('number of tiffs is %d ' % number_of_tiffs);
     print('number of safes is %d ' % number_of_safes);
     print('number of EOFs is %d ' % number_of_EOFs);
-    if number_of_tiffs != number_of_safes:
-        raise DirectoryError(
-            'error: Your raw_orig directory has the wrong number of tiff/safe files. You should stop!');
-    if number_of_tiffs != number_of_EOFs:
-        raise DirectoryError(
-            'error: Your raw_orig directory has the wrong number of tiff/EOF files. You should stop!');
+    assert(number_of_tiffs == number_of_safes), DirectoryError("Error: raw_orig has non-matching tiff/safe files.")
+    assert(number_of_tiffs == number_of_EOFs), DirectoryError("Error: raw_orig has non-matching tiff/EOF files.")
     return;
 
 
 def check_intf_all_sanity(intended_swaths, common_intfs, filename='phase.grd'):
+    """
     # Figure out whether all intended interferograms were made.
     # filename is like 'phase.grd'
     # common_intfs is in convenient format like '2019082_2019106'
-    # Check that all common interferograms have a given file.
+    # Check that all common interferograms have a given file. """
     for swath in intended_swaths:
         for igram in common_intfs:
             if not os.path.isfile("F"+swath+'/intf_all/'+igram+'/'+filename):

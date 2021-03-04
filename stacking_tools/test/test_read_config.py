@@ -1,7 +1,7 @@
 # Do the example configs in the repo actually parse through the configparser?
 
 import unittest
-import stacking_configparser
+from stacking_tools import stacking_configparser
 
 
 class ConfigTests(unittest.TestCase):

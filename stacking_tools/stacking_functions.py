@@ -18,7 +18,7 @@ def set_up_output_directories(config_params):
     call(['mkdir', '-p', config_params.ts_output_dir], shell=False);
     print('calling: mkdir -p %s' % config_params.ts_output_dir);
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
-    print('calling: cp %s %s' % (config_params.config_file, config_params.ts_output_dir) );
+    print('calling: cp %s %s' % (config_params.config_file, config_params.ts_output_dir));
     call(['cp', config_params.skip_file, config_params.ts_output_dir], shell=False);
     print("End Stage 0 - Setting up output directories (%s) \n" % config_params.ts_output_dir);
     return;
@@ -38,8 +38,7 @@ def make_corrections(config_params):
     return;
 
 
-# --------------- STEP 2: Get Reference Pixel ------------ # 
-
+# --------------- STEP 2: Get Reference Pixel ------------ #
 def get_ref(config_params):
     if config_params.startstage > 2:  # if we're starting after, we don't do this.
         return;
@@ -72,8 +71,8 @@ def vels_and_ts(config_params):
     intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
     stacking_utilities.make_igram_stick_plot(intf_file_tuples, config_params.ts_output_dir);
     if config_params.make_signal_spread:
-        stack_corr.drive_signal_spread_calculation(corr_files, config_params.signal_cor_cutoff, 
-            config_params.ts_output_dir, config_params.signal_spread_filename);
+        stack_corr.drive_signal_spread_calculation(corr_files, config_params.signal_coh_cutoff,
+                                                   config_params.ts_output_dir, config_params.signal_spread_filename);
 
     if config_params.ts_type == "STACK":
         print("\nRunning velocities by simple stack.")

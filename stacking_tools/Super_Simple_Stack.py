@@ -19,7 +19,7 @@ def drive_velocity_simple_stack(config_params, intf_files):
 
 
 def get_simple_stack_params(config_params):
-    # repacking the parameter dictionary
+    """ repacking the parameter dictionary"""
     rowref = int(config_params.ref_idx.split('/')[0]);
     colref = int(config_params.ref_idx.split('/')[1]);
     if config_params.file_format == 'isce':  # Working with the file formats
@@ -34,7 +34,7 @@ def get_simple_stack_params(config_params):
 
 
 def pixel_velocity_by_stacking(phase_values, time_intervals, wavelength):
-    # The math behind the simple stack method. 
+    """The math behind the simple stack method. """
     phase_count = 0;
     time_count = 0.0001;  # we put a small number here to avoid div-by-zero during debugging.
     for i in range(len(phase_values)):
