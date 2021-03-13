@@ -77,7 +77,7 @@ def read_config_general(config_file):
     dem_error = config.getint('py-config', 'dem_error') if config.has_option('py-config', 'dem_error') else 0;
     detrend_atm_topo = config.getint('py-config', 'detrend_atm_topo') if config.has_option('py-config', 'detrend_atm_topo') else 0;
     nsbas_min_intfs = config.getfloat('py-config', 'nsbas_min_intfs') if config.has_option('py-config', 'nsbas_min_intfs') else 50;
-    sbas_smoothing = config.getfloat('py-config', 'sbas_smoothing') if config.has_option('py-config', 'smoothing') else 1;
+    sbas_smoothing = config.getfloat('py-config', 'sbas_smoothing') if config.has_option('py-config', 'sbas_smoothing') else 1;
     ts_type = config.get('py-config', 'ts_type')
     ts_format = config.get('py-config', 'ts_format');
     file_format = config.get('py-config', 'file_format');

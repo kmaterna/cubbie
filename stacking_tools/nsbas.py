@@ -56,7 +56,7 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
     """This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities"""
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
     retval_main = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
-    retval_metrics = [[{} for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
+    retval_metrics = [[{} for _i in range(len(intf_tuple.xvalues))] for _j in range(len(intf_tuple.yvalues))];
     datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.date_pairs_julian);
 
     def packager_function(i, j, intf_tuple):
@@ -74,8 +74,8 @@ def Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tup
     datestrs, x_dts, _ = get_TS_dates(intf_tuple.date_pairs_julian);
     # Establishing the return array
     empty_vector = [np.empty(np.shape(datestrs))];
-    retval_main = [[empty_vector for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
-    retval_metrics = [[{} for i in range(len(intf_tuple.xvalues))] for j in range(len(intf_tuple.yvalues))];
+    retval_main = [[empty_vector for _i in range(len(intf_tuple.xvalues))] for _j in range(len(intf_tuple.yvalues))];
+    retval_metrics = [[{} for _i in range(len(intf_tuple.xvalues))] for _j in range(len(intf_tuple.yvalues))];
 
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables.
@@ -90,7 +90,7 @@ def Velocities_from_TS(ts_tuple):
     """The easy function to take a timeseries saved on disk and construct velocities
     This one doesn't have a memory leak. """
     retval_main = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues)]);
-    retval_metrics = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues)]);
+    retval_metrics = [[{} for _i in range(len(ts_tuple.xvalues))] for _j in range(len(ts_tuple.yvalues))];
     x_axis_days = [(i - ts_tuple.ts_dates[0]).days for i in ts_tuple.ts_dates];
 
     def packager_function(i, j, ts_tuple):
@@ -102,7 +102,7 @@ def Velocities_from_TS(ts_tuple):
 
 def iterator_func(intf_tuple, func, retval, retval_metrics, start_index=0, end_index=None):
     """ This iterator performs a for loop. It assumes the return value can be stored in an array of ixj"""
-    print("Performing NSBAS on %d files" % (len(intf_tuple.zvalues)));
+    print("Performing iteration on %d files" % (len(intf_tuple.zvalues)));
     print("Started at: ");
     print(dt.datetime.now());
     previous_time = dt.datetime.now();
@@ -122,6 +122,7 @@ def iterator_func(intf_tuple, func, retval, retval_metrics, start_index=0, end_i
             if np.mod(c, 10000) == 0:
                 print('Done with ' + str(c) + ' out of ' + str(
                     len(intf_tuple.xvalues) * len(intf_tuple.yvalues)) + ' pixels')
+                print("  working on pixel %d %d " % (i, j));
             if not nanflag:
                 true_count = true_count + 1;  # how many pixels were actually inverted?
             if np.mod(true_count, 10000) == 0:

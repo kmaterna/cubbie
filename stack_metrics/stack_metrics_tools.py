@@ -12,11 +12,8 @@ import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
 
 
-def produce_min_max(filename, xyz=False):
-    if not xyz:
-        x, y, z = netcdf_read_write.read_netcdf4(filename);
-    else:
-        x, y, z = netcdf_read_write.read_netcdf3(filename);
+def produce_min_max(filename):
+    x, y, z = netcdf_read_write.read_any_grd(filename);
     print("File:", filename);
     print("Max: ", np.nanmax(z));
     print("Min: ", np.nanmin(z));
@@ -33,16 +30,16 @@ def remove_nans_array(myarray):
 
 
 def how_many_nans(filename):
-    [_, _, zdata] = netcdf_read_write.read_netcdf3(filename);
+    [_, _, zdata] = netcdf_read_write.read_any_grd(filename);
     nan_pixels = np.count_nonzero(np.isnan(zdata));
     total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1];
     print("For file %s: %d pixels of %d are NaNs (%f percent)." % (filename, nan_pixels, total_pixels,
-                                                                   100*float(nan_pixels/float(total_pixels))) )
+                                                                   100*float(nan_pixels/float(total_pixels))))
     return [nan_pixels, total_pixels];
 
 
 def number_below_value(filename, value):
-    [xdata, ydata, zdata] = netcdf_read_write.read_netcdf3(filename);
+    [xdata, ydata, zdata] = netcdf_read_write.read_any_grd(filename);
     count = 0;
     for i in range(len(ydata)):
         for j in range(len(xdata)):
@@ -50,7 +47,7 @@ def number_below_value(filename, value):
                 count = count+1;
     total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1];
     print("For file %s: %d pixels of %d are below %f (%f percent)." % (filename, count, total_pixels, value,
-                                                                       100*float(count/float(total_pixels))) )
+                                                                       100*float(count/float(total_pixels))))
     return;
 
 
@@ -59,11 +56,11 @@ def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
     # Given a co-registered stack
     # If a pixel is above the outlier cutoff in any image of the stack, make a nanmask that masks that pixel.
     filename = filelist[1]
-    x, y, z = netcdf_read_write.read_netcdf3(filename)  # just to get the shape of the outputs
+    x, y, z = netcdf_read_write.read_any_grd(filename)  # just to get the shape of the outputs
     crazy_mask = np.ones(np.shape(z));
     for ifile in filelist:
         print(ifile);
-        x, y, ztemp = netcdf_read_write.read_netcdf3(ifile);
+        x, y, ztemp = netcdf_read_write.read_any_grd(ifile);
         for i in range(len(y)):
             for j in range(len(x)):
                 if abs(ztemp[i][j]) > outlier_cutoff:
@@ -80,8 +77,8 @@ def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
     A basic function that takes two co-registered grids and subtracts them, showing residuals in the third panel
     and histogram of residuals in separate plot.
     """
-    data1 = netcdf_read_write.read_netcdf3(file1)[2];
-    data2 = netcdf_read_write.read_netcdf3(file2)[2];
+    data1 = netcdf_read_write.read_any_grd(file1)[2];
+    data2 = netcdf_read_write.read_any_grd(file2)[2];
     if flip_sign1:
         data1 = -1 * data1;
     if flip_sign2:
@@ -106,7 +103,7 @@ def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
     axarr[2].invert_yaxis()
 
     # Fancy color bar #1
-    cbarax = fig.add_axes([0.85, 0.08, 0.1, 0.9], visible=False);
+    _cbarax = fig.add_axes([0.85, 0.08, 0.1, 0.9], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
     custom_cmap.set_array(np.arange(vmin, vmax, 0.1));
@@ -115,7 +112,7 @@ def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
     cb.ax.tick_params(labelsize=16);
 
     # Fancy color bar for residuals
-    cbarax = fig.add_axes([0.68, 0.05, 0.1, 0.9], visible=False);
+    _cbarax = fig.add_axes([0.68, 0.05, 0.1, 0.9], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=-10, vmax=10);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
     custom_cmap.set_array(np.arange(vmin, vmax, 0.1));
@@ -146,8 +143,8 @@ def plot_two_general_grids(file1, file2, plotname,
     If readfile=True: then we read files. Otherwise, those two arguments are actually data
     """
     if readfile:
-        data1 = netcdf_read_write.read_netcdf3(file1)[2];
-        data2 = netcdf_read_write.read_netcdf3(file2)[2];
+        data1 = netcdf_read_write.read_any_grd(file1)[2];
+        data2 = netcdf_read_write.read_any_grd(file2)[2];
     else:
         data1 = file1;
         data2 = file2;
@@ -176,7 +173,7 @@ def plot_two_general_grids(file1, file2, plotname,
         axarr[1].invert_yaxis()
 
     # Colorbar #1
-    cbarax = fig.add_axes([0.15, 0.06, 0.1, 0.9], visible=False);
+    _cbarax = fig.add_axes([0.15, 0.06, 0.1, 0.9], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=vmin1, vmax=vmax1);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap);
     custom_cmap.set_array(np.arange(vmin1, vmax1, 0.1));
@@ -185,7 +182,7 @@ def plot_two_general_grids(file1, file2, plotname,
     cb.ax.tick_params(labelsize=16);
 
     # Colorbar #2
-    cbarax = fig.add_axes([0.58, 0.06, 0.1, 0.9], visible=False);
+    _cbarax = fig.add_axes([0.58, 0.06, 0.1, 0.9], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=vmin2, vmax=vmax2);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap);
     custom_cmap.set_array(np.arange(vmin2, vmax2, 0.1));
@@ -202,7 +199,7 @@ def histogram_of_grd_file_values(filename, varname='Deviation', plotname='histog
     """
     simple plot to make a histogram of a grid file
     """
-    z = netcdf_read_write.read_netcdf3(filename)[2];
+    z = netcdf_read_write.read_any_grd(filename)[2];
     z_vector = np.reshape(z, (np.shape(z)[0] * np.shape(z)[1],))
     plt.figure(dpi=250, figsize=(8, 7));
     plt.hist(z_vector, bins=50, color='orange');

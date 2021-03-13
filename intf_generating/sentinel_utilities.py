@@ -309,6 +309,20 @@ def set_up_merge_unwrap(desired_swaths):
     subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", "merged"], shell=False);  # need copy, not soft link.
     subprocess.call(["cp", "batch.config", "merged"], shell=False);
     intf_all = get_common_intfs(desired_swaths);
+
+    # # For manual check/recovery: intf_all should be these guys:
+    # intf_all = [];
+    # intf_all.append("2019166_2019178");
+    # intf_all.append("2017068_2018075");
+    # intf_all.append("2018075_2018099");
+    # intf_all.append("2018075_2018111");
+    # intf_all.append("2018063_2018075");
+    # intf_all.append("2018039_2018075");
+    # intf_all.append("2018051_2018075");
+    # intf_all.append("2017056_2018075");
+    # intf_all.append("2016068_2018075");
+    # intf_all.append("2015085_2018075");
+
     check_intf_all_sanity(desired_swaths, intf_all, 'phase.grd');  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'corr.grd');  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'mask.grd');  # defensive programming

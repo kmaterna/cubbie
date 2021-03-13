@@ -104,8 +104,8 @@ def drive_velocity(param_dict, intf_files, coh_files):
 
 # LET'S GET THE FULL TS FOR EVERY PIXEL
 def drive_full_TS(param_dict, intf_files, coh_files):
-    param_dict["start_index"] = 0;
-    param_dict["end_index"] = 7000000;
+    param_dict["start_index"] = 7000000;
+    param_dict["end_index"] = 11000000;
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
     [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
@@ -141,7 +141,7 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
 def make_vels_from_ts_grids(ts_dir, geocoded=False):
     if geocoded:
         filelist = glob.glob(ts_dir + "/publish/*_ll.grd");
-        mydata = rmd.reader_from_ts(filelist, "lon", "lat", "z");  # put these if using geocoded values
+        mydata = rmd.reader_from_ts(filelist);  # if using geocoded values. used to have different function call.
     else:
         filelist = glob.glob(ts_dir + "/????????.grd");
         mydata = rmd.reader_from_ts(filelist);

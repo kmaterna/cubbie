@@ -14,13 +14,12 @@ data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_d
 
 def reader(filepathslist):
     """
-    This function takes in a list of filepaths to GMTSAR grd files, effectively taking in a cuboid of data. 
+    This function takes in a list of filepaths to GMTSAR grd files, taking in a cuboid of data.
     It splits and returns this data in a named tuple.
     """
     filepaths = []
     date_pairs_julian, date_deltas, date_pairs = [], [], []
-    xvalues, yvalues, zvalues = [], [], []
-    ts_dates = [];  # the total list of dates used in the interferogram network
+    xdata, ydata, zvalues = [], [], []
     for i in range(len(filepathslist)):
         print(filepathslist[i])
         # Establish timing and filepath information
@@ -51,12 +50,13 @@ def reader(filepathslist):
     return mydata
 
 
-def reader_from_ts(filepathslist, xvar="x", yvar="y", zvar="z"):
+def reader_from_ts(filepathslist):
     """ 
     This function makes a tuple of grids in timesteps
     It can read in radar coords or geocoded coords, depending on the use of xvar, yvar
     """
     filepaths, zvalues, ts_dates = [], [], [];
+    xvalues, yvalues = [], []
     for i in range(len(filepathslist)):
         print(filepathslist[i])
         # Establish timing and filepath information
@@ -94,7 +94,7 @@ def reader_simple_format(file_names):
 
 def reader_isce(filepathslist, band=1):
     """
-    This function takes in a list of filepaths that each contain a 2d array of data, effectively taking
+    This function takes in a list of filepaths that each contain a 2d array of data, taking
     in a cuboid of data. It splits and stores this data in a named tuple which is returned. This can then be used
     to extract key pieces of information. It reads in ISCE format. 
     """

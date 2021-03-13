@@ -1,4 +1,5 @@
 import sys
+import re, glob
 from subprocess import call
 import stacking_utilities
 import nsbas_accessing
@@ -111,11 +112,12 @@ def geocode_vels(config_params):
 
     # Then, quickly geocode all the time series files. 
     # Call from the processing directory
-    # filelist = glob.glob("/Volumes/Ironwolf/Track_71/stacking/no_smoothing_shortintfs/combined/*.grd");
-    # datestrs = get_datestrs();
-    # for i in range(len(datestrs)):
-    #     call(["quick_geocode.csh", "stacking/no_smoothing_shortintfs/combined", "merged", datestrs[i] + ".grd",
-    #           datestrs[i] + "_ll"], shell=False);
+    grd_source_directory = config_params.ts_output_dir + "/combined/"
+    filelist = glob.glob(grd_source_directory + "????????.grd");
+    for i in range(len(filelist)):
+        datestr = re.findall(r"\d\d\d\d\d\d\d\d", filelist[i])[0];
+        print(datestr);
+        call(["quick_geocode.csh", grd_source_directory, "merged", datestr + ".grd", datestr + "_ll"], shell=False);
 
     print("End Stage 4 - Geocoding");
     return;

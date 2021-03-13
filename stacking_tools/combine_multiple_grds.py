@@ -42,8 +42,8 @@ def combine_all_files(datestr, input_dirs, output_dir):
     output_file = output_dir + "/" + datestr + ".grd";
     output_plot = output_dir + "/" + datestr + ".png";
     netcdf_read_write.produce_output_netcdf(xdata, ydata, zdata_total, "mm", output_file);
-    read_write_insar_utilities.netcdf_plots.produce_output_plot(output_file, datestr, output_plot, "mm", aspect=1.0, invert_yaxis=True,
-                                                                vmin=-50, vmax=100);
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(output_file, datestr, output_plot, "mm", aspect=1.0,
+                                                                invert_yaxis=True, vmin=-50, vmax=100);
     return;
 
 

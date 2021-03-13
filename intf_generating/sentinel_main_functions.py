@@ -91,7 +91,7 @@ def read_config(config_file):
     # Turn '1,2,3' into ['1', '2', '3']
     desired_swaths = desired_swaths_temp.split(',');
 
-    assert(threshold_geocode==0), ValueError("Threshold_geocode should be 0 to skip geocoding. ")
+    assert(threshold_geocode == 0), ValueError("Threshold_geocode should be 0 to skip geocoding. ")
 
     # adding a timed log was getting annoying so I commented it out.
     # logtime = time.strftime("%Y_%m_%d-%H_%M_%S")
@@ -245,7 +245,7 @@ def preprocess(config_params):
         slc_list = glob.glob(outdir+'/*.SLC');
         datadotin = list(sentinel_utilities.np.genfromtxt(outdir+'/data.in', dtype='str'));
         if len(datadotin) > 0:
-            assert(len(slc_list) < len(datadotin)), AssertionError("You have "+str(len(slc_list))+
+            assert(len(slc_list) < len(datadotin)), AssertionError("You have "+str(len(slc_list)) +
                                                                    " SLCs already; you want to keep them.");
 
     # Make data.in. Proper master not required.
