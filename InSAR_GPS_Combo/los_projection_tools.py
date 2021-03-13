@@ -1,14 +1,10 @@
 # A few functions that help project into and out of LOS
 # Mostly trig
-# Example: 
-# Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
-# [U_e, U_n, U_u] are the east, north, and up components of the deformation. 
-# phi   = azimuth of satellite heading vector, positive clockwise from north.
-# lamda = local incidence angle at the reflector.
-# from Fialko et al., 2001. 
+# Example: Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
 
 import numpy as np
 import collections
+from Tectonic_Utils.geodesy import insar_vector_functions
 
 
 Velfield = collections.namedtuple("Velfield", ['name', 'nlat', 'elon', 'n', 'e', 'u', 'sn', 'se', 'su', 'first_epoch',
@@ -26,29 +22,25 @@ def closest_index(lst, K):
 
 
 def simple_project_ENU_to_LOS(U_e, U_n, U_u, flight_angle, incidence_angle):
-    # Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
+    # Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda), Fialko 2001
     # [U_e, U_n, U_u] are the east, north, and up components of the deformation.
     # phi   = azimuth of satellite heading vector, positive clockwise from north.
     # lamda = local incidence angle at the reflector (usually angle from the vertical).
-    # Fialko 2001
     # Works for single values and for 1D arrays of all arguments
 
     if np.size(U_e) > 1:  # processing a 1D array of values
+        d_los = np.zeros(np.shape(U_e));
         if np.size(flight_angle) == 1:
-            phi = [np.deg2rad(flight_angle) for x in U_e];  # bumping up the flight and incidence angles into 1D arrays
-            lamda = [np.deg2rad(incidence_angle) for x in U_e];  # otherwise, we assume they are matched 1D arrays
+            for i in range(len(U_e)):
+                d_los[i] = insar_vector_functions.def3D_into_LOS(U_e[i], U_n[i], U_u[i], flight_angle, incidence_angle);
         else:
-            phi = [np.deg2rad(x) for x in flight_angle];  # 1D arrays of angles in radians nows
-            lamda = [np.deg2rad(x) for x in incidence_angle];
-        d_los = [0 * i for i in U_e];
-        for i in range(len(U_e)):
-            d_los[i] = ((U_n[i] * np.sin(phi) - U_e[i] * np.cos(phi)) * np.sin(lamda) + U_u[i] * np.cos(lamda));
+            fa_array = [flight_angle for _x in U_e];  # bumping up the flight and incidence angles into 1D arrays
+            ia_array = [incidence_angle for _x in U_e];
+            for i in range(len(U_e)):
+                d_los[i] = insar_vector_functions.def3D_into_LOS(U_e[i], U_n[i], U_u[i], fa_array[i], ia_array[i]);
 
     else:  # processing a single value
-        phi = np.deg2rad(flight_angle);
-        lamda = np.deg2rad(incidence_angle);
-        d_los = (U_n * np.sin(phi) - U_e * np.cos(phi)) * np.sin(lamda) + U_u * np.cos(lamda);
-
+        d_los = insar_vector_functions.def3D_into_LOS(U_e, U_n, U_u, flight_angle, incidence_angle);
     return d_los
 
 

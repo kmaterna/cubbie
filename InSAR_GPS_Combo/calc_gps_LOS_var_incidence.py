@@ -3,10 +3,10 @@
 # The incidence angle of the look vector varies across the scene! 
 # The reference pixel must be a GPS station in the Velfield
 from Tectonic_Utils.read_write import netcdf_read_write
+from Tectonic_Utils.geodesy import insar_vector_functions
 import gps_io_functions
 import gps_vel_functions
 import los_projection_tools
-from math_tools import lkv_trig_math
 
 
 def top_level_driver(config_params):
@@ -61,8 +61,9 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
     velref_e, velref_n, velref_u, reflon, reflat = los_projection_tools.get_point_enu_veltuple(gps_velfield, reference_point_name=reference_gps);
     lkv_e_ref, lkv_n_ref, lkv_u_ref = get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up,
                                                                       reflon, reflat);
-    [flight_angle_ref, look_angle_ref] = lkv_trig_math.look_vector2flight_incidence_angles(lkv_e_ref, lkv_n_ref,
-                                                                                           lkv_u_ref);
+    [flight_angle_ref, look_angle_ref] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e_ref,
+                                                                                                    lkv_n_ref,
+                                                                                                    lkv_u_ref);
     LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u, flight_angle_ref,
                                                                    look_angle_ref);
 
@@ -71,7 +72,8 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
     for item in gps_velfield:
         lkv_e, lkv_n, lkv_u = get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up,
                                                               item.elon, item.nlat);
-        [flight_angle_i, look_angle_i] = lkv_trig_math.look_vector2flight_incidence_angles(lkv_e, lkv_n, lkv_u);
+        [flight_angle_i, look_angle_i] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e, lkv_n,
+                                                                                                    lkv_u);
         LOS_array_i = los_projection_tools.simple_project_ENU_to_LOS(item.e, item.n,
                                                                      item.u, flight_angle_i, look_angle_i);
         one_station = los_projection_tools.Velfield(name=item.name, nlat=item.nlat, elon=item.elon,

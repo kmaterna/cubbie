@@ -11,10 +11,9 @@ from subprocess import call
 from read_write_insar_utilities import isce_read_write, jpl_uav_read_write
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 from Tectonic_Utils.geodesy import haversine
+from Tectonic_Utils.geodesy import insar_vector_functions
 from read_write_insar_utilities.isce_read_write import get_xmin_xmax_xinc_from_xml
 from math_tools import mask_and_interpolate
-from math_tools.lkv_trig_math import bearing_to_cartesian, complement_angle, cartesian_to_ccw_from_north, \
-    rotate_vector_by_angle, normalize_look_vector, calc_rdr_azimuth_incidence_from_lkv_plane_down
 
 
 # ------------ UTILITY FUNCTIONS -------------- #
@@ -101,8 +100,9 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     lkve_array = np.reshape(lkv_e, (llh_pixels_azimuth, llh_pixels_range));
     lkvn_array = np.reshape(lkv_n, (llh_pixels_azimuth, llh_pixels_range));
     lkvu_array = np.reshape(lkv_u, (llh_pixels_azimuth, llh_pixels_range));
-    lkve_array, lkvn_array, lkvu_array = normalize_look_vector(lkve_array, lkvn_array, lkvu_array);
-    azimuth, incidence = calc_rdr_azimuth_incidence_from_lkv_plane_down(lkve_array, lkvn_array, lkvu_array);
+    lkve_array, lkvn_array, lkvu_array = insar_vector_functions.normalize_vector(lkve_array, lkvn_array, lkvu_array);
+    azimuth, incidence = insar_vector_functions.calc_rdr_azimuth_incidence_from_lkv_plane_down(lkve_array, lkvn_array,
+                                                                                               lkvu_array);
 
     # # write the data into a GDAL format.
     isce_read_write.write_isce_data(lon_array, llh_pixels_range, llh_pixels_azimuth, "FLOAT",
@@ -266,11 +266,11 @@ def cross_track_pos(target_lon, target_lat, nearrange_lon, nearrange_lat, headin
     distance = haversine.distance((target_lat, target_lon), (nearrange_lat, nearrange_lon));
     compass_bearing = haversine.calculate_initial_compass_bearing((nearrange_lat, nearrange_lon),
                                                                   (target_lat, target_lon));  # this comes CW from north
-    theta = bearing_to_cartesian(compass_bearing);  # the angle of the position vector in cartesian coords
+    theta = insar_vector_functions.bearing_to_cartesian(compass_bearing);  # angle of position vector, cartesian coords
     # heading_cartesian is the angle between the east unit vector and the flight direction
     x0 = distance * np.cos(np.deg2rad(theta));
     y0 = distance * np.sin(np.deg2rad(theta));  # in the east-north coordinate systeem
-    x_prime, y_prime = rotate_vector_by_angle(x0, y0, heading_cartesian);
+    x_prime, y_prime = insar_vector_functions.rotate_vector_by_angle(x0, y0, heading_cartesian);
     return y_prime;
 
 
@@ -281,11 +281,11 @@ def incidence_angle_trig(xtp, cross_track_max, near_inc_angle, far_inc_angle):
     # nearcomp is the complement of that angle.
     # This function is kind of like linear interpolation, but a little bit curved
     # It solves an equation I derived on paper from the two near-range and far-range triangles in July 2020
-    nearcomp = np.deg2rad(complement_angle(near_inc_angle));
-    farcomp = np.deg2rad(complement_angle(far_inc_angle));  # angles measured from the ground to the satellite
+    nearcomp = np.deg2rad(insar_vector_functions.complement_angle(near_inc_angle));
+    farcomp = np.deg2rad(insar_vector_functions.complement_angle(far_inc_angle));  # angles from ground to satellite
     h = (np.tan(nearcomp) * np.tan(farcomp) * cross_track_max) / (np.tan(nearcomp) - np.tan(farcomp));
     angle_to_horizontal = np.rad2deg(np.arctan(h / (xtp + (h / np.tan(nearcomp)))));
-    return complement_angle(angle_to_horizontal);
+    return insar_vector_functions.complement_angle(angle_to_horizontal);
 
 
 def get_geocoded_axes_from_ann(ann_file, cut_rowcol, looks_x, looks_y):
@@ -346,7 +346,7 @@ def create_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
     # Make los.rdr.geo given .ann file from JPL website's UAVSAR interferograms and the ground-range sample points.
     # x-axis and y-axis are the x and y arrays where los vectors will be extracted on a corresponding grid.
     near_angle, far_angle, heading = jpl_uav_read_write.get_nearrange_farrange_heading_angles(ann_file);
-    heading_cartesian = bearing_to_cartesian(heading);  # CCW from east
+    heading_cartesian = insar_vector_functions.bearing_to_cartesian(heading);  # CCW from east
     print("Heading is %f degrees CW from north" % heading);
     print("Cartesian Heading is %f" % heading_cartesian)
     # Get the upper and lower left corners, so we can compute the length of the across-track extent in km
@@ -358,7 +358,7 @@ def create_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
     # My own documentation says CCW from north, even though that's really strange.
     azimuth = heading_cartesian - 90;  # 90 degrees to the right of the airplane heading
     # (for the look vector from ground to plane)
-    azimuth = cartesian_to_ccw_from_north(azimuth);  # degrees CCW from North
+    azimuth = insar_vector_functions.cartesian_to_ccw_from_north(azimuth);  # degrees CCW from North
     print("azimuth from ground to plane is:", azimuth)
 
     [X, Y] = np.meshgrid(x_axis, y_axis);
