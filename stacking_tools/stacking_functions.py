@@ -112,7 +112,7 @@ def geocode_vels(config_params):
 
     # Then, quickly geocode all the time series files. 
     # Call from the processing directory
-    grd_source_directory = config_params.ts_output_dir + "/combined/"
+    grd_source_directory = config_params.ts_output_dir + "/"
     filelist = glob.glob(grd_source_directory + "????????.grd");
     for i in range(len(filelist)):
         datestr = re.findall(r"\d\d\d\d\d\d\d\d", filelist[i])[0];
