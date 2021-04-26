@@ -2,6 +2,7 @@
 ################################################
 #      Sentinel-1 Precise Orbit downloader
 #     Joaquin Escayo 2016 j.escayo@csic.es
+#     As of March 2021, I use ASF instead.
 ###############################################
 # Version 2.0
 # Requisites: bash, wget, sed, sort (preinstalled)
@@ -13,6 +14,8 @@
 # TO-DO:
 # 1. Detection of corrupted files (incompleted downloads)
 # Modified by K. Materna to work on mac and linux, and to use start/end pages. 
+# https://qc.sentinel1.eo.esa.int/aux_poeorb/
+# alternate: http://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/
 
 ###############################
 #  CONFIGURATION PARAMETERS   #

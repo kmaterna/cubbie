@@ -93,12 +93,6 @@ def read_config(config_file):
 
     assert(threshold_geocode == 0), ValueError("Threshold_geocode should be 0 to skip geocoding. ")
 
-    # adding a timed log was getting annoying so I commented it out.
-    # logtime = time.strftime("%Y_%m_%d-%H_%M_%S")
-    # config_file = 'batch.run.' + logtime + '.cfg'
-    # with open(config_file, 'w') as configfilehandle:
-    #     config.write(configfilehandle)
-
     config_params = Params(config_file=config_file_orig, SAT=SAT, wavelength=wavelength, startstage=startstage,
                            endstage=endstage, master=master,
                            orbit_dir=orbit_dir, DATA_dir=DATA_dir, FRAMES_dir=FRAMES_dir,
