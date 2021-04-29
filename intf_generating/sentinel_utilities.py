@@ -149,8 +149,10 @@ def get_common_intfs(desired_swaths):
     common_intfs = [];
     for item in all_intfs:
         if item in intfs_array[0]:
-            if len(intfs_array) > 1 and item in intfs_array[1]:
-                if len(intfs_array) > 2 and item in intfs_array[2]:
+            if len(intfs_array) == 2 and item in intfs_array[1]:
+                common_intfs.append(item);
+            else:
+                if len(intfs_array) == 3 and item in intfs_array[1] and item in intfs_array[2]:
                     common_intfs.append(item);
     print("Total common interferograms: %d " % len(common_intfs))
     return common_intfs;
@@ -228,6 +230,7 @@ def read_baseline_table(baselinefilename):
             new_stems.append("S1_" + item[15:23] + "_ALL_F" + str(swath));
         stems = new_stems;
     times = baselineFile[:, 1].astype(float);
+    missiondays = baselineFile[:, 2].astype(float);
     baselines = baselineFile[:, 4].astype(float);
 
     dtarray, datestrs = [], [];
@@ -239,10 +242,11 @@ def read_baseline_table(baselinefilename):
     baselines = [x for _, x in sorted(zip(dtarray, baselines))];
     datestrs = [x for _, x in sorted(zip(dtarray, datestrs))];
     stems = [x for _, x in sorted(zip(dtarray, stems))];
+    missiondays = [x for _, x in sorted(zip(dtarray, missiondays))];
     dtarray = sorted(dtarray);
     baseline_tuple_list = [];
     for i in range(len(baselines)):
-        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i], stems[i]));
+        baseline_tuple_list.append((baselines[i], dtarray[i], datestrs[i], stems[i], missiondays[i]));
 
     return baseline_tuple_list;
 
@@ -263,14 +267,13 @@ def write_intf_table(intf_all, tablefilename):
 
 # after running the baseline calculation from the first pre_proc_batch,
 # choose a new master that is close to the median baseline and timespan.
-# Feb 2021: Check that it works later.
 def choose_master_image(baseline_table_file):
     print("Selecting master image; default_master is none");
 
     # load baseline table
     baseline_tuple_list = read_baseline_table(baseline_table_file);
-    time = [x[2] for x in baseline_tuple_list];
-    baseline = [x[0] for x in baseline_tuple_list];
+    time = [x[4] for x in baseline_tuple_list];  # in missiondays (float)
+    baseline = [x[0] for x in baseline_tuple_list];  # meters
     shortform_names = [x[3] for x in baseline_tuple_list];  # format S1_20170304_F1_ALL
 
     # calculate shortest distance from median to scenes
@@ -282,7 +285,7 @@ def choose_master_image(baseline_table_file):
     else:
         sceneDistance = np.sqrt((baseline - np.median(baseline)) ** 2)
 
-    minID = np.argmin(sceneDistance)[0];
+    minID = np.argmin(sceneDistance);   # sometimes this line is finicky, whether it needs [0] or not.
     master_shortform = shortform_names[minID];
     return master_shortform
 
@@ -305,34 +308,24 @@ def write_super_master_batch_config(masterid):
 def set_up_merge_unwrap(desired_swaths):
     print("Setting up merged unwrapping for swaths:");
     print(desired_swaths);
-    subprocess.call(["mkdir", "-p", "merged"], shell=False);
-    subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", "merged"], shell=False);  # need copy, not soft link.
-    subprocess.call(["cp", "batch.config", "merged"], shell=False);
+    outdir = 'merged'
+    subprocess.call(["mkdir", "-p", outdir], shell=False);
+    subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", outdir], shell=False);  # need copy, not soft link.
+    subprocess.call(["cp", "batch.config", outdir], shell=False);
     intf_all = get_common_intfs(desired_swaths);
-
-    # # For manual check/recovery: intf_all should be these guys:
-    # intf_all = [];
-    # intf_all.append("2019166_2019178");
-    # intf_all.append("2017068_2018075");
-    # intf_all.append("2018075_2018099");
-    # intf_all.append("2018075_2018111");
-    # intf_all.append("2018063_2018075");
-    # intf_all.append("2018039_2018075");
-    # intf_all.append("2018051_2018075");
-    # intf_all.append("2017056_2018075");
-    # intf_all.append("2016068_2018075");
-    # intf_all.append("2015085_2018075");
-
     check_intf_all_sanity(desired_swaths, intf_all, 'phase.grd');  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'corr.grd');  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'mask.grd');  # defensive programming
-    return intf_all;
+    return intf_all, outdir;
 
 
 def write_merge_batch_input(intf_all, master_image, desired_swaths=("1", "2", "3")):
+    """
     # Necessary for merge swaths step.
     # The master of the first line should be the super master.
-    print("\nWriting file 'merged/inputfile.txt'");
+    """
+    outfile = 'merged/inputfile.txt'
+    print("\nWriting file " + outfile);
     master_image_in_format = ymd2yj(master_image[3:11])  # putting master image in the format taken by gmtsar dirs
     # Find the super master and stick it to the front.
     for item in intf_all:
@@ -342,7 +335,7 @@ def write_merge_batch_input(intf_all, master_image, desired_swaths=("1", "2", "3
             intf_all.insert(0, intf_all.pop(intf_all.index(item)));
             break;
 
-    ofile = open("merged/inputfile.txt", "w");
+    ofile = open(outfile, "w");
     for item in intf_all:
         first_part = yj_to_prm_name(item.split('_')[0], '1');  # first date into PRM format, swath 1
         second_part = yj_to_prm_name(item.split('_')[1], '1');  # second date into PRM format, swath 1
@@ -351,12 +344,14 @@ def write_merge_batch_input(intf_all, master_image, desired_swaths=("1", "2", "3
             ofile.write(first_part + ".PRM:" + second_part + ".PRM,");
         if "2" in desired_swaths:
             ofile.write("../F2/intf_all/%s/:" % item);
-            ofile.write(first_part.replace("_F1", "_F2") + ".PRM:" + second_part.replace("_F1", "_F2") + ".PRM,");
+            ofile.write(first_part.replace("_F1", "_F2") + ".PRM:" + second_part.replace("_F1", "_F2") + ".PRM");
         if "3" in desired_swaths:
+            ofile.write(',');
             ofile.write("../F3/intf_all/%s/:" % item);
-            ofile.write(first_part.replace("_F1", "_F3") + ".PRM:" + second_part.replace("_F1", "_F3") + ".PRM\n");
+            ofile.write(first_part.replace("_F1", "_F3") + ".PRM:" + second_part.replace("_F1", "_F3") + ".PRM");
+        ofile.write('\n');
     ofile.close();
-    print("Done writing 'merged/inputfile.txt'");
+    print("Done writing " + outfile);
     return;
 
 
@@ -371,6 +366,17 @@ def write_merge_unwrap(outfile):
     ofile.write("cd ../\n");
     ofile.close();
     return;
+
+
+def merge_wrapped(desired_swaths, master_image):
+    """Merge desired swaths; don't unwrap or geocode."""
+    if len(desired_swaths) == 1:  # for single swath
+        igram_directory = "F"+str(desired_swaths[0])+"/intf_all/";
+    else:
+        common_intfs, igram_directory = set_up_merge_unwrap(desired_swaths);  # check directory + paths
+        write_merge_batch_input(common_intfs, master_image, desired_swaths);  # put the master image in front
+        subprocess.call(['merge_swaths_mod.csh', "inputfile.txt", "batch.config"], shell=False);  # from procdir
+    return igram_directory;
 
 
 def write_ordered_unwrapping(numproc, swath, sh_file, config_file):

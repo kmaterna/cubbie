@@ -44,7 +44,8 @@ def read_config(config_file):
     wavelength = config.getfloat('py-config', 'wavelength')
     startstage = config.getint('py-config', 'startstage')
     endstage = config.getint('py-config', 'endstage')
-    master = config.get('csh-config', 'master_image').split()[0]
+    master = config.get('csh-config', 'master_image').split()[0] \
+        if len(config.get('csh-config', 'master_image')) > 0 else '';
     orbit_dir = config.get('py-config', 'orbit_dir')
     DATA_dir = config.get('py-config', 'DATA_dir')
     FRAMES_dir = config.get('py-config', 'FRAMES_dir')
@@ -57,7 +58,7 @@ def read_config(config_file):
     annual_crit_baseline = config.getint('py-config', 'annual_crit_baseline')
     swath = config.get('py-config', 'swath')
     polarization = config.get('py-config', 'polarization')
-    desired_swaths_temp = config.get('py-config', 'desired_swaths')
+    desired_swaths_temp = config.get('py-config', 'desired_subs')
     atm_topo_detrend = config.getint('py-config', 'atm_topo_detrend')
     frame_nearrange1 = config.get('py-config', 'frame_nearrange1')
     frame_nearrange2 = config.get('py-config', 'frame_nearrange2')
@@ -433,25 +434,24 @@ def unwrapping(config_params):
         return;
     if config_params.endstage < 5:  # if we're ending at intf, we don't do this.
         return;
-    # Still to test: how this will handle merging only 1-2 swaths. Right now works for all 3.
 
     # Marie-Pierre's atmosphere correction, done before unwrapping
     if config_params.atm_topo_detrend == 1:
-        flattentopo_driver.main_function();
+        igram_directory = sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master);
+        # flattentopo_driver.main_function();
 
-    unwrap_sh_file = "README_unwrap.txt";
-
-    if len(config_params.desired_swaths) == 1:  # for single swath (might not be working)
-        sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
-                                                      config_params.config_file);
-        # Make plots of phasefilt.grd files right before unwrapping (do separately before flattentopo if desired).
-        # phasefilt_plot.top_level_driver('manual_remove.txt');
-    else:  # For merging multiple swaths, write intfs and PRM files into inputfile, prepare for merging.
-        common_intfs = sentinel_utilities.set_up_merge_unwrap(config_params.desired_swaths);  # check directory + paths
-        sentinel_utilities.write_merge_batch_input(common_intfs, config_params.master, config_params.desired_swaths);
-        sentinel_utilities.write_merge_unwrap(unwrap_sh_file);
-
-    print("Ready to call " + unwrap_sh_file)
-    call(['chmod', '+x', unwrap_sh_file], shell=False);
-    call(["./"+unwrap_sh_file], shell=False);
+    # unwrap_sh_file = "README_unwrap.txt";
+    # if len(config_params.desired_swaths) == 1:  # for single swath (might not be working)
+    #     sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
+    #                                                   config_params.config_file);
+    #     # Make plots of phasefilt.grd files right before unwrapping (do separately before flattentopo if desired).
+    #     # phasefilt_plot.top_level_driver('manual_remove.txt');
+    # else:  # For merging multiple swaths, write intfs and PRM files into inputfile, prepare for merging.
+    #     common_intfs = sentinel_utilities.set_up_merge_unwrap(config_params.desired_swaths);  # check directory, paths
+    #     sentinel_utilities.write_merge_batch_input(common_intfs, config_params.master, config_params.desired_swaths);
+    #     sentinel_utilities.write_merge_unwrap(unwrap_sh_file);
+    #
+    # print("Ready to call " + unwrap_sh_file)
+    # call(['chmod', '+x', unwrap_sh_file], shell=False);
+    # call(["./"+unwrap_sh_file], shell=False);
     return;

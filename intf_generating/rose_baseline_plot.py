@@ -40,7 +40,7 @@ def compute_new_pairs(baseline_tuple_list, crit_days, crit_baseline, num_years=1
     color_dict = {};
     r_points, th_points = [], [];
     new_intfs = [];
-    color_order = 'bgrkc';
+    color_order = 'bgrkcbgrkc';
 
     # Build the dictionaries of data
     for i in range(len(times)):

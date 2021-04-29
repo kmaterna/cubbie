@@ -54,7 +54,6 @@ if __name__ == "__main__":
 
     # # Step 3
     sentinel_main_functions.topo2ra(config_params);
-    # Will separate this later!
 
     # # Step 4
     sentinel_main_functions.make_interferograms(config_params);
