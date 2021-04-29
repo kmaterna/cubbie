@@ -9,8 +9,10 @@ from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def read_binary_roipac_real_imag(filename):
-    # Reads a binary file that expects two fields (such as real and imaginary)
-    # returns one-dimensional arrays.
+    """
+    Reads a binary file that expects two fields (such as real and imaginary)
+    Returns one-dimensional arrays.
+    """
     with open(filename, mode='rb') as file:  # b is important -> binary
         fileContent = file.read()
     data = struct.unpack("f" * (len(fileContent) // 4), fileContent);
@@ -28,7 +30,9 @@ def read_binary_roipac_real_imag(filename):
 
 
 def read_binary_topo(filename, width):
-    # Reads a topo file and returns 1d arrays for topography and some other quantity.
+    """
+    Reads a topo file and returns 1d arrays for topography and some other quantity.
+    """
     with open(filename, mode='rb') as file:  # b is important -> binary
         fileContent = file.read()
     data = struct.unpack("f" * (len(fileContent) // 4), fileContent);

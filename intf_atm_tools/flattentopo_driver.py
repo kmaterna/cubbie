@@ -13,7 +13,7 @@ from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
-def main_function():
+def main_function(intf_directory):
     # GLOBAL PARAMETERS
     nfit = 0
     ivar = 1
@@ -22,9 +22,10 @@ def main_function():
     subsampled_dem_grd = "topo/topo_ra_subsampled_june.grd"  # subsampled in the same way as the intf grd files.
     demfile = "topo/topo_radar.hgt"
     example_rsc = "rsc_files/example_sd.int.rsc"
+    sys.exit(0);
 
     # INPUTS
-    intf_list = glob.glob("intf_all/???????_???????");
+    intf_list = glob.glob(intf_directory + "/???????_???????");
     print(intf_list);
 
     # [width, length] = readbin.write_gmtsar2roipac_topo(subsampled_dem_grd,demfile);
