@@ -111,7 +111,9 @@
       update_PRM tmp.PRM rshift $rshift
       cd $now_dir
 
-      echo $pth"tmp.PRM:"$pth"phasefilt.grd" >> tmp_phaselist
+      echo $pth"tmp.PRM:"$pth"phasefilt.grd" >> tmp_phasefiltlist
+      echo $pth"tmp.PRM:"$pth"phase.grd" >> tmp_phaselist
+      echo $pth"tmp.PRM:"$pth"amp.grd" >> tmp_amplist
       echo $pth"tmp.PRM:"$pth"corr.grd" >> tmp_corrlist
       echo $pth"tmp.PRM:"$pth"mask.grd" >> tmp_masklist
     end
@@ -122,7 +124,9 @@
 
     echo ""
     echo "Merging START"
-    merge_swath tmp_phaselist phasefilt.grd $stem
+    merge_swath tmp_phasefiltlist phasefilt.grd $stem
+    merge_swath tmp_phaselist phase.grd
+    merge_swath tmp_amplist amp.grd
     merge_swath tmp_corrlist corr.grd
     merge_swath tmp_masklist mask.grd
     echo "Merging END"
@@ -138,12 +142,14 @@
     gmt psscale -Rcorr.grd -J -DJTC+w5i/0.2i+h -Ccorr.cpt -B1.57+l"Phase" -By+lrad -O >> corr.ps
     gmt psconvert -Tf -P -Z corr.ps
 
-    rm tmp_phaselist
-    rm tmp_corrlist
-    rm tmp_masklist
     rm phase.cpt
     rm corr.cpt
-    rm tmp_phaselist tmp_corrlist tmp_masklist *.eps *.bb
+    rm tmp_phaselist
+    rm tmp_phasefiltlist
+    rm tmp_amplist
+    rm tmp_corrlist
+    rm tmp_masklist
+    rm *.eps *.bb
 
 
     if (! -f ../trans.dat && -f trans.dat) then

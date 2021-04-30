@@ -5,7 +5,7 @@ import math, os
 import subprocess
 import struct
 from math_tools import phase_math
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
+from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 
 def read_binary_roipac_real_imag(filename):
@@ -68,7 +68,7 @@ def write_binary_roipac_real_imag(filename, real, imag):
         else:
             total_struct.append(0.0);
     data = struct.pack("f" * len(real) * 2, *total_struct);
-    print("Packing %d real and imaginary numbers into binary array. " % (len(total_struct) / 2));
+    print("Packing %d real and imaginary numbers into binary file %s " % (len(total_struct) / 2, filename));
     with open(filename, mode='wb') as file:
         file.write(data);
     return;
@@ -85,7 +85,7 @@ def write_binary_topo(filename, topo1, topo2, width):
                 total_struct.append(topo2[j]);
 
     data = struct.pack("f" * len(topo2) * 2, *total_struct);
-    print("Packing %d topo numbers into binary array. " % (len(total_struct) / 2));
+    print("Packing %d topo numbers into binary file %s " % (len(total_struct) / 2, filename));
     with open(filename, mode='wb') as file:
         file.write(data);
     return;
@@ -109,18 +109,16 @@ def output_plots(phase, amp, width, length, plotname):
     return;
 
 
-def write_gmtsar2roipac_phase(input_directory, phasefile, phasefilt_file, ampfile, outfilename, outfile_filt):
+def write_gmtsar2roipac_phase(phasefile, phasefilt_file, ampfile, outfilename, outfile_filt):
     """
     A function that reads phase and amplitude grids in GMT format and writes a Binary format file
     with the real and imaginary components of the values.
     """
 
     # INPUTS
-    [_, _, phase] = read_netcdf3(phasefile);
-    [_, _, phasefilt] = read_netcdf3(phasefilt_file);
-    [xdata, ydata, amp] = read_netcdf3(ampfile);
-    width = len(xdata);
-    length = len(ydata);
+    [_, _, phase] = read_any_grd(phasefile);
+    [_, _, phasefilt] = read_any_grd(phasefilt_file);
+    [_, _, amp] = read_any_grd(ampfile);
 
     # # FOR THE PHASE AND AMPLITUDE DATA, reformatting the data and making initial plot.
     phase_1d = np.reshape(phase, (np.size(phase),));
@@ -137,7 +135,7 @@ def write_gmtsar2roipac_phase(input_directory, phasefile, phasefilt_file, ampfil
     print("converting phase_1d_filt to real,imag.");
     [real, imag] = phase_math.phase_amp2real_imag(phasefilt_1d, amp_1d);
     write_binary_roipac_real_imag(outfile_filt, real, imag);
-    return [width, length];
+    return;
 
 
 def write_gmtsar2roipac_topo(infile, out_topo):
@@ -145,22 +143,29 @@ def write_gmtsar2roipac_topo(infile, out_topo):
     A function that reads a GMT topographic grid and writes the corresponding .hgt format
     for use with roipac functions.
     """
-    [xdata, ydata, topo] = read_netcdf3(infile);
+    [xdata, _, topo] = read_any_grd(infile);
     width = len(xdata);
-    length = len(ydata);
     topo = np.flipud(topo);  # formatting correct when you flip up/down.
 
     topo_1d = np.reshape(topo, (np.size(topo),));
 
     # WRITE THE TOPO OUT IN BINARY FORMAT
     write_binary_topo(out_topo, topo_1d, topo_1d, width);
-    # outputs(topo_1d, topo_1d, width, length, 'mendocino_topo_orig.eps');
+    # output_plots(topo_1d, topo_1d, width, length, 'mendocino_topo_orig.eps');
+    return;
+
+
+def get_file_shape(infile):
+    [xdata, ydata, _] = read_any_grd(infile);
+    width = len(xdata);
+    length = len(ydata);
+    print("shape of %s: width %d, length %d" % (infile, width, length));
     return [width, length];
 
 
 def prep_files(phasefile, phasefilt_file, orig_phasefile, orig_phasefilt_file):
-    # For new interferograms, you need to save a copy of phase.grd and phasefilt.grd because they're going to be
-    # overwritten when we're doing Marie-Pierre's insar workflow.
+    # For new interferograms, you need to save off a copy of phase.grd and phasefilt.grd because they are
+    # overwritten in Marie-Pierre's insar workflow.
     if not os.path.isfile(orig_phasefile):
         subprocess.call(['cp', phasefile, orig_phasefile], shell=False);
     if not os.path.isfile(orig_phasefilt_file):
@@ -170,17 +175,6 @@ def prep_files(phasefile, phasefilt_file, orig_phasefile, orig_phasefilt_file):
 
 if __name__ == "__main__":
     # THE MAIN PROGRAM
-    # filename="tibet_intf/20160510-20160721_sd_16rlks.int"; length=1732; width=1067;
-    # filename="tibet_intf/20160510-20160721_sd_16rlks.int"; length=1732; width=1067;
-    # [real,imag]=read_binary_roipac_real_imag(filename, width);
-    # [phase,amp]=real_imag2phase_amp(real,imag);
-    # outputs(phase, amp, width, length, 'output_mpd.eps');
-
-    # filename="2015225_2015249/2015225_2015249_sd.int"; length=1524; width=661;
-    # [real,imag]=read_binary_roipac_real_imag(filename, width);
-    # [phase,amp]=real_imag2phase_amp(real,imag);
-    # outputs(phase, amp, width, length, '2015225_2015249/input_phase_amp.eps');
-
     filename = "2015225_2015249/out.int";
     length = 1524;
     width = 661;
@@ -189,29 +183,6 @@ if __name__ == "__main__":
     output_plots(phase, amp, width, length, '2015225_2015249/working_example.eps');
 
     filename = "2015225_2015249/out_filtered.int";
-    length = 1524;
-    width = 661;
     [real, imag] = read_binary_roipac_real_imag(filename);
     [phase, amp] = phase_math.real_imag2phase_amp(real, imag);
     output_plots(phase, amp, width, length, '2015225_2015249/working_example_filt.eps');
-
-# Write the file out.
-# outfile_name="tibet_intf/written_by_me.int";
-# [real,imag]=phase_amp2real_imag(phase,amp);
-# write_binary_roipac_real_imag(outfile_name, real, imag);
-
-# WHAT DOES THE REAL/IMAG FILE THAT I WROTE LOOK LIKE?
-# filename="tibet_intf/written_by_me.int"; length=1732; width=1067;
-# [real,imag]=read_binary_roipac_real_imag(filename, width);
-# [phase,amp]=real_imag2phase_amp(real,imag);
-# outputs(phase, amp, width, length, 'written_by_me.eps');
-# YES IT LOOKS LIKE THE ORIGINAL ONE!!!
-
-# # # READ THE TOPOGRAPHY
-# filename="raw_topo/radar_16rlks.hgt"; length=1733; width=1067;
-# [topo1, topo2]=read_binary_topo(filename, width);
-# outputs(topo1, topo2, width, length,'testimage_topo.eps');
-
-# # # # WRITE THE TOPOGRAPHY
-# outfilename="raw_topo/topo.hgt";
-# write_binary_topo(outfilename,topo1,topo2,width);

@@ -438,8 +438,11 @@ def unwrapping(config_params):
     # Marie-Pierre's atmosphere correction, done before unwrapping
     if config_params.atm_topo_detrend == 1:
         # igram_directory = sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master);
-        flattentopo_driver.main_function("merged/");
-        # Then unwrap somehow. This intermediate step is a pain.
+        igram_directory = "merged/"
+        flattentopo_example_rsc = "merged/example_sd.int.rsc";    # set this up manually
+        flattentopo_topora_grd = "merged/topo_ra.grd";           # set this up manually
+        flattentopo_driver.main_function(igram_directory, flattentopo_topora_grd, flattentopo_example_rsc);
+        # Then unwrap.
 
     # unwrap_sh_file = "README_unwrap.txt";
     # if len(config_params.desired_swaths) == 1:  # for single swath (might not be working)
