@@ -2,10 +2,7 @@
 Run Marie Pierre's code on a general stack of GMTSAR interferograms. Last worked through 2021.
 You need:
   -- A series of interferogram directories with phase, phasefilt, amp, corr
-  -- topo_ra.grd that covers the whole range of the file (for merged files, I've used dem2topo_ra.csh separately)
-  -- ex: dem2topo_ra.csh master.PRM dem.grd xmin/xmax/ymin/ymax,
-  --    for this example, range set MANUALLY during merged workflow
-  --    for this example, master.PRM must be copied MANUALLY into directory
+  -- topo_ra.grd that covers the whole range of the file in same inc as intf (special scripts from Xiaohua for doing so)
   --    topo_radar.hgt.rsc (just for length metadata; can be copied from example .rsc, same dir as topo_radar.hgt)
   -- An example .rsc file with the width and length fields filled in appropriately (MANUAL)
   -- flatten_topo.f compiled and on your system path
@@ -28,7 +25,7 @@ from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 def main_function(intf_directory, topo_ra_file, example_rsc):
     """
     :param intf_directory: location where all your interferograms are stored
-    :param topo_ra_file: name of topo_ra.grd
+    :param topo_ra_file: name of topo_ra.grd, registered with same pixels as intf files
     :param example_rsc: name of rsc file with proper length and width set
     """
 
@@ -37,18 +34,15 @@ def main_function(intf_directory, topo_ra_file, example_rsc):
     ivar = 1
     alt_ref = 100
     thresh_amp = 0.2
-    reg_demfile = intf_directory+"topo_ra_registered.grd"   # topo_ra registered to data grid
     bin_demfile = intf_directory+"topo_radar.hgt"          # binary topo file
 
     # INPUTS
     intf_list = glob.glob(intf_directory + "/???????_???????");
     print(len(intf_list), " interferograms found for flatten_topo");
 
-    # Turning topo_ra into same range/inc as rest of data, and copying dem into roipac format
-    subprocess.call('gmt grdsample '+topo_ra_file+' -G'+reg_demfile+' `gmt grdinfo -I ' +
-                    intf_list[0]+'/phase.grd` `gmt grdinfo -I- '+intf_list[0]+'/phase.grd`', shell=True);
-    readbin.write_gmtsar2roipac_topo(reg_demfile, bin_demfile);
-    [width, length] = readbin.get_file_shape(reg_demfile);
+    # Turning dem into roipac format
+    readbin.write_gmtsar2roipac_topo(topo_ra_file, bin_demfile);
+    [width, length] = readbin.get_file_shape(topo_ra_file);
 
     # COMPUTE
     for data_dir in intf_list:
