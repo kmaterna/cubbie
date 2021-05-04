@@ -305,10 +305,9 @@ def write_super_master_batch_config(masterid):
     return;
 
 
-def set_up_merge_unwrap(desired_swaths):
+def set_up_merge_unwrap(desired_swaths, outdir):
     print("Setting up merged unwrapping for swaths:");
     print(desired_swaths);
-    outdir = 'merged'
     subprocess.call(["mkdir", "-p", outdir], shell=False);
     subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", outdir], shell=False);  # need copy, not soft link.
     subprocess.call(["cp", "batch.config", outdir], shell=False);
@@ -316,15 +315,15 @@ def set_up_merge_unwrap(desired_swaths):
     check_intf_all_sanity(desired_swaths, intf_all, 'phase.grd');  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'corr.grd');  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'mask.grd');  # defensive programming
-    return intf_all, outdir;
+    return intf_all;
 
 
-def write_merge_batch_input(intf_all, master_image, desired_swaths=("1", "2", "3")):
+def write_merge_batch_input(intf_all, master_image, merge_dir, desired_swaths=("1", "2", "3")):
     """
     # Necessary for merge swaths step.
     # The master of the first line should be the super master.
     """
-    outfile = 'merged/inputfile.txt'
+    outfile = merge_dir+'/inputfile.txt'
     print("\nWriting file " + outfile);
     master_image_in_format = ymd2yj(master_image[3:11])  # putting master image in the format taken by gmtsar dirs
     # Find the super master and stick it to the front.
@@ -368,15 +367,12 @@ def write_merge_unwrap(outfile):
     return;
 
 
-def merge_wrapped(desired_swaths, master_image):
+def merge_wrapped(desired_swaths, master_image, merged_directory):
     """Merge desired swaths; don't unwrap or geocode."""
-    if len(desired_swaths) == 1:  # for single swath
-        igram_directory = "F"+str(desired_swaths[0])+"/intf_all/";
-    else:
-        common_intfs, igram_directory = set_up_merge_unwrap(desired_swaths);  # check directory + paths
-        write_merge_batch_input(common_intfs, master_image, desired_swaths);  # put the master image in front
-        subprocess.call(['merge_swaths_mod.csh', "inputfile.txt", "batch.config"], shell=False);  # from procdir
-    return igram_directory;
+    common_intfs = set_up_merge_unwrap(desired_swaths, merged_directory);  # check directory + paths
+    write_merge_batch_input(common_intfs, master_image, merged_directory, desired_swaths);  # put the master image 1st
+    subprocess.call(['merge_swaths_mod.csh', "inputfile.txt", "batch.config"], shell=False);  # from procdir
+    return;
 
 
 def write_ordered_unwrapping(numproc, swath, sh_file, config_file):

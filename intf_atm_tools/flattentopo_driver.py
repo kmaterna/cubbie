@@ -22,9 +22,10 @@ from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 
-def main_function(intf_directory, topo_ra_file, example_rsc):
+def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_rsc):
     """
     :param intf_directory: location where all your interferograms are stored
+    :param flattentopo_directory: location where all your output corrected igrams are stored
     :param topo_ra_file: name of topo_ra.grd, registered with same pixels as intf files
     :param example_rsc: name of rsc file with proper length and width set
     """
@@ -32,9 +33,9 @@ def main_function(intf_directory, topo_ra_file, example_rsc):
     # GLOBAL PARAMETERS
     nfit = 0
     ivar = 1
-    alt_ref = 100
-    thresh_amp = 0.2
-    bin_demfile = intf_directory+"topo_radar.hgt"          # binary topo file
+    alt_ref = 100   # changing this during experiments
+    thresh_amp = 0.2   # changing this during experiments
+    bin_demfile = flattentopo_directory+"/topo_radar.hgt"          # binary topo file
 
     # INPUTS
     intf_list = glob.glob(intf_directory + "/???????_???????");
@@ -47,40 +48,44 @@ def main_function(intf_directory, topo_ra_file, example_rsc):
     # COMPUTE
     for data_dir in intf_list:
         print(data_dir);
-        intf_name = data_dir.split('/')[1];
-        infile = data_dir + "/intf_sd.int";
-        infile_filtered = data_dir + "/intf_filt.int";
-        stratfile = data_dir + "/strat.unw"
-        outfile = data_dir + "/out.int"
-        outfile_filtered = data_dir + "/out_filtered.int"
+        intf_name = data_dir.split('/')[1];   # is this general or specific to one-level-deep directories?
+        outdir = flattentopo_directory + intf_name + '/';
+        subprocess.call(["mkdir", "-p", outdir], shell=False);
 
-        # Pretty standard GMTSAR files.
-        phasefile = data_dir + "/phase.grd";
-        phasefilt_file = data_dir + "/phasefilt.grd";
-        ampfile = data_dir + "/amp.grd";
-        orig_phasefile = data_dir + "/orig_phase.grd";
-        orig_phasefilt_file = data_dir + "/orig_phasefilt.grd";
+        infile = outdir + "/intf_sd.int";
+        infile_filtered = outdir + "/intf_filt.int";
+        stratfile = outdir + "/strat.unw"
+        outfile = outdir + "/out.int"
+        outfile_filtered = outdir + "/out_filtered.int"
 
-        readbin.prep_files(phasefile, phasefilt_file, orig_phasefile, orig_phasefilt_file);  # save orig files
+        # GMTSAR files.
+        orig_phasefile = data_dir + "/phase.grd";
+        orig_phasefilt_file = data_dir + "/phasefilt.grd";
+        orig_ampfile = data_dir + "/amp.grd";
+        orig_corrfile = data_dir + "/corr.grd";
+        out_phasefile = outdir + "/phase.grd";
+        out_phasefilt_file = outdir + "/phasefilt.grd";
+        out_ampfile = outdir + "/amp.grd";
+        out_corrfile = data_dir + "/corr.grd";
 
         # MAKE BINARY INTERFEROGRAMS
-        readbin.write_gmtsar2roipac_phase(orig_phasefile, orig_phasefilt_file, ampfile, infile, infile_filtered);
+        readbin.write_gmtsar2roipac_phase(orig_phasefile, orig_phasefilt_file, orig_ampfile, infile, infile_filtered);
 
         # # # RUN THE FORTRAN
         print("\nRunning the fortran code to remove atmospheric artifacts from interferogram.")
-        subprocess.call(['cp', example_rsc, data_dir + '/intf_sd.int.rsc'], shell=False);
+        subprocess.call(['cp', example_rsc, outdir + '/intf_sd.int.rsc'], shell=False);
         print(
             "flattentopo " + infile + " " + infile_filtered + " " + bin_demfile + " " + outfile + " " + outfile_filtered
             + " " + str(nfit) + " " + str(ivar) + " " + str(alt_ref) + " " + str(thresh_amp) + " " + stratfile + "\n");
         subprocess.call(
             ["flattentopo", infile, infile_filtered, bin_demfile, outfile, outfile_filtered, str(nfit), str(ivar),
              str(alt_ref), str(thresh_amp), stratfile], shell=False);
-        subprocess.call(['mv', 'ncycle_topo', data_dir + '/ncycle_topo'], shell=False);
-        subprocess.call(['mv', 'ncycle_topo_az', data_dir + '/ncycle_topo_az'], shell=False);
+        subprocess.call(['mv', 'ncycle_topo', outdir + '/ncycle_topo'], shell=False);
+        subprocess.call(['mv', 'ncycle_topo_az', outdir + '/ncycle_topo_az'], shell=False);
+        subprocess.call(['cp', orig_ampfile, out_ampfile], shell=False);
+        subprocess.call(['cp', orig_corrfile, out_corrfile], shell=False);
 
         # Output handling. First reading 1D arrays
-        [real, imag] = readbin.read_binary_roipac_real_imag(infile);
-        [phase_early, _] = phase_math.real_imag2phase_amp(real, imag);
         [real, imag] = readbin.read_binary_roipac_real_imag(outfile);
         [phase_out, _] = phase_math.real_imag2phase_amp(real, imag);
         [real, imag] = readbin.read_binary_roipac_real_imag(outfile_filtered);
@@ -92,11 +97,12 @@ def main_function(intf_directory, topo_ra_file, example_rsc):
 
         # Write GRD files of output quantities
         [xdata_p, ydata_p] = read_any_grd(orig_phasefile)[0:2];
-        [xdata_pf, ydata_pf] = read_any_grd(orig_phasefilt_file)[0:2];
-        netcdf_read_write.produce_output_netcdf(xdata_p, ydata_p, phase_out_grd, 'radians', phasefile);
-        netcdf_read_write.produce_output_netcdf(xdata_pf, ydata_pf, phasefilt_out_grd, 'radians', phasefilt_file);
+        [xdata_pf, ydata_pf, phasefilt_early] = read_any_grd(orig_phasefilt_file);
+        netcdf_read_write.produce_output_netcdf(xdata_p, ydata_p, phase_out_grd, 'radians', out_phasefile);
+        netcdf_read_write.produce_output_netcdf(xdata_pf, ydata_pf, phasefilt_out_grd, 'radians', out_phasefilt_file);
 
         # Making plot
-        readbin.output_plots(phase_early, phasefilt_out, width, length, data_dir + "/" + intf_name + "_corrected.eps");
+        readbin.output_plots(phasefilt_early, phasefilt_out, width, length,
+                             outdir + "/" + intf_name + "_corrected.eps");
 
     return;

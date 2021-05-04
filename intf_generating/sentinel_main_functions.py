@@ -437,11 +437,18 @@ def unwrapping(config_params):
 
     # Marie-Pierre's atmosphere correction, done before unwrapping
     if config_params.atm_topo_detrend == 1:
-        # igram_directory = sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master);
-        igram_directory = "merged/"
-        flattentopo_example_rsc = "merged/example_sd.int.rsc";    # set this up manually
-        flattentopo_topora_grd = "merged/topo_ra.grd";           # set this up manually
-        flattentopo_driver.main_function(igram_directory, flattentopo_topora_grd, flattentopo_example_rsc);
+        if len(config_params.desired_swaths) == 1:  # for single swath
+            merge_directory = "F" + str(config_params.desired_swaths[0]) + "/intf_all/";
+            flattentopo_directory = "F" + str(config_params.desired_swaths[0]) + "/flattentopo/";
+        else:   # Make merged wrapped files.  Doesn't need any metadata files except dem.grd.
+            merge_directory = 'merged/'
+            flattentopo_directory = 'merged_flattentopo/'
+            # sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master, merge_directory);
+
+        flattentopo_example_rsc = flattentopo_directory + "/example_sd.int.rsc";    # set this up manually
+        flattentopo_topora_grd = flattentopo_directory + "/topo_ra.grd";           # set this up manually
+        flattentopo_driver.main_function(merge_directory, flattentopo_directory,
+                                         flattentopo_topora_grd, flattentopo_example_rsc);
         # Then unwrap.
 
     # unwrap_sh_file = "README_unwrap.txt";

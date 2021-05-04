@@ -1,8 +1,7 @@
 #!/bin/env/python
 import numpy as np
 import matplotlib.pyplot as plt
-import math, os
-import subprocess
+import math
 import struct
 from math_tools import phase_math
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
@@ -19,8 +18,7 @@ def read_binary_roipac_real_imag(filename):
     print(type(fileContent));
     print("data has %d floats" % (len(data) / 2));
 
-    real = [];
-    imag = [];
+    real, imag = [], [];
     for x in range(len(data)):
         if np.mod(x, 2) == 0:
             real.append(data[x]);
@@ -39,8 +37,7 @@ def read_binary_topo(filename, width):
     num_per_array = int(len(data) / 2);
     print("data has %d floats" % num_per_array);
 
-    topo1 = [];
-    topo2 = [];
+    topo1, topo2 = [], [];
     for x in range(len(data)):
         if np.mod(x, 2 * width) < width:  # topography is organized a different way.
             topo1.append(data[x]);
@@ -88,10 +85,6 @@ def write_binary_topo(filename, topo1, topo2, width):
     print("Packing %d topo numbers into binary file %s " % (len(total_struct) / 2, filename));
     with open(filename, mode='wb') as file:
         file.write(data);
-    return;
-
-
-def write_rsc_file():
     return;
 
 
@@ -145,7 +138,7 @@ def write_gmtsar2roipac_topo(infile, out_topo):
     """
     [xdata, _, topo] = read_any_grd(infile);
     width = len(xdata);
-    topo = np.flipud(topo);  # formatting correct when you flip up/down.
+    # topo = np.flipud(topo);  # early formatting needed flip up/down.  Processing as of 5/3/21 does NOT.
 
     topo_1d = np.reshape(topo, (np.size(topo),));
 
@@ -161,16 +154,6 @@ def get_file_shape(infile):
     length = len(ydata);
     print("shape of %s: width %d, length %d" % (infile, width, length));
     return [width, length];
-
-
-def prep_files(phasefile, phasefilt_file, orig_phasefile, orig_phasefilt_file):
-    # For new interferograms, you need to save off a copy of phase.grd and phasefilt.grd because they are
-    # overwritten in Marie-Pierre's insar workflow.
-    if not os.path.isfile(orig_phasefile):
-        subprocess.call(['cp', phasefile, orig_phasefile], shell=False);
-    if not os.path.isfile(orig_phasefilt_file):
-        subprocess.call(['cp', phasefilt_file, orig_phasefilt_file], shell=False);
-    return;
 
 
 if __name__ == "__main__":
