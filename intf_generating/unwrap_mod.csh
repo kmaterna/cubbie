@@ -27,14 +27,20 @@
   endif
 
 
+# User defined location for interferograms: KZM added this line.
+  set igram_dir = 'merged_flattentopo/'   # for merged swaths. for normal, usually 'intf_all/'
+  set raw_parent_dir = 'F1'  # for merged swaths. for normal, usually './'
+#  set igram_dir = 'intf_all/'
+#  set raw_parent_dir = '.'
+
 
 #
 # read parameters from config file
 #
-
   set stage = `grep proc_stage $2 | awk '{print $3}'`
   set master = `grep master_image $2 | awk '{print $3}'`
-#
+
+
 # if filter wavelength is not set then use a default of 200m
 #
   set filter = `grep filter_wavelength $2 | awk '{print $3}'`
@@ -62,8 +68,8 @@
   foreach line (`awk '{print $0}' $1`)
     set ref = `echo $line | awk -F: '{print $1}'`
     set rep = `echo $line | awk -F: '{print $2}'`
-    set ref_id  = `grep SC_clock_start ./raw/$ref.PRM | awk '{printf("%d",int($3))}' `
-    set rep_id  = `grep SC_clock_start ./raw/$rep.PRM | awk '{printf("%d",int($3))}' `
+    set ref_id  = `grep SC_clock_start $raw_parent_dir/raw/$ref.PRM | awk '{printf("%d",int($3))}' `
+    set rep_id  = `grep SC_clock_start $raw_parent_dir/raw/$rep.PRM | awk '{printf("%d",int($3))}' `   # kzm: raw_dir
 
     #
     # unwrapping
@@ -71,7 +77,7 @@
 
     echo $ref_id"_"$rep_id
 
-    cd intf_all
+    cd $igram_dir
     cd $ref_id"_"$rep_id
 
     if ($region_cut == "") then
@@ -86,7 +92,7 @@
         if (! -f landmask_ra.grd) then
           landmask.csh $region_cut
         endif
-        cd ../intf_all
+        cd ../$igram_dir
         cd $ref_id"_"$rep_id
         ln -s ../../topo/landmask_ra.grd .
       endif
@@ -94,7 +100,7 @@
       echo ""
       echo "SNAPHU.CSH - START"
       echo "threshold_snaphu: $threshold_snaphu"
-      snaphu_interp.csh $threshold_snaphu $defomax $region_cut  # if you've done writing of grid files in python, use snaphu_interp_mod.csh
+      snaphu_interp.csh $threshold_snaphu $defomax $region_cut
       echo "SNAPHU.CSH - END"
 
     else

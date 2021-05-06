@@ -94,6 +94,7 @@ def ymd2yj(ymd):
     return dt.datetime.strftime(tdate, "%Y%j");
 
 def yj2ymd(yj):
+    # Turn something like "2015001" into "20150101", useful for file naming conventions
     yj = int(yj) + 1;
     tdate = dt.datetime.strptime(str(yj), "%Y%j");
     return dt.datetime.strftime(tdate, "%Y%m%d");
@@ -103,6 +104,10 @@ def yj_to_prm_name(yj, swath):
     ymd = yj2ymd(yj);
     prm_name = "S1_" + ymd + "_ALL_F"+swath;
     return prm_name;
+
+def stem_to_datetime(stem):
+    # takes string like "S1_20190516_ALL_F1" ad converts to datetime object
+    return dt.datetime.strptime(stem[3:11], "%Y%m%d");
 
 def get_eof_from_date_sat(mydate, sat, eof_dir):
     """ This returns something like S1A_OPER_AUX_POEORB_OPOD_20160930T122957_V20160909T225943_20160911T005943.EOF.
@@ -214,8 +219,8 @@ def write_data_in(polarization, swath, master_date="", target_dir="F1"):
 
 
 def read_baseline_table(baselinefilename):
-    # Returns a chronologically sorted list of tuples of (baseline, datetime, datedoystr, stem) values
-    # Example: [(150.2, dt, 2015230, S1_20150514_ALL_F2), (etc)...]
+    # Returns a chronologically sorted list of tuples of (baseline, datetime, datedoystr, stem, missiondays) values
+    # Example: [(150.2, dt, 2015230, S1_20150514_ALL_F2, 523), (etc)...]
     if baselinefilename == '':
         print("Error! No baseline file provided. Exiting...");
         sys.exit(0);
@@ -396,7 +401,8 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
     return;
 
 
-def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
+def write_unordered_unwrapping(numproc, swath, sh_file, config_file, multiple_swaths=False):
+    print("Writing %s" % sh_file);
     infile = 'F' + str(swath) + '/intf_record.in';
     intfs = [];
     for line in open(infile):
@@ -404,11 +410,11 @@ def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
     outfile = open(sh_file, 'w');
     outfile.write("#!/bin/bash\n");
     outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n");
-    outfile.write("cd F" + swath + "\n");
+    if ~multiple_swaths:
+        outfile.write("cd F" + swath + "\n");   # for single swath, have this line.  For merged, stay outside
     outfile.write("rm intf?.in\n");
     for i, item in enumerate(intfs):
         outfile.write('echo "' + item + '" >> intf' + str(np.mod(i, numproc)) + '.in\n');
-        # outfile.write("echo S1A20180106_ALL_F1:S1A20180118_ALL_F1 >> intf0.in\n"); break;   
     outfile.write("\n# Unwrap the interferograms.\n\n")
     outfile.write("ls intf?.in | parallel --eta 'unwrap_mod.csh {} " + config_file + "'\n\n\n");  # if you have parallel
     # outfile.write("unwrap_mod.csh intf_record.in "+config_file+"\n\n\n");  # if you don't have parallel 
@@ -418,11 +424,10 @@ def write_unordered_unwrapping(numproc, swath, sh_file, config_file):
 
 
 def read_corr_results(corr_file):
-    [stem1, stem2, mean_corr] = np.loadtxt(corr_file, unpack=True, usecols=(1, 2, 3),
-                                           dtype={'names': ('stem1', 'stem2', 'mean_corr'),
-                                                  'formats': ('U22', 'U22', float)})
-    stem1 = [x.split('.')[0] for x in stem1];  # format: S1_20181025_ALL_F1
-    stem2 = [x.split('.')[0] for x in stem2];  # format: S1_20181025_ALL_F1
+    [igram_name, mean_corr] = np.loadtxt(corr_file, unpack=True, usecols=(0, 1),
+                                         dtype={'names': ('igram_name', 'mean_corr'), 'formats': ('U15', float)})
+    stem1 = [x.split('_')[0] for x in igram_name];  # format: 2015167
+    stem2 = [x.split('_')[1] for x in igram_name];
     return [stem1, stem2, mean_corr];
 
 

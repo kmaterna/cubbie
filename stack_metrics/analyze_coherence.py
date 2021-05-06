@@ -1,11 +1,10 @@
 # The purpose of this script is to run some diagnostics on the mean coherence. 
 # How did the coherence vary with other things, like perpendicular baseline and season? 
 # What do histograms of coherence look like? 
-# Run from the F1 directory, for example
 
 import matplotlib.pyplot as plt
 import datetime as dt
-import sys
+import os
 import glob as glob
 from subprocess import call, check_output
 from intf_generating import sentinel_utilities
@@ -13,37 +12,35 @@ from intf_generating import sentinel_utilities
 
 # ------------- DRIVERS ------------------ #
 
-def analyze_coherence_function():
-    [corr_file, baseline_table, corr_dirlist, plotname] = correlation_config();
+def analyze_coherence_function(igram_dir, raw_dir):
+    [corr_file, baseline_table, corr_dirlist, plotname] = correlation_config(igram_dir, raw_dir);
 
     # Correlation vs. Other Things.
-    calc_write_corr_results(corr_dirlist, corr_file);  # ONLY NEED TO DO AT THE BEGINNING
+    if os.path.isfile(corr_file):
+        print("Not computing file again");
+    else:
+        calc_write_corr_results(corr_dirlist, corr_file);  # Only need to do at the beginning
     [stem1, stem2, mean_corr] = sentinel_utilities.read_corr_results(corr_file);
-    bl_tuples =  sentinel_utilities.read_baseline_table(baseline_table);
-    stems_blt = [x[3] for x in bl_tuples];
+    bl_tuples = sentinel_utilities.read_baseline_table(baseline_table);
+    blt_datetimes = [x[1] for x in bl_tuples];
     xbaseline = [x[0] for x in bl_tuples];
-    make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline, plotname);
-
-    # # Histograms, in 12-panel figures, one small panel for each interferogram
-    # [file_names]=configure_histograms();
-    # [xdata,ydata,corr_all,date_pairs]=rwr.reader_simple_format(file_names);
-    # stack_metrics_tools.all_gridded_histograms(corr_all,date_pairs);
+    make_coh_vs_others_plots(stem1, stem2, mean_corr, blt_datetimes, xbaseline, plotname);
     return;
 
 
 # ------------ CORR vs OTHER STUFF -------------- # 
 
-def correlation_config():
+def correlation_config(igram_dir, raw_dir):
     corr_file = 'corr_results.txt';
-    baseline_table = 'raw/baseline_table.dat';
-    corr_dirlist = glob.glob('intf_all/2*');
+    baseline_table = raw_dir + 'raw/baseline_table.dat';
+    corr_dirlist = glob.glob(igram_dir + '???????_???????');
     plotname = "coherence_stats.eps";
-    print(
-        "Config for analysis of coherence versus other quantities: %s, %s, %s" % (corr_file, baseline_table, plotname));
+    print("Config for analysis of coherence vs. other quantities: %s, %s, %s" % (corr_file, baseline_table, plotname));
     return [corr_file, baseline_table, corr_dirlist, plotname];
 
 
 def calc_write_corr_results(dir_list, filename):
+    """Write average coherence for each interferogram, in format: 2018005_2018017 0.152738928795 """
     ifile = open(filename, 'w');
     for item in dir_list:
         directname = item.split('/')[-1];  # format: 2015153_2015177
@@ -51,34 +48,23 @@ def calc_write_corr_results(dir_list, filename):
         corr = check_output("gmt grdinfo " + item + "/out.grd | grep z | awk \'{print $3}\'", shell=True);
         corr = float(corr.split()[0]);
         print("Computing for %s with mean coherence %f " % (directname, corr));
-        SLCs = check_output("ls " + item + "/*.SLC", shell=True);
-        SLCs = SLCs.decode('utf-8')
-        slc1 = SLCs.split('\n')[0];
-        slc1 = slc1.split('/')[-1];
-        slc2 = SLCs.split()[1];
-        slc2 = slc2.split('/')[-1];
         call("rm " + item + "/out.grd", shell=True);
-        ifile.write('%s %s %s %s\n' % (directname, slc1, slc2, corr))
-    # Format: 2018005_2018017 S1A20180106_ALL_F1.SLC S1A20180118_ALL_F1.SLC 0.152738928795
+        ifile.write('%s %s\n' % (directname, corr))
     ifile.close();
     return;
 
 
-def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline, plotname):
-    b_perp_baseline = [];
-    temporal_baseline = [];
-    season = [];
+def make_coh_vs_others_plots(stem1, stem2, mean_corr, blt_datetimes, xbaseline, plotname):
+    b_perp_baseline, temporal_baseline, season = [], [], [];
     for i in range(len(mean_corr)):  # define a bunch of things for each interferogram.
         # How long in time?
-        datestr1 = stem1[i].split('_')[1];  # stem1 has format "S1_20180615_ALL_F1"
-        date1 = dt.datetime.strptime(datestr1, '%Y%m%d');
-        datestr2 = stem2[i].split('_')[1];
-        date2 = dt.datetime.strptime(datestr2, '%Y%m%d');
+        date1 = dt.datetime.strptime(sentinel_utilities.yj2ymd(stem1[i]), "%Y%m%d");
+        date2 = dt.datetime.strptime(sentinel_utilities.yj2ymd(stem2[i]), "%Y%m%d");
         temporal_baseline.append(abs((date1 - date2).days));
 
         # Perpendicular Baseline?
-        myindex1 = stems_blt.index(stem1[i]);
-        myindex2 = stems_blt.index(stem2[i]);
+        myindex1 = blt_datetimes.index(date1);
+        myindex2 = blt_datetimes.index(date2);
         bl1 = xbaseline[myindex1];
         bl2 = xbaseline[myindex2];
         b_perp_baseline.append(abs(bl1 - bl2));
@@ -131,23 +117,3 @@ def make_coh_vs_others_plots(stem1, stem2, mean_corr, stems_blt, xbaseline, plot
     plt.savefig(plotname);
 
     return;
-
-
-# ------------- HISTOGRAMS ------------ # 
-# This makes a bunch of 12-panel figures with the coherence of each interferogram as a histogram
-# Not particularly interesting if there's great coherence everywhere. 
-
-def configure_histograms():
-    file_dir = "intf_all";
-    file_type = "corr.grd";
-
-    file_names = glob.glob(file_dir + "/*/" + file_type);
-    if len(file_names) == 0:
-        print("Error! No files matching search pattern.");
-        sys.exit(1);
-    print("Reading " + str(len(file_names)) + " files.");
-    return [file_names];
-
-
-if __name__ == "__main__":
-    analyze_coherence_function();

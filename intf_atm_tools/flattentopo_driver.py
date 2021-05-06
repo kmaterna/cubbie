@@ -15,7 +15,7 @@ Then, this script does the following:
 
 import numpy as np
 import subprocess
-import glob
+import glob, os
 from read_write_insar_utilities import readbin
 from math_tools import phase_math
 from Tectonic_Utils.read_write import netcdf_read_write
@@ -50,6 +50,9 @@ def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_r
         print(data_dir);
         intf_name = data_dir.split('/')[1];   # is this general or specific to one-level-deep directories?
         outdir = flattentopo_directory + intf_name + '/';
+        if os.path.isfile(outdir+'/phase.grd'):
+            print("skipping %s " % outdir);
+            continue;
         subprocess.call(["mkdir", "-p", outdir], shell=False);
 
         infile = outdir + "/intf_sd.int";
@@ -63,10 +66,12 @@ def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_r
         orig_phasefilt_file = data_dir + "/phasefilt.grd";
         orig_ampfile = data_dir + "/amp.grd";
         orig_corrfile = data_dir + "/corr.grd";
+        orig_maskfile = data_dir + "/mask.grd";
         out_phasefile = outdir + "/phase.grd";
         out_phasefilt_file = outdir + "/phasefilt.grd";
         out_ampfile = outdir + "/amp.grd";
-        out_corrfile = data_dir + "/corr.grd";
+        out_corrfile = outdir + "/corr.grd";
+        out_maskfile = outdir + "/mask.grd";
 
         # MAKE BINARY INTERFEROGRAMS
         readbin.write_gmtsar2roipac_phase(orig_phasefile, orig_phasefilt_file, orig_ampfile, infile, infile_filtered);
@@ -84,6 +89,7 @@ def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_r
         subprocess.call(['mv', 'ncycle_topo_az', outdir + '/ncycle_topo_az'], shell=False);
         subprocess.call(['cp', orig_ampfile, out_ampfile], shell=False);
         subprocess.call(['cp', orig_corrfile, out_corrfile], shell=False);
+        subprocess.call(['cp', orig_maskfile, out_maskfile], shell=False);
 
         # Output handling. First reading 1D arrays
         [real, imag] = readbin.read_binary_roipac_real_imag(outfile);

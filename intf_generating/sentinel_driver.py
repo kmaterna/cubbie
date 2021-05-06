@@ -60,3 +60,6 @@ if __name__ == "__main__":
 
     # # Step 5
     sentinel_main_functions.unwrapping(config_params);
+
+    # # Step 6
+    sentinel_main_functions.metrics(config_params);

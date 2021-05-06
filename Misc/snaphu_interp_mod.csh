@@ -1,7 +1,8 @@
 #!/bin/csh -f
 #       $Id$
 #
-#
+#  May 2021: Do I need this file anymore now that I don't work with gridline-node-registered files?
+#  Apparently there's one more change, in nan handling.
 alias rm 'rm -f'
 unset noclobber
 #

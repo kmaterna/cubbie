@@ -4,6 +4,7 @@ import numpy as np
 from subprocess import call
 from intf_generating import sentinel_utilities, rose_baseline_plot
 from intf_atm_tools import flattentopo_driver
+from stack_metrics import analyze_coherence
 
 Params = collections.namedtuple('Params',
                                 ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'master',
@@ -435,6 +436,8 @@ def unwrapping(config_params):
     if config_params.endstage < 5:  # if we're ending at intf, we don't do this.
         return;
 
+    unwrap_sh_file = "README_unwrap.txt";
+
     # Marie-Pierre's atmosphere correction, done before unwrapping
     if config_params.atm_topo_detrend == 1:
         if len(config_params.desired_swaths) == 1:  # for single swath
@@ -443,26 +446,44 @@ def unwrapping(config_params):
         else:   # Make merged wrapped files.  Doesn't need any metadata files except dem.grd.
             merge_directory = 'merged/'
             flattentopo_directory = 'merged_flattentopo/'
-            # sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master, merge_directory);
+            sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master, merge_directory);
 
         flattentopo_example_rsc = flattentopo_directory + "/example_sd.int.rsc";    # set this up manually
         flattentopo_topora_grd = flattentopo_directory + "/topo_ra.grd";           # set this up manually
         flattentopo_driver.main_function(merge_directory, flattentopo_directory,
                                          flattentopo_topora_grd, flattentopo_example_rsc);
-        # Then unwrap.
+        # Then unwrap.  Some quick and dirty code here to get things running
+        sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
+                                                      config_params.config_file,
+                                                      multiple_swaths=True if len(config_params.desired_swaths) > 1
+                                                      else False);
 
-    # unwrap_sh_file = "README_unwrap.txt";
-    # if len(config_params.desired_swaths) == 1:  # for single swath (might not be working)
-    #     sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
-    #                                                   config_params.config_file);
-    #     # Make plots of phasefilt.grd files right before unwrapping (do separately before flattentopo if desired).
-    #     # phasefilt_plot.top_level_driver('manual_remove.txt');
-    # else:  # For merging multiple swaths, write intfs and PRM files into inputfile, prepare for merging.
-    #     common_intfs = sentinel_utilities.set_up_merge_unwrap(config_params.desired_swaths);  # check directory, paths
-    #     sentinel_utilities.write_merge_batch_input(common_intfs, config_params.master, config_params.desired_swaths);
-    #     sentinel_utilities.write_merge_unwrap(unwrap_sh_file);
-    #
-    # print("Ready to call " + unwrap_sh_file)
-    # call(['chmod', '+x', unwrap_sh_file], shell=False);
-    # call(["./"+unwrap_sh_file], shell=False);
+    else:   # not using Marie-Pierre's code
+        if len(config_params.desired_swaths) == 1:  # for single swath (might not be working)
+            sentinel_utilities.write_unordered_unwrapping(config_params.numproc, config_params.swath, unwrap_sh_file,
+                                                          config_params.config_file);
+
+        else:  # For merging multiple swaths, write intfs and PRM files into inputfile, prepare for merging.
+            common_intfs = sentinel_utilities.set_up_merge_unwrap(config_params.desired_swaths, 'merged');  # check path
+            sentinel_utilities.write_merge_batch_input(common_intfs, config_params.master,
+                                                       config_params.desired_swaths);
+            sentinel_utilities.write_merge_unwrap(unwrap_sh_file);
+
+    print("Ready to call " + unwrap_sh_file)
+    call(['chmod', '+x', unwrap_sh_file], shell=False);
+    call(["./"+unwrap_sh_file], shell=False);
+    return;
+
+# --------------- STEP 6: View Metrics ------------ #
+
+def metrics(config_params):
+    if config_params.startstage > 6:  # if we're starting after, we don't do this.
+        return;
+    if config_params.endstage < 6:  # if we're ending at intf, we don't do this.
+        return;
+
+    print("Performing metrics on the stack.")
+    igram_dir = 'merged_flattentopo/';
+    raw_dir = 'F1/'
+    analyze_coherence.analyze_coherence_function(igram_dir, raw_dir);
     return;
