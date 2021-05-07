@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write
-import readmytupledata
 from intf_generating import get_ra_rc_from_ll
 from Tectonic_Utils.geodesy import haversine
 
@@ -78,7 +77,7 @@ def get_xdates_from_intf_tuple_dates(date_pairs_dt):
 
 
 # Reference Pixel Math
-def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
+def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files, signalspread_filename):
     """
     Get the index of the reference pixel (generally using merged-subswath files)
     If you don't have the reference pixel in the config file,
@@ -87,7 +86,7 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
     """
     print("Identifying reference pixel:");
     if ref_idx == "" and ref_loc == "":
-        get_100p_pixels_manually_choose(intf_files);
+        get_100p_pixels_manually_choose(signalspread_filename);
         sys.exit(0);
     elif ref_idx != "":  # First preference: Get the reference pixel index from the config file
         rowref = int(ref_idx.split('/')[0])
@@ -100,64 +99,58 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files):
             rowref, colref = get_reference_pixel_from_geocoded_grd(lon, lat, intf_files[0][2]);
             # Would use uavsar_from_lonlat_get_rowcol if doing UAVSAR here.
         else:  # Last preference: Extract the lat/lon from radar coordinates using trans.dat of merged-subswath files
-            trans_dat = "merged/trans.dat";
+            trans_dat = "topo/trans.dat";   # could be topo/trans.dat or merged/trans.data
             rowref, colref = get_referece_pixel_from_radarcoord_grd(lon, lat, trans_dat, intf_files[0][2]);
         print("\nSTOP! Please write the reference row/col %d/%d into your config file. \n" % (rowref, colref))
         sys.exit(1);
     return rowref, colref;
 
 
-def get_100p_pixels_manually_choose(filenameslist):
+def get_100p_pixels_manually_choose(signalspread_filename):
     """
-    This iterative function helps you manually choose a reference pixel.
+    This iterative function helps you manually choose a reference pixel based on signalspread.nc.
     You might have to run through this function a number of times
-    To select your boxes and your eventual reference pixel.
+    To select your boxes and your eventual reference pixel (row, col).
     I pick one in a stable area, outside of the deformation, ideally in a desert.
     """
+    print("Finding the pixels that are 100 percent coherent from signalspread");
+    [x, y, ss_data] = netcdf_read_write.read_any_grd(signalspread_filename);
 
-    print("Finding the pixels that are 100 percent coherent");
-    # Finding pixels that are completely non-nan
-    mydata = readmytupledata.reader_isce(filenameslist, band=2);
-    total_pixels = np.shape(mydata.zvalues)[1] * np.shape(mydata.zvalues)[2];
-    total_images = np.shape(mydata.zvalues)[0];
     count = 0;
-    ypixels_good, xpixels_good = [], [];
-    ypixels_options, xpixels_options = [], [];
-
-    for i in range(np.shape(mydata.zvalues)[1]):
-        for j in range(np.shape(mydata.zvalues)[2]):
-            oneslice = mydata.zvalues[:, i, j];
-            if np.sum(~np.isnan(oneslice)) == total_images:  # if we have perfect coherence
+    candidate_options, great_options = [], [];
+    for i in range(len(y)):
+        for j in range(len(x)):
+            if ss_data[i][j] == 100:
                 count = count + 1;
-                xpixels_good.append(j);
-                ypixels_good.append(i);
-                # Here we will adjust parameters until we find a reference pixel that we like.
-                if 280 < j < 300 and 2500 < i < 2700:
-                    xpixels_options.append(j);
-                    ypixels_options.append(i);
-
-    idx_lucky = 710;
-    xref = xpixels_options[idx_lucky];
-    yref = ypixels_options[idx_lucky];
-
+                candidate_options.append((i, j));
+    total_pixels = np.multiply(np.shape(ss_data)[0], np.shape(ss_data[1]));
     print("%d of %d (%f percent) are totally coherent. " % (count, total_pixels, 100 * (count / total_pixels)));
-    print(np.shape(mydata.zvalues));
-    print("%d pixels are good options for the reference pixel. " % (len(xpixels_options)));
+    print("%d pixels are good options for the reference pixel. " % (len(candidate_options)));
+
+    # Manual select: great options
+    xrange_great = (50, 250);     # manual select here
+    yrange_great = (900, 1000);  # manual select here
+    for item in candidate_options:
+        if yrange_great[0] < item[0] < yrange_great[1]:
+            if xrange_great[0] < item[1] < xrange_great[1]:
+                great_options.append(item);
+    print("%d pixels are great options for the reference pixel. " % (len(great_options)));
+
+    # Manual select: Get a single reference pixel from the great options
+    refpix = great_options[40];   # manual select here
 
     # Make a plot that shows where those pixels are
-    # a=rwr.read_grd(outdir+'/signalspread_cut.nc');
     plt.figure();
-    # plt.imshow(a,aspect=1/4, cmap='rainbow');
-    plt.plot(xpixels_good, ypixels_good, '.', color='k');
-    plt.plot(xpixels_options, ypixels_options, '.', color='g');
-    plt.plot(xref, yref, '.', color='r');
+    plt.imshow(ss_data, aspect=1, cmap='rainbow');
+    plt.gca().invert_yaxis()
+    plt.plot([item[1] for item in candidate_options], [item[0] for item in candidate_options], '.', color='k');
+    plt.plot([item[1] for item in great_options], [item[0] for item in great_options], '.', color='g');
+    plt.plot(refpix[1], refpix[0], '.', color='r');
     plt.savefig('best_pixels.png');
     plt.close();
-
-    print("Based on 100p pixels, selecting reference pixel at row/col %d, %d " % (yref, xref));
+    print("Based on 100p pixels, selecting reference pixel at row/col %d/%d " % (refpix[0], refpix[1]));
     print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");
-
-    return yref, xref;
+    return refpix[0], refpix[1];
 
 
 def uavsar_from_lonlat_get_rowcol(config_params):

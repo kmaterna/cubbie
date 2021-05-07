@@ -49,9 +49,11 @@ def get_ref(config_params):
 
     # Very general, returns the filenames of all interferograms, doesn't discriminate
     intfs = stacking_utilities.get_list_of_intf_all(config_params, returnval='intf_files');
+    intfs = stacking_utilities.exclude_intfs_manually(intfs, config_params.skip_file);
 
     # Here we get ref_idx if we don't have it already
-    stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs, intfs);
+    stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs, intfs,
+                                     config_params.ts_output_dir+config_params.signal_spread_filename);
 
     print("End Stage 2 - Finding Files and Reference Pixel\n");
     return;

@@ -431,6 +431,9 @@ def make_interferograms(config_params):
 # --------------- STEP 5: Unwrapping ------------ #
 
 def unwrapping(config_params):
+    """
+    Unfortunately the parameters here often interact and cause code breaks, so you should proceed with caution
+    """
     if config_params.startstage > 5:  # if we're starting after, we don't do this.
         return;
     if config_params.endstage < 5:  # if we're ending at intf, we don't do this.

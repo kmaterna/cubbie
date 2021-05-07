@@ -53,7 +53,11 @@ def compute_velocity_math(TS, x_axis_days):
 # make an NSBAS matrix describing each image that's a real number (not nan).
 
 def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple):
-    """This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities"""
+    """This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities
+    Actually, I might change this.
+    You should be able to get velocities only, since different pixels may have different datestrs in
+    regions with bad coherence.
+    """
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
     retval_main = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
     retval_metrics = [[{} for _i in range(len(intf_tuple.xvalues))] for _j in range(len(intf_tuple.yvalues))];
@@ -147,7 +151,7 @@ def compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tupl
     if nanflag:
         vel = np.nan;
     else:
-        vel = compute_velocity_math(TS, x_axis_days);
+        vel = compute_velocity_math(TS[0], x_axis_days);
     return vel, nanflag, metrics;
 
 
@@ -183,7 +187,10 @@ def compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple
             ts_vector = temporal_smoothing_ts(ts_vector, param_dict["sbas_smoothing"]);
 
         TS = [ts_vector];
-        nanflag = False;
+        if np.sum(np.isnan(TS[0])) == len(TS[0]):
+            nanflag = True;
+        else:
+            nanflag = False;
     else:
         TS = [empty_vector];
         nanflag = True;
@@ -241,9 +248,9 @@ def do_nsbas_pixel(pixel_value, date_pairs, wavelength, datestrs, coh_value=None
     # cc_num1 = stacking_utilities.connected_components_search(date_pairs, datestrs); # testing code
     # print(cc_num1);  # testing code
     cc_num = stacking_utilities.connected_components_search(date_pairs_used, datestrs);
-    # print(cc_num)  # testing code
     if cc_num != 1:
-        print("SINGULAR MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
+        print(cc_num)  # testing code
+        # print("SINGULAR MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
         empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
         empty_vector[:] = np.nan;
         return empty_vector;
