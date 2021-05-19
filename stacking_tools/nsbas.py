@@ -26,6 +26,33 @@ def get_TS_dates(date_julstrings):
     return datestrs, x_axis_datetimes, x_axis_days;
 
 
+def select_datestrs_for_pixel(i, j, param_dict, intf_tuple, signal_spread_tuple, coh_tuple, datestrs):
+    """
+    reduce the datestrs and x_axis_days for a certain pixel based on where its interferograms have nans.
+    This reduces the likelihood of encountering a singular matrix during time series SBAS inversion.
+    Update the datestrs and x_axis_days
+    It guarantees that the pixel's network will fall within a single connected component for SBAS inversion.
+    """
+    valid_date_julstrings, select_datestrs, select_x_axis_days = [], [], [];
+    ss, pixel_value, coh_value = pixel_extractor(i, j, param_dict, intf_tuple, signal_spread_tuple, coh_tuple);
+
+    # Filter the interferograms for ones that contain real data.
+    for i in range(len(pixel_value)):
+        if coh_value:   # if we are using coherence
+            if coh_value[i] > param_dict["signal_coh_cutoff"]:
+                if not math.isnan(pixel_value[i]):
+                    valid_date_julstrings.append(intf_tuple.date_pairs_julian[i]);
+        else:
+            if not math.isnan(pixel_value[i]):
+                valid_date_julstrings.append(intf_tuple.date_pairs_julian[i]);
+
+    # Here we filter interferograms again based on the largest connected component of the graph:
+    valid_date_julstrings, _ = stacking_utilities.reduce_graph_to_largest_cc(valid_date_julstrings, datestrs);
+
+    select_datestrs, _, select_x_axis_days = get_TS_dates(valid_date_julstrings);
+    return select_datestrs, select_x_axis_days;
+
+
 def initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict):
     assert(np.shape(intf_tuple.zvalues[0]) == np.shape(signal_spread_tuple)), ValueError("SS and intf diff shapes");
     if coh_tuple is not None and np.shape(intf_tuple.zvalues[0]) != np.shape(coh_tuple.zvalues[0]):
@@ -53,9 +80,8 @@ def compute_velocity_math(TS, x_axis_days):
 # make an NSBAS matrix describing each image that's a real number (not nan).
 
 def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple):
-    """This is how you access velocity solutions from NSBAS - solve the TS first, then package velocities
-    Actually, I might change this.
-    You should be able to get velocities only, since different pixels may have different datestrs in
+    """
+    Solve velocities directly for each pixel, since different pixels may have different datestrs in
     regions with bad coherence.
     """
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
@@ -66,9 +92,10 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables
         return compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple,
-                           datestrs, x_axis_days);
+                           datestrs);
 
-    retval_main, retval_metrics = iterator_func(intf_tuple, packager_function, retval_main, retval_metrics);
+    retval_main, retval_metrics = iterator_func(intf_tuple, packager_function, retval_main, retval_metrics,
+                                                0, 200000);   # numbers are a test.
     return retval_main, retval_metrics;
 
 
@@ -91,8 +118,10 @@ def Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tup
 
 
 def Velocities_from_TS(ts_tuple):
-    """The easy function to take a timeseries saved on disk and construct velocities
-    This one doesn't have a memory leak. """
+    """
+    The easy function to take a timeseries saved on disk and construct velocities
+    This one doesn't have a memory leak.
+    """
     retval_main = np.zeros([len(ts_tuple.yvalues), len(ts_tuple.xvalues)]);
     retval_metrics = [[{} for _i in range(len(ts_tuple.xvalues))] for _j in range(len(ts_tuple.yvalues))];
     x_axis_days = [(i - ts_tuple.ts_dates[0]).days for i in ts_tuple.ts_dates];
@@ -145,14 +174,25 @@ def iterator_func(intf_tuple, func, retval, retval_metrics, start_index=0, end_i
 
 # ---------- LOWER LEVEL COMPUTE FUNCTIONS ---------- #
 # Functions that go into the iterator
-def compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple, datestrs, x_axis_days):
-    TS, nanflag, metrics = compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple,
-                                      coh_tuple, datestrs);
-    if nanflag:
-        vel = np.nan;
+def compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple, datestrs):
+    """
+    For a given pixel, what is the velocity?  We will compute SBAS time series (in mm)
+    But we do not guarantee that each pixel will have the same dates in the time series that we use to make velocity.
+    Velocity is just computed over the dates that are available.
+    A useful caveat in places with poor coherence that are likely to have disconnected SBAS networks.
+    Right now only operates on the largest connected component of the graph.
+    """
+    # for each pixel, update datestrs based on pixel_value and intf_tuple.
+    updated_datestrs, updated_x_axis_days = select_datestrs_for_pixel(i, j, param_dict, intf_tuple, signal_spread_tuple,
+                                                                      coh_tuple, datestrs);
+
+    TS, nanflag, output_metrics_dict = compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple,
+                                                  coh_tuple, updated_datestrs);
+    if not nanflag:
+        vel = compute_velocity_math(TS[0], updated_x_axis_days);   # the velocity step
     else:
-        vel = compute_velocity_math(TS[0], x_axis_days);
-    return vel, nanflag, metrics;
+        vel = np.nan;
+    return vel, nanflag, output_metrics_dict;
 
 
 def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
@@ -166,8 +206,10 @@ def compute_velocity_from_ts(i, j, ts_tuple, x_axis_days):
 
 
 def compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple, datestrs):
-    """ For a given pixel, what is the SBAS time series (in mm)?
-    Apply various corrections """
+    """
+    For a given pixel, what is the SBAS time series (in mm)?
+    Apply various corrections
+    """
     empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
     empty_vector[:] = np.nan;
     output_metrics_dict = {};
@@ -229,28 +271,32 @@ def do_nsbas_pixel(pixel_value, date_pairs, wavelength, datestrs, coh_value=None
     date_pairs_used = [];
 
     for i in range(len(pixel_value)):
-        if not math.isnan(pixel_value[i]):
-            d = np.append(d, pixel_value[i]);  # removes the nans from the computation.
-            date_pairs_used.append(date_pairs[i]);
-            # might be a slightly shorter array of which interferograms actually got used.
-            if coh_value is not None:
-                diagonals.append(np.power(coh_value[i], 2));  # using coherence squared as the weighting.
-            else:
-                diagonals.append(1);
-        # else:                      # testing code
-        #     print(date_pairs[i]);  # testing code
+        if date_pairs[i][0:7] in datestrs:   # if the interferogram falls within the desired connected component
+            if not math.isnan(pixel_value[i]):
+                d = np.append(d, pixel_value[i]);  # removes the nans from the computation.
+                date_pairs_used.append(date_pairs[i]);
+                # might be a slightly shorter array of which interferograms actually got used.
+                if coh_value is not None:
+                    diagonals.append(np.power(coh_value[i], 2));  # using coherence squared as the weighting.
+                else:
+                    diagonals.append(1);
+
     model_num = len(datestrs) - 1;
     # The weighting vector
     W = np.diag(diagonals);
 
+    # print('d:', len(d), d);    # testing code
+    # print('date_pairs_used:', len(date_pairs_used));   # testing code
+
     # More defensive programming for degenerate cases like disconnected networks
-    # Answer for March 3: broken date in F3, 20180317. Still asking for TS at that date. Not sure how to fix.
-    # cc_num1 = stacking_utilities.connected_components_search(date_pairs, datestrs); # testing code
-    # print(cc_num1);  # testing code
-    cc_num = stacking_utilities.connected_components_search(date_pairs_used, datestrs);
-    if cc_num != 1:
-        print(cc_num)  # testing code
-        # print("SINGULAR MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
+    cc_num, num_elements, _ = stacking_utilities.connected_components_search(date_pairs_used, datestrs);
+    if num_elements <= 4:
+        print("VERY SMALL DATA MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
+        empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
+        empty_vector[:] = np.nan;
+        return empty_vector;
+    if num_elements != len(datestrs):
+        print("SINGULAR MATRIX ENCOUNTERED. RETURNING VECTOR OF NANS.");
         empty_vector = np.empty(np.shape(datestrs));  # Length of the TS model
         empty_vector[:] = np.nan;
         return empty_vector;

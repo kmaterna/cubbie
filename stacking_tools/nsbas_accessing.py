@@ -8,6 +8,20 @@ import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 import nsbas
 
+"""
+Note: intf_tuple is a named tuple:
+(  
+   'filepaths'          : [list-of-filenames] format:string,
+   'date_pairs_julian'  : [list-of-datestrs] format:string, 'yyyyjjj_yyyyjj',
+   'date_deltas'        : [list-of-datedeltas] format:float, years,
+   'xvalues'            : [array] format: 1d array of floats,
+   'yvalues'            : [array] format: 1d array of floats,
+   'zvalues'            : [array] format: 3d array of floats,
+   'date_pairs_dt'      : [list-of-two-element-lists] format: [dt, dt], 
+   'ts_dates'           : [list-of-all-dts] format:dt 
+)  
+"""
+
 
 def reader_function_gmtsar(intf_files, coh_files, baseline_file, ts_type, dem_error):
     """A massive reader function for SBAS analysis"""

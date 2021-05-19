@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
+import collections
 from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write
 from intf_generating import get_ra_rc_from_ll
@@ -348,6 +349,8 @@ def make_selection_of_intfs(config_params):
     write_intf_record(select_intf_tuples, config_params.ts_output_dir+"/intf_record.txt")
     select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
     select_corr_list = [mytuple[3] for mytuple in select_intf_tuples]
+    if len(select_intf_tuples) == 0:
+        print("Error! Not starting with any interferograms. Exiting."); sys.exit(0);
     return select_intf_list, select_corr_list, select_intf_tuples;
 
 
@@ -387,6 +390,15 @@ def report_on_refpixel(rowref, colref, signal_spread_data, outdir):
     return;
 
 
+def find_largest_connected_component(labels):
+    """ Return the number of the largest component in a connected component graph. """
+    counting_elements = collections.defaultdict(int);
+    for item in labels:
+        counting_elements[str(int(item))] += 1;
+    max_key = max(counting_elements, key=counting_elements.get)
+    return max_key, counting_elements[max_key];
+
+
 def find_connected_dates(date_pairs, sample_date):
     connected_dates = [];
     for i in range(len(date_pairs)):
@@ -408,26 +420,55 @@ def connected_components_search(date_pairs, datestrs):
     3. When all of the dates connected to the first date have been added to queue, pop the first date from queue
     4. Repeat until the queue is gone.
     5. See if all dates have been added to the component.
+    Returns the number of the biggest connected component, the number of elements of that component, and
+    the total labels, for each date.
+    Reduces to a single connected component with length len(datestrs) if we have one cc that touches every date.
     """
 
     # Initializing first time through
     label = np.zeros(np.shape(datestrs));
-    queue = [datestrs[0]];
+    current_cc = 1;
 
-    # some kind of loop
-    while len(queue) > 0:
-        sample_date = queue[0];  # go exploring the queue, starting at the front.
-        idx_sample = datestrs.index(sample_date);
-        label[idx_sample] = 1;
-        connected_dates = find_connected_dates(date_pairs, sample_date);
-        for i in range(len(connected_dates)):
-            idx_connection = datestrs.index(connected_dates[i]);
-            if label[idx_connection] == 0:
-                label[idx_connection] = 1;
-                queue.append(connected_dates[i]);
-        queue.pop(0);  # removing the point from the queue after it has been traversed
+    while 0 in label:   # while we still have unlabeled nodes:
+        # Put the first datestr with cc==0 into the queue, for traversal. Ugly but workable.
+        queue = [];
+        for i, item in enumerate(label):
+            if item == 0:
+                queue = [datestrs[i]];
+                break;
 
-    return np.sum(label) == len(datestrs);  # returning SUCCESS if we have a single cc touching every required date
+        # loop into the next connected component
+        while len(queue) > 0:
+            sample_date = queue[0];  # go exploring the queue, starting at the front.
+            idx_sample = datestrs.index(sample_date);
+            label[idx_sample] = current_cc;
+            connected_dates = find_connected_dates(date_pairs, sample_date);
+            for i in range(len(connected_dates)):
+                idx_connection = datestrs.index(connected_dates[i]);
+                if label[idx_connection] == 0:
+                    queue.append(connected_dates[i]);
+            queue.pop(0);  # removing the point from the queue after it has been traversed
+
+        current_cc = current_cc + 1;
+    # print(label);  # testing code
+    cc_num, num_elements = find_largest_connected_component(label);
+    return cc_num, num_elements, label;
+
+
+def reduce_graph_to_largest_cc(date_pairs, datestrs):
+    """Shrink a network to only the largest connected component of the graph"""
+    cc_num, num_elements, labels = connected_components_search(date_pairs, datestrs);
+    if num_elements == len(datestrs):
+        return date_pairs, datestrs;
+    else:
+        new_date_pairs, new_datestrs = [], [];
+        for i in range(len(datestrs)):
+            if labels[i] == float(cc_num):
+                new_datestrs.append(datestrs[i]);
+        for item in date_pairs:
+            if item[0:7] in new_datestrs:
+                new_date_pairs.append(item);
+        return new_date_pairs, new_datestrs;
 
 
 # Functions to get TS points in row/col coordinates
