@@ -427,27 +427,23 @@ def connected_components_search(date_pairs, datestrs):
 
     # Initializing first time through
     label = np.zeros(np.shape(datestrs));
+    unenqueued = set(datestrs)
     current_cc = 1;
 
-    while 0 in label:   # while we still have unlabeled nodes:
+    while unenqueued:   # while we still have unlabeled nodes:
         # Put the first datestr with cc==0 into the queue, for traversal. Ugly but workable.
-        queue = [];
-        for i, item in enumerate(label):
-            if item == 0:
-                queue = [datestrs[i]];
-                break;
+        queue = [unenqueued.pop()];
 
         # loop into the next connected component
         while len(queue) > 0:
-            sample_date = queue[0];  # go exploring the queue, starting at the front.
+            sample_date = queue.pop();  # go exploring the queue, starting at the back.
             idx_sample = datestrs.index(sample_date);
             label[idx_sample] = current_cc;
             connected_dates = find_connected_dates(date_pairs, sample_date);
             for i in range(len(connected_dates)):
-                idx_connection = datestrs.index(connected_dates[i]);
-                if label[idx_connection] == 0:
+                if connected_dates[i] in unenqueued:
                     queue.append(connected_dates[i]);
-            queue.pop(0);  # removing the point from the queue after it has been traversed
+                    unenqueued.remove(connected_dates[i])
 
         current_cc = current_cc + 1;
     # print(label);  # testing code

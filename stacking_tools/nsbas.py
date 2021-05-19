@@ -94,8 +94,7 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
         return compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple,
                            datestrs);
 
-    retval_main, retval_metrics = iterator_func(intf_tuple, packager_function, retval_main, retval_metrics,
-                                                0, 200000);   # numbers are a test.
+    retval_main, retval_metrics = iterator_func(intf_tuple, packager_function, retval_main, retval_metrics);
     return retval_main, retval_metrics;
 
 
@@ -183,9 +182,12 @@ def compute_vel(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tupl
     Right now only operates on the largest connected component of the graph.
     """
     # for each pixel, update datestrs based on pixel_value and intf_tuple.
-    updated_datestrs, updated_x_axis_days = select_datestrs_for_pixel(i, j, param_dict, intf_tuple, signal_spread_tuple,
-                                                                      coh_tuple, datestrs);
+    ss, pixel_value, coh_value = pixel_extractor(i, j, param_dict, intf_tuple, signal_spread_tuple, coh_tuple);
+    if ss < param_dict["nsbas_good_perc"]:
+        return np.nan, True, {};    # avoid the nan pixels
 
+    updated_datestrs, updated_x_axis_days = select_datestrs_for_pixel(i, j, param_dict, intf_tuple,
+                                                                      signal_spread_tuple, coh_tuple, datestrs);
     TS, nanflag, output_metrics_dict = compute_TS(i, j, param_dict, intf_tuple, signal_spread_tuple, baseline_tuple,
                                                   coh_tuple, updated_datestrs);
     if not nanflag:
