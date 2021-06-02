@@ -1,6 +1,5 @@
 from subprocess import call
 import numpy as np
-import glob
 import read_write_insar_utilities.netcdf_plots
 from intf_generating import sentinel_utilities
 import stacking_utilities
@@ -96,7 +95,7 @@ def nsbas_ts_format_selector(config_params, intf_files, corr_files):
     elif config_params.ts_format == 'timeseries':
         drive_full_TS(param_dictionary, intf_files, corr_files);
     elif config_params.ts_format == 'velocities_from_timeseries':
-        make_vels_from_ts_grids(config_params.ts_output_dir, geocoded=config_params.geocoded_intfs);
+        make_vels_from_ts_grids(param_dictionary, intf_files);
     else:
         print("Error!");
     return;
@@ -152,15 +151,10 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
     return;
 
 
-def make_vels_from_ts_grids(ts_dir, geocoded=False):
-    if geocoded:
-        filelist = glob.glob(ts_dir + "/*_ll.grd");
-        mydata = rmd.reader_from_ts(filelist);  # if using geocoded values. used to have different function call.
-    else:
-        filelist = glob.glob(ts_dir + "/????????.grd");
-        mydata = rmd.reader_from_ts(filelist);
+def make_vels_from_ts_grids(param_dictionary, ts_slice_files):
+    mydata = rmd.reader_from_ts(ts_slice_files);  # read filelist of time series grids
     vel = nsbas.Velocities_from_TS(mydata);
-    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', ts_dir + '/velo_nsbas.grd');
-    read_write_insar_utilities.netcdf_plots.produce_output_plot(ts_dir + '/velo_nsbas.grd', 'LOS Velocity',
-                                                                ts_dir + '/velo_nsbas.png', 'velocity (mm/yr)');
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', param_dictionary["ts_output_dir"] + '/velo_nsbas.grd');
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dictionary["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
+                                                                param_dictionary["ts_output_dir"] + '/velo_nsbas.png', 'velocity (mm/yr)');
     return;
