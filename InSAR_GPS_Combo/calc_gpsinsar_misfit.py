@@ -5,8 +5,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import los_projection_tools
-
+from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 

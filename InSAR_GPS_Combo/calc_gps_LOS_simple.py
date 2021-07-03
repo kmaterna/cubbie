@@ -1,4 +1,5 @@
-# Function that reads GPS field, 
+# Function that reads GPS field,
+# WARNING: PROBABLY BROKEN.
 # projects very simply into LOS, and subtracts a reflon and reflat
 # Writes an output text file that can be plotted in GMT, etc. 
 # For this driver, the reference point is a lat/lon pixel, not a particular GPS station 
@@ -12,16 +13,16 @@ from scipy import interpolate
 from Tectonic_Utils.read_write import netcdf_read_write
 import gps_io_functions
 import gps_vel_functions
-import los_projection_tools
+from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
 
 
 def top_level_driver(config_params, rowref, colref):
-    [gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, coordbox_gps, coordbox_nearref,
-     outfile] = configure(config_params);
-    [gps_velfield, gps_velfield_removed, reflon, reflat] = inputs(gps_file, veldir, velfile, rowref, colref,
-                                                                  coordbox_gps, coordbox_nearref);
-    [LOS_velfield] = compute(gps_velfield, gps_velfield_removed, reflon, reflat, flight_angle, look_angle,
-                             type_of_interp, coordbox_nearref);
+    [velfile, type_of_interp, coordbox_gps, coordbox_nearref, outfile] = configure(config_params);
+    [gps_velfield, gps_velfield_removed, reflon, reflat] = inputs(config_params.gps_file, config_params.ts_output_dir,
+                                                                  velfile, rowref, colref, coordbox_gps,
+                                                                  coordbox_nearref);
+    [LOS_velfield] = compute(gps_velfield, gps_velfield_removed, reflon, reflat, config_params.flight_angle,
+                             config_params.look_angle, type_of_interp, coordbox_nearref);
     outputs(gps_velfield, LOS_velfield, reflon, reflat, outfile);
     return;
 
@@ -29,24 +30,17 @@ def top_level_driver(config_params, rowref, colref):
 # ----------------- CONFIGURE ----------------- #
 def configure(config_params):
     print("Starting gps_into_los.")
-    gps_file = config_params.gps_file;
-    veldir = config_params.ts_output_dir;
-    velfile = veldir + '/vel.grd';
-    flight_angle = config_params.flight_angle;
-    look_angle = config_params.look_angle;
-    outfile = veldir + '/gps_ll_enu_los.txt';
+    velfile = config_params.ts_output_dir + '/vel.grd';
+    outfile = config_params.ts_output_dir + '/gps_ll_enu_los.txt';
     coordbox_gps = [-125, -121, 38, 42.5];  # Good for Mendocino
     # bounds = [-125, -115, 35, 46]; # Good for WUS
     nominal_boundary = 0.4;
     bounds_ref = [-nominal_boundary, nominal_boundary, -nominal_boundary,
-                  nominal_boundary];  # in Longitude/Latitude units away from the reference pixel.
+                  nominal_boundary];  # in Longitude/Latitude units away from reference pixel.
     coordbox_nearref = [reflon + bounds_ref[0], reflon + bounds_ref[1], reflat + bounds_ref[2], reflat + bounds_ref[3]];
-    # For interpolating around the reference, I have found that it is very important to restrict the spline's domain.
-    # Otherwise it can get very unstable.
+    # For interpolating around reference, it is very important to restrict the spline's domain for stability.
     type_of_interp = 'linear';
-
-    return [gps_file, veldir, velfile, flight_angle, look_angle, type_of_interp, coordbox_gps, coordbox_nearref,
-            outfile];
+    return [velfile, type_of_interp, coordbox_gps, coordbox_nearref, outfile];
 
 
 # ------------------ INPUTS --------------------- # 
@@ -136,6 +130,7 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
     LOS_array = los_projection_tools.simple_project_ENU_to_LOS(vel_tuple.e, vel_tuple.n, vel_tuple.u, flight_angle,
                                                                look_angle);
 
+    # This is probably broken!
     los_tuple = los_projection_tools.Velfield(name=vel_tuple.name, nlat=vel_tuple.nlat, elon=vel_tuple.elon,
                                               e=LOS_array - LOS_reference, n=0 * LOS_array, u=0 * LOS_array,
                                               sn=vel_tuple.sn, se=vel_tuple.se, su=vel_tuple.su,
@@ -167,11 +162,7 @@ def make_interp_checking_plot(vel_tuple, bounds, reflon, reflat, f_east, f_north
     yarray = np.arange(bounds[2], bounds[3], 0.20);
     [X, Y] = np.meshgrid(xarray, yarray);
 
-    new_x = [];
-    new_y = [];
-    new_east = [];
-    new_north = [];
-    new_vertical = [];
+    new_x, new_y, new_east, new_north, new_vertical = [], [], [], [], [];
     for i in range(np.shape(X)[0]):
         for j in range(np.shape(X)[1]):
             new_x.append(X[i, j]);
@@ -199,8 +190,8 @@ def make_interp_checking_plot(vel_tuple, bounds, reflon, reflat, f_east, f_north
     axarr[0].quiver(narray_x, narray_y, narray_east, narray_north, color='white', scale=500.0);
     axarr[0].quiver(reflon, reflat, velref_e, velref_n, color='purple', scale=500);
     my_plot_formatting(axarr[0], bounds, "North Velocity Interpolated from GPS", vel_tuple);
-    h2 = axarr[1].scatter(narray_x, narray_y, s=575, marker='s', c=narray_east, cmap='jet', edgecolors='face', vmin=-30,
-                          vmax=30);
+    _h2 = axarr[1].scatter(narray_x, narray_y, s=575, marker='s', c=narray_east, cmap='jet', edgecolors='face',
+                           vmin=-30, vmax=30);
     cbar = plt.colorbar(h1, ax=axarr[1]);
     cbar.set_label('mm/yr');
     axarr[1].quiver(narray_x, narray_y, narray_east, narray_north, color='white', scale=500.0);

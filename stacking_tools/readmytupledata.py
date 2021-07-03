@@ -5,7 +5,7 @@ from datetime import datetime
 import re
 from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-import stacking_utilities
+from . import stacking_utilities
 
 
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',

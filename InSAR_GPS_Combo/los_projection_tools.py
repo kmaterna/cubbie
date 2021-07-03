@@ -1,17 +1,12 @@
 # A few functions that help project into and out of LOS
 # Mostly trig
 # Example: Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda)
+# We use Station_Vels hold GPS velocity fields and their LOS-projected versions
+# In the LOS-projected case, we use 'e' as LOS velocity and other columns are zeros
 
 import numpy as np
-import collections
 from Tectonic_Utils.geodesy import insar_vector_functions
-
-
-Velfield = collections.namedtuple("Velfield", ['name', 'nlat', 'elon', 'n', 'e', 'u', 'sn', 'se', 'su', 'first_epoch',
-                                               'last_epoch']);
-# A useful structure to hold GPS velocity fields and their LOS-projected versions
-# In the LOS-projected case, we use 'e' as the LOS velocity and the other columns are zeros
-# Meant to be used in a list of these objects (one for each station)
+import gps_io_functions
 
 
 def closest_index(lst, K):
@@ -22,11 +17,13 @@ def closest_index(lst, K):
 
 
 def simple_project_ENU_to_LOS(U_e, U_n, U_u, flight_angle, incidence_angle):
-    # Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda), Fialko 2001
-    # [U_e, U_n, U_u] are the east, north, and up components of the deformation.
-    # phi   = azimuth of satellite heading vector, positive clockwise from north.
-    # lamda = local incidence angle at the reflector (usually angle from the vertical).
-    # Works for single values and for 1D arrays of all arguments
+    """
+    Dlos = [U_n sin(phi) - U_e cos(phi)]*sin(lamda) + U_u cos(lamda), Fialko 2001
+    [U_e, U_n, U_u] are the east, north, and up components of the deformation.
+    phi   = azimuth of satellite heading vector, positive clockwise from north.
+    lamda = local incidence angle at the reflector (usually angle from the vertical).
+    Works for single values and for 1D arrays of all arguments
+    """
 
     if np.size(U_e) > 1:  # processing a 1D array of values
         d_los = np.zeros(np.shape(U_e));
@@ -45,9 +42,11 @@ def simple_project_ENU_to_LOS(U_e, U_n, U_u, flight_angle, incidence_angle):
 
 
 def get_point_enu_interp(reference_point, f_east=None, f_north=None, f_up=None):
-    # Useful for reference points, for example
-    # reference point is [lon, lat]
-    # Interpolated functions are required if the reference isn't located at a gps station.
+    """
+    Useful for reference points, for example
+    reference point is [lon, lat]
+    Interpolated functions are required if the reference isn't located at a gps station.
+    """
     velref_e = f_east(reference_point[0], reference_point[1]);
     velref_n = f_north(reference_point[0], reference_point[1]);
     if f_up is None:
@@ -58,8 +57,10 @@ def get_point_enu_interp(reference_point, f_east=None, f_north=None, f_up=None):
 
 
 def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_point_name=None, zero_vertical=False):
-    # If the reference is co-located with a GPS station, we find it within the tuple.
-    # We either use name or lat/lon
+    """
+    If the reference is co-located with a GPS station, we find it within the tuple.
+    We either use name or lat/lon
+    """
     velref_e, velref_n, velref_u, reflon, reflat = 0, 0, 0, 0, 0;
     if reference_point_name is not None:
         for station_vel in vel_tuple:
@@ -87,12 +88,13 @@ def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_poi
 
 
 def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, window_pixels=5):
-    # A function to extract the paired LOS InSAR and GPS velocities
-    # at pixels given by lons/lats in gps_los_velfield
-    # It averages over a window of pixels whose width is given by an input parameter
-    # It only returns non-nan values
-    insar_los_array = [];
-    gps_los_array = [];
+    """
+    A function to extract the paired LOS InSAR and GPS velocities
+    at pixels given by lons/lats in gps_los_velfield
+    It averages over a window of pixels whose width is given by an input parameter
+    It only returns non-nan values
+    """
+    insar_los_array, gps_los_array = [], [];
     distance_tolerance = 0.01;  # degrees (approximately 1 km)
     for station_vel in gps_los_velfield:
         xi, deg_distance_x = closest_index(xarray, station_vel.elon);
@@ -114,10 +116,11 @@ def input_gps_as_los(filename):
     gps_velfield = [];
     [elon, nlat, los_vel, name] = np.loadtxt(filename, usecols=(0, 1, 5, 6), unpack=True,
                                              dtype={'names': ('elon', 'nlat', 'los_vel', 'station_name'),
-                                                    'formats': (np.float, np.float, np.float, 'U4')});
+                                                    'formats': (float, float, float, 'U4')});
     for i in range(len(elon)):
-        gps_station_as_los = Velfield(name=name[i], elon=elon[i], nlat=nlat[i], e=los_vel[i], n=0, u=0, se=0,
-                                      sn=0, su=0, first_epoch=0, last_epoch=0);
+        gps_station_as_los = gps_io_functions.Station_Vel(name=name[i], elon=elon[i], nlat=nlat[i], e=los_vel[i], n=0,
+                                                          u=0, se=0, sn=0, su=0, first_epoch=0, last_epoch=0,
+                                                          refframe=0, proccenter=0, subnetwork=0, survey=0);
         gps_velfield.append(gps_station_as_los);
     return [gps_velfield];
 

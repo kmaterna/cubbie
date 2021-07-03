@@ -1,12 +1,12 @@
 import sys
 import re, glob
 from subprocess import call
-import stacking_utilities
-import nsbas_accessing
-import Super_Simple_Stack as sss
-import coseismic_stack
-import stack_corr
-import workflow_isce_with_uavsar
+from . import stacking_utilities
+from . import nsbas_accessing
+from . import Super_Simple_Stack as sss
+from . import coseismic_stack
+from . import stack_corr
+from . import workflow_isce_with_uavsar
 
 
 # --------------- STEP 0: Setting up ------------ # 

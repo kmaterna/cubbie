@@ -3,10 +3,10 @@ import numpy as np
 import glob
 import read_write_insar_utilities.netcdf_plots
 from intf_generating import sentinel_utilities
-import stacking_utilities
-import readmytupledata as rmd
+from . import stacking_utilities
+from . import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-import nsbas
+from . import nsbas
 
 """
 Note: intf_tuple is a named tuple:

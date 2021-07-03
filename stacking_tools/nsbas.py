@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import sys
 import math
 import datetime as dt
-import stacking_utilities
-import dem_error_correction
+from . import stacking_utilities
+from . import dem_error_correction
 
 
 # ------------ UTILITY FUNCTIONS ------------ #
