@@ -77,6 +77,16 @@ def get_xdates_from_intf_tuple_dates(date_pairs_dt):
     return xdates;
 
 
+def get_list_of_ts_grids(config_params):
+    """
+    Useful for making velocities out of pre-existing time series grids. 
+    """
+    ts_slice_files = glob.glob(config_params.intf_dir + "/????????.grd");
+    if len(ts_slice_files) == 0:
+        print("Error! Not starting with any time series slices. Exiting."); sys.exit(0);    
+    return ts_slice_files;
+
+
 # Reference Pixel Math
 def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files, signalspread_filename):
     """
@@ -333,6 +343,11 @@ def make_selection_of_intfs(config_params):
     HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
     WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT, ETC IN CONFIG SETTINGS.
     The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)"""
+    
+    if config_params.ts_format == "velocities_from_timeseries":
+        intf_files = get_list_of_ts_grids(config_params);
+        return intf_files, [], []; 
+
     intf_tuples = get_list_of_intf_all(config_params);
 
     # Use the config file to excluse certain time ranges and implement coseismic constraints
