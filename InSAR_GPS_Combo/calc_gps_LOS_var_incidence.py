@@ -9,26 +9,12 @@ import gps_vel_functions
 from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
 
 
-def top_level_driver(config_params):
-    [gps_file, look_vector_files, reference_gps, coordbox_gps, outfile] = configure(config_params);
-    [gps_velfield] = inputs_gps(gps_file, coordbox_gps);
-    [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv(look_vector_files);
-
-    [LOS_velfield] = compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lkv_up);
-    los_projection_tools.output_gps_as_los(gps_velfield, LOS_velfield, outfile);
+def top_level_driver(config_dict):
+    [gps_velfield] = inputs_gps(config_dict["gps_file"], config_dict["coordbox_gps"]);
+    [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv(config_dict["look_vector_files"]);
+    [LOS_velfield] = compute(gps_velfield, config_dict["reference_gps"], xarray, yarray, lkv_east, lkv_north, lkv_up);
+    los_projection_tools.output_gps_as_los(gps_velfield, LOS_velfield, config_dict["outfile"]);
     return;
-
-
-# ----------------- CONFIGURE ----------------- #
-def configure(config_params):
-    print("-->Starting to project gps into LOS using variable look angles.");
-    print("Config parameters: ", config_params);
-    gps_file = config_params["gps_file"];
-    look_vector_files = config_params["look_vector_files"];
-    reference_gps = config_params["reference_gps"];
-    outfile = config_params["outfile"];
-    coordbox_gps = config_params["coordbox_gps"];
-    return [gps_file, look_vector_files, reference_gps, coordbox_gps, outfile];
 
 
 # ------------------ INPUTS --------------------- #
@@ -58,13 +44,14 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
     # Transform GPS field into LOS field (all are arguments are single values)
 
     # Take the reference point and transform its velocity into LOS.
-    velref_e, velref_n, velref_u, reflon, reflat = los_projection_tools.get_point_enu_veltuple(gps_velfield, reference_point_name=reference_gps);
+    ref_e, ref_n, ref_u, reflon, reflat = los_projection_tools.get_point_enu_veltuple(gps_velfield,
+                                                                                      reference_pt_name=reference_gps);
     lkv_e_ref, lkv_n_ref, lkv_u_ref = get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up,
                                                                       reflon, reflat);
     [flight_angle_ref, look_angle_ref] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e_ref,
                                                                                                     lkv_n_ref,
                                                                                                     lkv_u_ref);
-    LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u, flight_angle_ref,
+    LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(ref_e, ref_n, ref_u, flight_angle_ref,
                                                                    look_angle_ref);
 
     # Now compute relative LOS for each GPS station

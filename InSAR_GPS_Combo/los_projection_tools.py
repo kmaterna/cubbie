@@ -56,15 +56,15 @@ def get_point_enu_interp(reference_point, f_east=None, f_north=None, f_up=None):
     return velref_e, velref_n, velref_u;
 
 
-def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_point_name=None, zero_vertical=False):
+def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_pt_name=None, zero_vertical=False):
     """
     If the reference is co-located with a GPS station, we find it within the tuple.
     We either use name or lat/lon
     """
     velref_e, velref_n, velref_u, reflon, reflat = 0, 0, 0, 0, 0;
-    if reference_point_name is not None:
+    if reference_pt_name is not None:
         for station_vel in vel_tuple:
-            if station_vel.name == reference_point_name:
+            if station_vel.name == reference_pt_name:
                 velref_e = station_vel.e;
                 velref_n = station_vel.n;
                 if zero_vertical:
