@@ -9,10 +9,10 @@ from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 
-def top_level_driver(gps_los_file, geocoded_insar_file, plotname):
+def top_level_driver(gps_los_file, geocoded_insar_file, plotname, txtname):
     [gps_los_velfield, xarray, yarray, LOS_array] = inputs(gps_los_file, geocoded_insar_file);
     insar_array, gps_array, rms_misfit = compute(gps_los_velfield, xarray, yarray, LOS_array);
-    one_to_one_plot(insar_array, gps_array, rms_misfit, plotname)
+    one_to_one_plot(insar_array, gps_array, rms_misfit, plotname, txtname)
     return;
 
 
@@ -44,7 +44,7 @@ def compute(gps_los_velfield, xarray, yarray, LOS_array):
     return insar_array, gps_array, rms_misfit;
 
 
-def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname):
+def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname, txtname):
     plt.figure(figsize=(9, 9), dpi=300);
     plt.plot(gps_array, insar_array, '.', markersize=10);
     bottom_level = -35;
@@ -59,4 +59,10 @@ def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname):
     plt.title('InSAR vs GNSS Velocities, RMS=%.3fmm/yr' % rms_misfit, fontsize=18);
     plt.savefig(plotname);
     plt.close();
+
+    ofile = open(txtname, 'w');
+    ofile.write("# insar gnss\n");
+    for i in range(len(insar_array)):
+        ofile.write("%f %f\n" % (insar_array[i], gps_array[i]) );
+    ofile.close();
     return;
