@@ -1,11 +1,13 @@
 from subprocess import call
 import numpy as np
 import read_write_insar_utilities.netcdf_plots
+import stacking_tools.stacking_utilities
 from intf_generating import sentinel_utilities
 from . import stacking_utilities
 from . import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 from . import nsbas
+from . import velo_uncertainties
 
 """
 Note: intf_tuple is a named tuple:
@@ -142,7 +144,7 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
     signal_spread_tuple = 100 * np.ones(np.shape(intf_tuple.zvalues[0]));  # forcing TS compute, even for noisy pixels.
     nsbas.initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict)
-    datestrs, x_dts, x_axis_days = nsbas.get_TS_dates(intf_tuple.date_pairs_julian);
+    datestrs, x_dts, x_axis_days = stacking_tools.stacking_utilities.get_TS_dates(intf_tuple.date_pairs_julian);
 
     for i in range(len(rows)):
         TS, nanflag, output_metrics_dict = nsbas.compute_TS(rows[i], cols[i], param_dict, intf_tuple,
@@ -152,9 +154,27 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
 
 
 def make_vels_from_ts_grids(param_dictionary, ts_slice_files):
+    """
+    Given existing TS grid files, create an estimate of velocity.
+    """
     mydata = rmd.reader_from_ts(ts_slice_files);  # read filelist of time series grids
     vel = nsbas.Velocities_from_TS(mydata);
-    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', param_dictionary["ts_output_dir"] + '/velo_nsbas.grd');
-    read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dictionary["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
-                                                                param_dictionary["ts_output_dir"] + '/velo_nsbas.png', 'velocity (mm/yr)');
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', param_dictionary["ts_output_dir"] +
+                              '/velo_nsbas.grd');
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(param_dictionary["ts_output_dir"] +
+                                                                '/velo_nsbas.grd', 'LOS Velocity',
+                                                                param_dictionary["ts_output_dir"] +
+                                                                '/velo_nsbas.png', 'velocity (mm/yr)');
+    return;
+
+def make_vel_unc_from_ts_grids(ts_slice_files, outdir):
+    """
+    Given existing TS grid files, create an estimate of velocity uncertainty.
+    I have called this function from outside of the program.  Can be called separately.
+    """
+    mydata = rmd.reader_from_ts(ts_slice_files);  # read filelist of time series grids
+    unc = velo_uncertainties.empirical_uncertainty(mydata);
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, unc, 'mm/yr', outdir + '/velo_unc.grd');
+    read_write_insar_utilities.netcdf_plots.produce_output_plot(outdir + '/velo_unc.grd', 'LOS Uncertainty',
+                                                                outdir + '/velo_unc.png', 'Uncertainty (mm/yr)');
     return;

@@ -83,7 +83,8 @@ def get_list_of_ts_grids(config_params):
     """
     ts_slice_files = glob.glob(config_params.intf_dir + "/????????.grd");
     if len(ts_slice_files) == 0:
-        print("Error! Not starting with any time series slices. Exiting."); sys.exit(0);    
+        print("Error! Not starting with any time series slices. Exiting.");
+        sys.exit(0);
     return ts_slice_files;
 
 
@@ -365,7 +366,8 @@ def make_selection_of_intfs(config_params):
     select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
     select_corr_list = [mytuple[3] for mytuple in select_intf_tuples]
     if len(select_intf_tuples) == 0:
-        print("Error! Not starting with any interferograms. Exiting."); sys.exit(0);
+        print("Error! Not starting with any interferograms. Exiting.");
+        sys.exit(0);
     return select_intf_list, select_corr_list, select_intf_tuples;
 
 
@@ -624,3 +626,19 @@ def plot_incremental_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vma
 
     plt.savefig(TS_image_file);
     return;
+
+
+def get_TS_dates(date_julstrings):
+    """" Get the x axis associated with a certain set of interferograms
+    Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
+    Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
+    a dt object, and the number of days since first image. """
+    dates_total = [];
+    for i in range(len(date_julstrings)):
+        dates_total.append(date_julstrings[i][0:7])
+        dates_total.append(date_julstrings[i][8:15])
+    datestrs = sorted(set(dates_total));
+    x_axis_datetimes = [dt.datetime.strptime(x, "%Y%j") for x in datestrs];
+    x_axis_days = [(x - x_axis_datetimes[0]).days for x in
+                   x_axis_datetimes];  # number of days since first acquisition.
+    return datestrs, x_axis_datetimes, x_axis_days;

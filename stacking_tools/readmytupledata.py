@@ -8,6 +8,11 @@ from Tectonic_Utils.read_write import netcdf_read_write as rwr
 from . import stacking_utilities
 
 
+"""
+This should be re-written to be a list of objects instead of an object of lists. 
+When I have time. 
+"""
+
 data = collections.namedtuple('data', ['filepaths', 'date_pairs_julian', 'date_deltas',
                                        'xvalues', 'yvalues', 'zvalues', 'date_pairs_dt', 'ts_dates']);
 

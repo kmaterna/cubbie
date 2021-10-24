@@ -8,23 +8,7 @@ import datetime as dt
 from . import stacking_utilities
 from . import dem_error_correction
 
-
 # ------------ UTILITY FUNCTIONS ------------ #
-def get_TS_dates(date_julstrings):
-    """" Get the x axis associated with a certain set of interferograms
-    Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
-    Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
-    a dt object, and the number of days since first image. """
-    dates_total = [];
-    for i in range(len(date_julstrings)):
-        dates_total.append(date_julstrings[i][0:7])
-        dates_total.append(date_julstrings[i][8:15])
-    datestrs = sorted(set(dates_total));
-    x_axis_datetimes = [dt.datetime.strptime(x, "%Y%j") for x in datestrs];
-    x_axis_days = [(x - x_axis_datetimes[0]).days for x in
-                   x_axis_datetimes];  # number of days since first acquisition.
-    return datestrs, x_axis_datetimes, x_axis_days;
-
 
 def select_datestrs_for_pixel(i, j, param_dict, intf_tuple, signal_spread_tuple, coh_tuple, datestrs):
     """
@@ -49,7 +33,7 @@ def select_datestrs_for_pixel(i, j, param_dict, intf_tuple, signal_spread_tuple,
     # Here we filter interferograms again based on the largest connected component of the graph:
     valid_date_julstrings, _ = stacking_utilities.reduce_graph_to_largest_cc(valid_date_julstrings, datestrs);
 
-    select_datestrs, _, select_x_axis_days = get_TS_dates(valid_date_julstrings);
+    select_datestrs, _, select_x_axis_days = stacking_utilities.get_TS_dates(valid_date_julstrings);
     return select_datestrs, select_x_axis_days;
 
 
@@ -87,7 +71,7 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
     retval_main = np.zeros([len(intf_tuple.yvalues), len(intf_tuple.xvalues)]);
     retval_metrics = [[{} for _i in range(len(intf_tuple.xvalues))] for _j in range(len(intf_tuple.yvalues))];
-    datestrs, x_dts, x_axis_days = get_TS_dates(intf_tuple.date_pairs_julian);
+    datestrs, x_dts, x_axis_days = stacking_utilities.get_TS_dates(intf_tuple.date_pairs_julian);
 
     def packager_function(i, j, intf_tuple):
         # Giving access to all these variables
@@ -101,7 +85,7 @@ def Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_
 def Full_TS(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple):
     """ This is how you access Time Series solutions from NSBAS"""
     initial_defensive_programming(intf_tuple, signal_spread_tuple, coh_tuple, param_dict);
-    datestrs, x_dts, _ = get_TS_dates(intf_tuple.date_pairs_julian);
+    datestrs, x_dts, _ = stacking_utilities.get_TS_dates(intf_tuple.date_pairs_julian);
     # Establishing the return array
     empty_vector = [np.empty(np.shape(datestrs))];
     retval_main = [[empty_vector for _i in range(len(intf_tuple.xvalues))] for _j in range(len(intf_tuple.yvalues))];
