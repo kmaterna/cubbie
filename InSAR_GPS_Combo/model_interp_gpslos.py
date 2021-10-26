@@ -1,9 +1,15 @@
+#!/usr/bin/env python
 """
-This code models a cubic 2D interpolation on GPS velocities to
-generate a predicted field of InSAR velocities. 
-It assumes one simple look angle and flight vector (doesn't change incidence angle over the InSAR range)
+This code performs cubic 2D interpolation on GPS velocities and then predicts a field of InSAR LOS velocities.
+It assumes one look angle and flight vector (doesn't change incidence angle over the InSAR range)
 It uses Scipy interpolate: cubic or linear
 matplotlib.path: can replicate the matlab inpolygon() function.
+Steps:
+- Get interpolation points
+- Interpolate based on function
+- Project velocities into LOS
+- Subtract reference point
+- Report LOS gradient between points
 """
 
 import numpy as np
@@ -12,62 +18,55 @@ import matplotlib.path as path
 import collections
 from scipy import interpolate
 import gps_io_functions
-from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
+from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools as los_proj
 from Tectonic_Utils.geodesy import haversine
 
-param_collection = collections.namedtuple("param_collection", ['input_file', 'ca_file', 'or_file', 'type_of_interp',
-                                                               'ascending_flight_angle', 'descending_flight_angle',
-                                                               'incidence_angle', 'bounds', 'point1', 'point2',
-                                                               'reference_point']);
+param_object = collections.namedtuple("param_object", ['type_of_interp', 'asc_flight_angle', 'desc_flight_angle',
+                                                       'inc_angle', 'bounds', 'inc', 'point1', 'point2',
+                                                       'reference_point']);
+
+# Define the global files that we are using
+filedict = {'gps_input_file': "../../../../GEOPHYS_DATA/GPS_POS_DATA/PBO_Data/Velocities/NAM08_pbovelfile_feb2018.txt",
+            'or_file': "../../../../Misc/Mapping_Resources/oregon_bdr",
+            'ca_file': "../../../../Misc/Mapping_Resources/california_bdr"}
 
 
 def do_interpolation():
     params = configure();
-    [vel_tuple, ca_border, or_border] = inputs(params.input_file, params.or_file, params.ca_file);
+    [vel_tuple, ca_border, or_border] = inputs(filedict['gps_input_file'], filedict['or_file'], filedict['ca_file']);
     los_ascending, los_descending, eastnorthfield = compute(vel_tuple, params, ca_border, or_border);
     outputs(vel_tuple, params, ca_border, or_border, los_ascending, los_descending, eastnorthfield);
 
 
 # -------------- CONFIG  --------------- # 
 def configure():
-    gps_input_file = "../../../../GEOPHYS_DATA/GPS_POS_DATA/PBO_Data/Velocities/NAM08_pbovelfile_feb2018.txt"
-    or_file = "../../../../Misc/Mapping_Resources/oregon_bdr"
-    ca_file = "../../../../Misc/Mapping_Resources/california_bdr"
-    type_of_interp = "cubic"
     ascending_flight_angle = 360 - 14;  # degrees from north (like strike)
     descending_flight_angle = 180 + 14;  # degrees from north (like strike)
     incidence_angle = 30;  # degrees from vertical (looking straight down is 0 degrees).
+    inc = [0.08, 0.08];
 
-    # # Oregon
-    # bounds=[-125,-122, 41.5, 46.0];
-    # gradient_point1=[-123.0,43.0];
-    # gradient_point2=[-123.0,42.0];
-    # reference_point=[];
+    _Oregon_params = param_object(type_of_interp="cubic", asc_flight_angle=ascending_flight_angle,
+                                  desc_flight_angle=descending_flight_angle, inc_angle=incidence_angle,
+                                  bounds=[-125, -122, 41.5, 46.0], inc=inc, point1=[-123.0, 43.0],
+                                  point2=[-123.0, 42.0], reference_point=[]);
 
-    # Mendocino
-    bounds = [-125, -122, 39.0, 42.0];
-    gradient_point1 = [-124.0, 40.0];
-    gradient_point2 = [-124.0, 41.0];
-    reference_point = [-123.4, 39.9];
+    _Mendocino_params = param_object(type_of_interp="cubic", asc_flight_angle=ascending_flight_angle,
+                                     desc_flight_angle=descending_flight_angle, inc_angle=incidence_angle,
+                                     bounds=[-125, -122, 39.0, 42.0], inc=inc, point1=[-124.0, 40.0],
+                                     point2=[-124.0, 41.0], reference_point=[-123.4, 39.9]);
 
-    # # Bay Area
-    # bounds=[-124,-121.3, 36.8, 39.0];
-    # gradient_point1=[-122.3,37.2];
-    # gradient_point2=[-121.5,37.6];
-    # reference_point=[-121.5, 37.0];
-
-    my_param_collection = param_collection(input_file=gps_input_file, ca_file=ca_file, or_file=or_file,
-                                           type_of_interp=type_of_interp,
-                                           ascending_flight_angle=ascending_flight_angle,
-                                           descending_flight_angle=descending_flight_angle,
-                                           incidence_angle=incidence_angle, bounds=bounds, point1=gradient_point1,
-                                           point2=gradient_point2, reference_point=reference_point);
-    return my_param_collection;
+    _Bay_Area_params = param_object(type_of_interp="cubic", asc_flight_angle=ascending_flight_angle,
+                                    desc_flight_angle=descending_flight_angle, inc_angle=incidence_angle,
+                                    bounds=[-124, -121.3, 36.8, 39.0], inc=inc, point1=[-122.3, 37.2],
+                                    point2=[-121.5, 37.6], reference_point=[-121.5, 37.0]);
+    return _Mendocino_params;  # Return the experiment you want.
 
 
 # -------------- INPUTS  --------------- # 
 def inputs(input_file, or_file, ca_file):
-    # I actually have to interpolate over the whole field, shouldn't chunk it smaller with clean_velfield.
+    """
+    Input files. Should interpolate over the whole GPS field; don't chunk it smaller with clean_velfield.
+    """
     [vel_tuple] = gps_io_functions.read_pbo_vel_file(input_file);
     ca_border = np.loadtxt(ca_file);
     or_border = np.loadtxt(or_file);
@@ -75,30 +74,28 @@ def inputs(input_file, or_file, ca_file):
 
 
 # ---------- COMPUTE --------------- #
-"""
-Steps: 
-- Get interpolation points
-- Interpolate based on function
-- Project velocities into LOS
-- Subtract reference point
-- Report LOS gradient between points
-"""
 
-def get_interpolation_points_within_grid(latlon_bounds, interval, optional_border_paths=None):
-    # The new interpolation grid: a new set of points with some chosen spacing (in degrees)
-    # Respects path boundaries if they are provided (to cancel oceans, etc.)
-    xarray = np.arange(latlon_bounds[0], latlon_bounds[1], interval);
-    yarray = np.arange(latlon_bounds[2], latlon_bounds[3], interval);
+def get_interp_points_within_grid(latlon_bounds, interval, optional_border_paths=None):
+    """
+    Establish new interpolation grid: set of points with chosen spacing (in degrees)
+    Respects path boundaries if they are provided (to cancel oceans, etc.)
+    :param latlon_bounds: list of [W, E, S, N] floats in degrees
+    :param interval: list of two [xinc, yinc] in degrees
+    :param optional_border_paths: list of paths, we restrict analysis to INSIDE of these paths
+    :returns : [x, y] list of two 1-d arrays
+    """
+    xarray = np.arange(latlon_bounds[0], latlon_bounds[1], interval[0]);
+    yarray = np.arange(latlon_bounds[2], latlon_bounds[3], interval[1]);
     [X, Y] = np.meshgrid(xarray, yarray);
     x_for_interp, y_for_interp = [], [];
 
     if optional_border_paths is not None:
-        # We remove the interpolation points outside of CA and OR because they tend to explode.
+        # We remove interpolation points outside of CA and OR because they tend to explode.
         for k in range(len(optional_border_paths)):
             include_path = path.Path(optional_border_paths[k]);
             for i in range(np.shape(X)[0]):
                 for j in range(np.shape(X)[1]):
-                    if include_path.contains_point([X[i, j], Y[i, j]]) == 1:  # example: if the point is in CA or OR
+                    if include_path.contains_point([X[i, j], Y[i, j]]) == 1:  # example: if point is in CA or OR
                         x_for_interp.append(X[i, j]);
                         y_for_interp.append(Y[i, j]);
     else:
@@ -110,8 +107,10 @@ def get_interpolation_points_within_grid(latlon_bounds, interval, optional_borde
 
 
 def compute(vel_tuple, params, ca_border, or_border):
-    # Get the 1D lists of points we're going to interpolate (either a grid or a vector of GPS points)
-    [x_for_interp, y_for_interp] = get_interpolation_points_within_grid(params.bounds, 0.08, [ca_border, or_border]);
+    """
+    Get 1D lists of points we're going to interpolate (either a grid or a vector of GPS points)
+    """
+    [x_for_interp, y_for_interp] = get_interp_points_within_grid(params.bounds, params.inc, [ca_border, or_border]);
 
     elon_list = [item.elon for item in vel_tuple]
     nlat_list = [item.nlat for item in vel_tuple]
@@ -130,54 +129,42 @@ def compute(vel_tuple, params, ca_border, or_border):
         new_vertical.append(0.0);  # there's no vertical deformation in this field by construction.
 
     # Get the reference velocity in ENU
-    velref_e, velref_n, velref_u = los_projection_tools.get_point_enu_interp(params.reference_point, f_east, f_north);
+    velref_e, velref_n, velref_u = los_proj.get_point_enu_interp(params.reference_point, f_east, f_north);
 
     # Transform each field into LOS fields with respect to a given pixel
-    ascending_LOS_array = los_projection_tools.simple_project_ENU_to_LOS(new_east, new_north, new_vertical,
-                                                                         params.ascending_flight_angle,
-                                                                         params.incidence_angle);
-    ascending_LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u,
-                                                                             params.ascending_flight_angle,
-                                                                             params.incidence_angle)[0];
+    ascending_LOS_array = los_proj.simple_project_ENU_to_LOS(new_east, new_north, new_vertical,
+                                                             params.asc_flight_angle, params.inc_angle);
+    ascending_LOS_reference = los_proj.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u,
+                                                                 params.asc_flight_angle, params.inc_angle)[0];
 
     # Same for Descending
-    descending_LOS_array = los_projection_tools.simple_project_ENU_to_LOS(new_east, new_north, new_vertical,
-                                                                          params.descending_flight_angle,
-                                                                          params.incidence_angle);
-    descending_LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u,
-                                                                              params.descending_flight_angle,
-                                                                              params.incidence_angle)[0];
+    descending_LOS_array = los_proj.simple_project_ENU_to_LOS(new_east, new_north, new_vertical,
+                                                              params.desc_flight_angle, params.inc_angle);
+    descending_LOS_reference = los_proj.simple_project_ENU_to_LOS(velref_e, velref_n, velref_u,
+                                                                  params.desc_flight_angle, params.inc_angle)[0];
 
     for i in range(len(x_for_interp)):
-        item = gps_io_functions.Station_Vel(name=[], elon=x_for_interp[i], nlat=y_for_interp[i],
-                                            e=ascending_LOS_array[i]-ascending_LOS_reference, n=0, u=0, se=[], sn=[],
-                                            su=[], first_epoch=[], last_epoch=[], refframe=0, proccenter=0,
-                                            subnetwork=0, survey=0);
+        item = gps_io_functions.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
+                                            e=ascending_LOS_array[i] - ascending_LOS_reference, n=0, u=0);
         los_ascending.append(item);
         # Packing up an object for returning
-        eastnorth_item = gps_io_functions.Station_Vel(name=[], elon=x_for_interp[i], nlat=y_for_interp[i],
-                                                      e=new_east[i], n=new_north[i], u=0, se=[], sn=[], su=[],
-                                                      first_epoch=[], last_epoch=[], refframe=0, proccenter=0,
-                                                      subnetwork=0, survey=0)
+        eastnorth_item = gps_io_functions.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
+                                                      e=new_east[i], n=new_north[i], u=0);
         eastnorthfield.append(eastnorth_item);
         # Packing up descending item
-        item = gps_io_functions.Station_Vel(name=[], elon=x_for_interp[i], nlat=y_for_interp[i],
-                                            e=descending_LOS_array[i]-descending_LOS_reference, n=0, u=0, se=[], sn=[],
-                                            su=[], first_epoch=[], last_epoch=[], refframe=0, proccenter=0,
-                                            subnetwork=0, survey=0);
+        item = gps_io_functions.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
+                                            e=descending_LOS_array[i] - descending_LOS_reference, n=0, u=0);
         los_descending.append(item);
 
     # Here I want to evaluate gradients at two hard-coded points.
-    e_def1, n_def1, u_def1 = los_projection_tools.get_point_enu_interp(params.point1, f_east, f_north);
-    e_def2, n_def2, u_def2 = los_projection_tools.get_point_enu_interp(params.point2, f_east, f_north);
-    ascending1 = los_projection_tools.simple_project_ENU_to_LOS(e_def1, n_def1, u_def1, params.ascending_flight_angle,
-                                                                params.incidence_angle);
-    ascending2 = los_projection_tools.simple_project_ENU_to_LOS(e_def2, n_def2, u_def2, params.ascending_flight_angle,
-                                                                params.incidence_angle);
-    descending1 = los_projection_tools.simple_project_ENU_to_LOS(e_def1, n_def1, u_def1, params.descending_flight_angle,
-                                                                 params.incidence_angle);
-    descending2 = los_projection_tools.simple_project_ENU_to_LOS(e_def2, n_def2, u_def2, params.descending_flight_angle,
-                                                                 params.incidence_angle);
+    e_def1, n_def1, u_def1 = los_proj.get_point_enu_interp(params.point1, f_east, f_north);
+    e_def2, n_def2, u_def2 = los_proj.get_point_enu_interp(params.point2, f_east, f_north);
+    ascending1 = los_proj.simple_project_ENU_to_LOS(e_def1, n_def1, u_def1, params.asc_flight_angle, params.inc_angle);
+    ascending2 = los_proj.simple_project_ENU_to_LOS(e_def2, n_def2, u_def2, params.asc_flight_angle, params.inc_angle);
+    descending1 = los_proj.simple_project_ENU_to_LOS(e_def1, n_def1, u_def1, params.desc_flight_angle,
+                                                     params.inc_angle);
+    descending2 = los_proj.simple_project_ENU_to_LOS(e_def2, n_def2, u_def2, params.desc_flight_angle,
+                                                     params.inc_angle);
     evaluate_gradients(params.point1, params.point2, ascending1, ascending2, descending1, descending2);
 
     return los_ascending, los_descending, eastnorthfield;
@@ -242,11 +229,11 @@ def outputs(vel_tuple, params, ca_border, or_border, los_ascending_velfield, los
     axarr[0].quiver(narray_x, narray_y, narray_east, narray_north, color='white', scale=500.0);
     quiver_point = [min(params.bounds[0:2]) + 0.4, max(params.bounds[2:]) - 0.4]
     axarr[0].quiver(quiver_point[0], quiver_point[1],
-                    np.cos(np.deg2rad(90 - params.ascending_flight_angle)),
-                    np.sin(np.deg2rad(90 - params.ascending_flight_angle)), scale=10);
+                    np.cos(np.deg2rad(90 - params.asc_flight_angle)),
+                    np.sin(np.deg2rad(90 - params.asc_flight_angle)), scale=10);
     axarr[0].quiver(quiver_point[0], quiver_point[1],
-                    np.sin(np.deg2rad(90 - params.ascending_flight_angle)),
-                    -np.cos(np.deg2rad(90 - params.ascending_flight_angle)), scale=10, color='red');
+                    np.sin(np.deg2rad(90 - params.asc_flight_angle)),
+                    -np.cos(np.deg2rad(90 - params.asc_flight_angle)), scale=10, color='red');
     axarr[0].text(quiver_point[0] + 0.05, quiver_point[1], "LOS", color='red', ha='right', va='top');
     axarr[0].plot(params.point1[0], params.point1[1], marker='s', color='black', markersize=5);
     axarr[0].plot(params.point2[0], params.point2[1], marker='s', color='black', markersize=5);
@@ -259,11 +246,11 @@ def outputs(vel_tuple, params, ca_border, or_border, los_ascending_velfield, los
     cbar.set_label('mm/yr');
     quiver_point = [min(params.bounds[0:2]) + 0.4, max(params.bounds[2:]) - 0.4]
     axarr[1].quiver(quiver_point[0], quiver_point[1],
-                    np.cos(np.deg2rad(90 - params.descending_flight_angle)),
-                    np.sin(np.deg2rad(90 - params.descending_flight_angle)), scale=10);
+                    np.cos(np.deg2rad(90 - params.desc_flight_angle)),
+                    np.sin(np.deg2rad(90 - params.desc_flight_angle)), scale=10);
     axarr[1].quiver(quiver_point[0], quiver_point[1],
-                    np.sin(np.deg2rad(90 - params.descending_flight_angle)),
-                    -np.cos(np.deg2rad(90 - params.descending_flight_angle)), scale=10, color='red');
+                    np.sin(np.deg2rad(90 - params.desc_flight_angle)),
+                    -np.cos(np.deg2rad(90 - params.desc_flight_angle)), scale=10, color='red');
     axarr[1].text(quiver_point[0] + 0.05, quiver_point[1], "LOS", color='red', ha='left', va='bottom');
     axarr[1].quiver(narray_x, narray_y, narray_east, narray_north, color='white', scale=500.0);
     axarr[1].plot(params.point1[0], params.point1[1], marker='s', color='black', markersize=5);
@@ -278,7 +265,6 @@ def outputs(vel_tuple, params, ca_border, or_border, los_ascending_velfield, los
     yboxes = [39.701538, 39.86, 41.6, 41.437393, 39.701538];
     axarr[1].plot(xboxes, yboxes, 'k');
     plt.savefig("LOS.png");
-
     return;
 
 

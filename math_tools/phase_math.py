@@ -4,10 +4,13 @@ import sys
 
 
 def real_imag2phase_amp(real, imag):
-    # Simple trig math functions to convert real/imag to phase and amp.
-    # Operates on 1D arrays.
-    phase = [];
-    amp = [];
+    """
+    Simple math function operating on 1-d arrays.
+    :param real: 1-d array
+    :param imag: 1-d array
+    :returns: [1-d array phase, 1-d array amp]
+    """
+    phase, amp = [], [];
     count = 0;
     for x in range(len(imag)):
         phase.append(np.arctan2(imag[x], real[x]));
@@ -18,14 +21,17 @@ def real_imag2phase_amp(real, imag):
         print("Warning: %d of %d are nans" % (count, len(real)));
     else:
         print("Converted real,imag to phase,amp with no nans.");
-
     return [phase, amp];
 
 
 def phase_amp2real_imag(phase, amp):
-    # Math functions that operate on 1D arrays.
-    real = [];
-    imag = [];
+    """
+    Simple math function operating on 1-d arrays.
+    :param phase: 1-d array
+    :param amp: 1-d array
+    :returns: [1-d array real, 1-d array imag]
+    """
+    real, imag = [], [];
     count = 0;
     for i in range(len(phase)):
         real.append(amp[i] * np.cos(phase[i]));
@@ -40,8 +46,12 @@ def phase_amp2real_imag(phase, amp):
 
 
 def develop_mean_phase(phase_array):
-    # This function takes a 1D array of phase values, and determines the mean phase value (sensitive to cycle slips)
-    # It uses the "mean of circular quantities" technique.
+    """
+    Takes 1D array of phase values, and determines mean phase value (sensitive to cycle slips)
+    Uses the "mean of circular quantities" technique.
+    :param phase_array: 1-D array of phase values
+    :returns: mean, float
+    """
     xarray = [np.cos(i) for i in phase_array];
     yarray = [np.sin(i) for i in phase_array];
     xmean = np.mean(xarray);
@@ -57,8 +67,12 @@ def develop_mean_phase(phase_array):
 
 
 def develop_median_phase(phase_array):
-    # This function takes a 1D array of phase values, and determines the median phase value (sensitive to cycle slips)
-    # It uses the "median of circular quantities" technique.
+    """
+    Takes 1D array of phase values, and determines median phase value (sensitive to cycle slips)
+    Uses the "median of circular quantities" technique.
+    :param phase_array: 1-D array of phase values
+    :returns: median, float
+    """
     xarray = [np.cos(i) for i in phase_array];
     yarray = [np.sin(i) for i in phase_array];
     xmedian = np.median(xarray);
