@@ -4,7 +4,7 @@
 
 import numpy as np
 from read_write_insar_utilities import netcdf_plots
-import readmytupledata as rmd
+from . import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 
 

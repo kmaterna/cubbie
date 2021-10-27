@@ -3,14 +3,14 @@ import scipy.interpolate
 
 
 def cut_grid(data, xbounds, ybounds, fractional=True, buffer_rows=3):
-    # We express the desired bounds as either an index  or a fraction of the domain in that axis.
-    # This is useful when we haven't decided on a resolution.
-    # xbounds refer to columns
-    # yowbounds refer to rows
-    xmin = xbounds[0];
-    xmax = xbounds[1];
-    ymin = ybounds[0];
-    ymax = ybounds[1];
+    """
+    Cut a grid. We express the desired bounds as either an index  or a fraction of the domain in that axis.
+    This is useful when we haven't decided on a resolution.
+    xbounds refer to columns
+    ybounds refer to rows
+    """
+    xmin, xmax = xbounds[0], xbounds[1];
+    ymin, ymax = ybounds[0], ybounds[1];
     xmax_orig = np.shape(data)[1];
     ymax_orig = np.shape(data)[0];
 
@@ -40,6 +40,7 @@ def cut_grid(data, xbounds, ybounds, fractional=True, buffer_rows=3):
 
 
 def make_coherence_mask(cor, threshold):
+    """Build a mask: 1 if above coherence threshold, nan if below coherence threshold. """
     print("Making coherence mask.")
     mask = np.ones(np.shape(cor));
     for i in range(np.shape(cor)[0]):
@@ -50,8 +51,10 @@ def make_coherence_mask(cor, threshold):
 
 
 def apply_coherence_mask(data, mask, is_complex=0, is_float32=False):
-    # A future version of this function should probably check the type of the input data
-    # and return the same type that came in.
+    """
+    A future version of this function should probably check the type of the input data
+    and return the same type that came in.
+    """
     if is_float32 is False:
         if is_complex == 1:
             masked = np.complex64(np.multiply(data, mask));
@@ -71,17 +74,12 @@ def interpolate_2d(data_array, is_complex=0):
         data_array = np.angle(data_array);
 
     ymax, xmax = np.shape(data_array);
-    yarray = range(ymax);
-    xarray = range(xmax);
-    interpolated_values = np.zeros(np.shape(data_array));
+    yarray, xarray = range(ymax), range(xmax);
 
-    x_interps = [];
-    y_interps = [];
-    z_interps = [];
-    xy_interps = [];
-    xy_targets = [];
+    x_interps, y_interps, z_interps = [], [], [];
+    xy_interps, xy_targets = [], [];
 
-    # Time to get rid of the nan's.
+    # Time to get rid of nan's.
     for i in range(len(yarray)):
         for j in range(len(xarray)):
             # xy_targets.append([xarray[j], yarray[i]]);
@@ -98,7 +96,7 @@ def interpolate_2d(data_array, is_complex=0):
     # f = scipy.interpolate.interp2d(y_interps, x_interps, z_interps);
     z_targets = scipy.interpolate.griddata(xy_interps, z_interps, xy_targets, method='linear', fill_value=1);
 
-    # Fill in the gaps using the interpolated value of z
+    # Fill in gaps using the interpolated value of z
     smoothdata = np.copy(data_array);
     for i in range(len(xy_targets)):
         idxx = xarray.index(xy_targets[i][0])

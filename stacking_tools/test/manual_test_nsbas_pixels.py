@@ -60,8 +60,10 @@ def test_real_pixel_dem_error():
 
 
 def test_synthetic_pixel_dem_error():
-    # Figure 1 of Fattahi and Amelung, 2013
-    # A synthetic test that isolates the DEM error correction.
+    """
+    Figure 1 of Fattahi and Amelung, 2013
+    A synthetic test that isolates the DEM error correction.
+    """
     baseline_table = 'Testing_Data/Fattahi_Fig1/baseline_table.dat'
     pixel_file = 'Testing_Data/Fattahi_Fig1/pixel_value.txt'
     baseline_tuple = sentinel_utilities.read_baseline_table(baseline_table);

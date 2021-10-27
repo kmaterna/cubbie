@@ -10,9 +10,8 @@ from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def get_input_dirs():
-    input_files = [];
-    input_files.append("/Volumes/Ironwolf/Track_71/stacking/no_smoothing/0_3500000");
-    input_files.append("/Volumes/Ironwolf/Track_71/stacking/no_smoothing/3500000_7000000");
+    input_files = ["/Volumes/Ironwolf/Track_71/stacking/no_smoothing/0_3500000",
+                   "/Volumes/Ironwolf/Track_71/stacking/no_smoothing/3500000_7000000"];
     return input_files;
 
 

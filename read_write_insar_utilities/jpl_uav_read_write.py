@@ -7,9 +7,11 @@ import struct
 
 
 def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground', return_type='phase_amp'):
-    # Note: The data file for igrams is binary with real-complex float pairs.
-    # igram_type is ground or slant
-    # return_type is phase_amp or real_imag
+    """
+    Data file for igrams is binary with real-complex float pairs
+    Igram_type is ground or slant
+    return_type is phase_amp or real_imag
+    """
     print("Reading %s-range file %s" % (igram_type, data_file));
     num_rows, num_cols = get_rows_cols(ann_file, igram_type);
     f = open(data_file, 'rb')
@@ -34,9 +36,11 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground', return_
 
 
 def read_corr_data(data_file, ann_file, dtype='f', igram_type='ground'):
-    # Note: The data file is not a regular netcdf grd file
-    # dtype float works for corr, unwrapped, etc.
-    # igram_type is ground or slant
+    """
+    Data file is not a regular netcdf grd file
+    dtype float works for corr, unwrapped, etc.
+    igram_type is ground or slant
+    """
     print("Reading %s-range file %s" % (igram_type, data_file));
     num_rows, num_cols = get_rows_cols(ann_file, igram_type);
     f = open(data_file, 'rb')

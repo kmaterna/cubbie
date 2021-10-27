@@ -1,7 +1,7 @@
 import numpy as np
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
-import stacking_utilities
+from . import stacking_utilities
 
 
 # UAVSAR INPUT FUNCTIONS

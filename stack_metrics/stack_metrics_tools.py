@@ -52,9 +52,11 @@ def number_below_value(filename, value):
 
 
 def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
-    # Make a mask that is ones and nans
-    # Given a co-registered stack
-    # If a pixel is above the outlier cutoff in any image of the stack, make a nanmask that masks that pixel.
+    """
+    Make a mask that is ones and nans
+    Given a co-registered stack
+    If a pixel is above the outlier cutoff in any image of the stack, make a nanmask that masks that pixel.
+    """
     filename = filelist[1]
     x, y, z = netcdf_read_write.read_any_grd(filename)  # just to get the shape of the outputs
     crazy_mask = np.ones(np.shape(z));

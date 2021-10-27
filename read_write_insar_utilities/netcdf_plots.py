@@ -11,11 +11,8 @@ def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):
     [xread, yread, zread] = read_netcdf3(netcdfname);
 
     # Make a plot
-    fig = plt.figure(figsize=(7, 10));
+    _fig = plt.figure(figsize=(7, 10));
     plt.contourf(xread, yread, zread)
-    # plt.gca().get_xaxis().set_ticks([]);
-    # plt.gca().get_yaxis().set_ticks([]);
-
     plt.title(plottitle);
     plt.gca().set_xlabel("Range", fontsize=16);
     plt.gca().set_ylabel("Azimuth", fontsize=16);
@@ -33,7 +30,7 @@ def produce_output_plot(netcdfname, plottitle, plotname, cblabel, aspect=1.0, in
 
     # Make a plot
     fig = plt.figure(figsize=(7, 10));
-    ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
+    _ax1 = fig.add_axes([0.0, 0.1, 0.9, 0.8]);
     if vmin is not None:
         plt.imshow(zread, aspect=aspect, cmap=cmap, vmin=vmin, vmax=vmax);
     else:
