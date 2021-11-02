@@ -11,6 +11,7 @@ if [[ "$#" -eq 0 ]]; then
   echo " -i input_file (can have multiple calls to -i)"
   echo " -u username"
   echo " -p password"
+  echo " -z unzip_flag. Will unzip results if set [default 0]"
   echo "Note: To use ASF, you will need a NASA Earthdata login."
   echo "    You can type them directly into the callstring with -u and -p, or "
   echo "    You can put your credentials into a file called ~/.wget_cred with format:"
@@ -23,7 +24,8 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 
-# Read the search results. It could be multiple calls of the -i flag. Read in the username and password. 
+# Read the search results. It could be multiple calls of the -i flag. Read in the username and password.
+unzip_flag=0
 while getopts i:u:p: opt; do
     case $opt in
       i) multi+=("$OPTARG")
@@ -35,7 +37,11 @@ while getopts i:u:p: opt; do
       p)  # password
         echo "-p was triggered, parameter: $OPTARG" >&2
         password=$OPTARG
-        ;;  
+        ;;
+      z)  # unzip_flag
+        echo "-z was triggered, parameter: $OPTARG" >&2
+        unzip_flag=$OPTARG
+        ;;
       \?)
         echo "Invalid option: -$OPTARG" >&2
         ;;
@@ -113,11 +119,13 @@ while read p; do
       echo "Downloading DATA/"$title
       wget --http-user=$username --http-password=$password -c -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
 
-      # cd DATA
-      # unzip $title.zip
-      # rm $title.SAFE/measurement/*-slc-vh-*.tiff
-      # rm $title.zip
-      # cd ../
+      if [ $unzip_flag != 0 ]; then
+         cd DATA
+         unzip $title.zip
+         rm $title.SAFE/measurement/*-slc-vh-*.tiff
+         rm $title.zip
+         cd ../
+      fi
     else
       echo "Already in the data directory: Skipping "$title
     fi
