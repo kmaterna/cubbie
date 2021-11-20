@@ -1,9 +1,9 @@
-#!/bin/env/python
+#!usr/bin/env python
+
 import numpy as np
 import matplotlib.pyplot as plt
-import math
-import struct
-from math_tools import phase_math
+import math, struct
+from ..math_tools import phase_math
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 

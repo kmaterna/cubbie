@@ -1,9 +1,12 @@
 #!/usr/bin/python
-# Perform a DEM error correction from Fattahi and Amelung, 2013, IEEE Proceedings.
-# This correction operates in the time domain after the SBAS inversion.
-# It solves for a term proportional to baseline history.
-# It cannot be used with weighted NSBAS.
-# It operates on unsmoothed time series, but smoothing can be added in later.
+
+"""
+Perform a DEM error correction from Fattahi and Amelung, 2013, IEEE Proceedings.
+This correction operates in the time domain after the SBAS inversion.
+It solves for a term proportional to baseline history.
+It cannot be used with weighted NSBAS.
+It operates on unsmoothed time series, but smoothing can be added in later.
+"""
 
 import numpy as np
 

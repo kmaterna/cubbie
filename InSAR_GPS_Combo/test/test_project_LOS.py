@@ -1,7 +1,6 @@
-# test_project_LOS.py
 
 import unittest
-from InSAR_GPS_Combo import los_projection_tools
+from .. import los_projection_tools
 import numpy as np
 
 class LOSTests(unittest.TestCase):

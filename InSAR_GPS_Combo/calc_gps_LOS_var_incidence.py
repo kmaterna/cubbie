@@ -1,12 +1,14 @@
-# Python script to convert GNSS velocities into LOS relative velocities
-# Using a grid of look vector components. 
-# The incidence angle of the look vector varies across the scene! 
-# The reference pixel must be a GPS station in the Velfield
+"""
+Python script to convert GNSS velocities into LOS relative velocities
+Using a grid of look vector components.
+The incidence angle of the look vector varies across the scene!
+The reference pixel must be a GPS station in the Velfield
+"""
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.geodesy import insar_vector_functions
 import gps_io_functions
 import gps_vel_functions
-from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
+from . import los_projection_tools
 
 
 def top_level_driver(config_dict):

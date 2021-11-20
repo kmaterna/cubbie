@@ -18,7 +18,7 @@ import matplotlib.path as path
 import collections
 from scipy import interpolate
 import gps_io_functions
-from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools as los_proj
+from . import los_projection_tools as los_proj
 from Tectonic_Utils.geodesy import haversine
 
 param_object = collections.namedtuple("param_object", ['type_of_interp', 'asc_flight_angle', 'desc_flight_angle',

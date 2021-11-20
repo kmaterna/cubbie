@@ -3,9 +3,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from . import io_functions
-from stacking_tools import nsbas
-from stacking_tools import dem_error_correction
-from intf_generating import sentinel_utilities
+from .. import nsbas, dem_error_correction
+from ...intf_generating import sentinel_utilities
 
 
 def outputs(x_axis_days, ts):

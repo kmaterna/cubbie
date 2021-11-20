@@ -1,5 +1,6 @@
-# Functions for reading/writing testing pixels
-# November 2020
+"""
+Functions for reading/writing testing pixels
+"""
 
 import numpy as np
 import collections

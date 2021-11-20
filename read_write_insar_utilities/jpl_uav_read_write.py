@@ -1,6 +1,7 @@
-# July 2020
-# Process a wrapped JPL UAVSAR interferogram from the UAVSAR website
-# Here we read the grid file
+"""
+July 2020
+Read and process a wrapped JPL UAVSAR interferogram from the UAVSAR website
+"""
 
 import numpy as np
 import struct

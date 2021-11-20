@@ -1,7 +1,9 @@
-# A more sophisticated topo-vs.-atmosphere software
-# Splits the area into chunks, and solves for a linear trend in each box. 
-# Plots the variance and slope. 
-# These may change with distance from the coast or elevation. 
+"""
+A more sophisticated topo-vs.-atmosphere software
+Splits the area into chunks, and solves for a linear trend in each box.
+Plots the variance and slope.
+These may change with distance from the coast or elevation.
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt

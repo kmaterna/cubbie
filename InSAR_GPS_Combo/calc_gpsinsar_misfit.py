@@ -1,11 +1,13 @@
-# August 2020 
-# Calculate the misfit between a geocoded InSAR velocity field and a GPS velocity field 
-# that has been projected into the Line of Sight
-# Also make a 1-to-1 plot of LOS velocities
+"""
+August 2020
+Calculate the misfit between a geocoded InSAR velocity field and a GPS velocity field
+that has been projected into the Line of Sight
+Also make a 1-to-1 plot of LOS velocities
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
-from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
+from . import los_projection_tools
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 

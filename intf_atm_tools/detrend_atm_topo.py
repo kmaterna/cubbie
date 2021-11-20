@@ -1,13 +1,14 @@
-# A script to take a stack of images plus a DEM
-# Solve for best-fitting linear trend
-# Right now this is a global trend across the whole scene. 
-# Remove trend and save the adjusted stack in out_dir
-# In order to work correctly, this script needs a specified reference pixel. 
+"""
+A script to take a stack of images plus a DEM
+Solve for best-fitting linear trend
+Right now this is a global trend across the whole scene.
+Remove trend and save the adjusted stack in out_dir
+In order to work correctly, this script needs a specified reference pixel.
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
-import glob, sys, os
-import subprocess
+import glob, sys, os, subprocess
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3

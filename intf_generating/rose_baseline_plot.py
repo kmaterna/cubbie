@@ -1,10 +1,12 @@
-# The purpose of this plot is to read baseline tables
-# And give a visual tool to determine which are the best 
-# one-year interferograms to make. 
+"""
+The purpose of this plot is to read baseline tables
+And give a visual tool to determine which are the best
+one-year interferograms to make.
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
-from intf_generating import sentinel_utilities
+from . import sentinel_utilities
 
 
 def top_level_driver():

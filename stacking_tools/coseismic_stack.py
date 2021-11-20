@@ -1,9 +1,11 @@
-# Code to take a set of interferograms that span a particular earthquake and generate an average. 
-# The average should contain less noise than the original interferograms.
-# Can be used with gmtsar or isce
+"""
+Code to take a set of interferograms that span a particular earthquake and generate an average.
+The average should contain less noise than the original interferograms.
+Can be used with gmtsar or isce
+"""
 
 import numpy as np
-from read_write_insar_utilities import netcdf_plots
+from ..read_write_insar_utilities import netcdf_plots
 from . import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 

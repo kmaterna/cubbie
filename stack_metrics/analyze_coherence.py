@@ -1,13 +1,15 @@
-# The purpose of this script is to run some diagnostics on the mean coherence. 
-# How did the coherence vary with other things, like perpendicular baseline and season? 
-# What do histograms of coherence look like? 
+"""
+The purpose of this script is to run some diagnostics on the mean coherence.
+How did the coherence vary with other things, like perpendicular baseline and season?
+What do histograms of coherence look like?
+"""
 
 import matplotlib.pyplot as plt
 import datetime as dt
 import os
 import glob as glob
 from subprocess import call, check_output
-from intf_generating import sentinel_utilities
+from ..intf_generating import sentinel_utilities
 
 
 # ------------- DRIVERS ------------------ #

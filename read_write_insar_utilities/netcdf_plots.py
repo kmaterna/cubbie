@@ -1,6 +1,8 @@
-# Netcdf plotting functions
-# For the InSAR library, only Netcdf3 and Netcdf4 files with PIXEL NODE REGISTRATION are valid.
-# The assumption for 2D Netcdf files is 3 variables.
+"""
+Netcdf plotting functions
+For the InSAR library, only Netcdf3 and Netcdf4 files with PIXEL NODE REGISTRATION are valid.
+The assumption for 2D Netcdf files is 3 variables.
+"""
 
 from matplotlib import pyplot as plt
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3, read_any_grd

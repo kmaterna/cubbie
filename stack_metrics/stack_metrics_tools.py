@@ -1,8 +1,10 @@
-# August 2020
-# Here we have a number of tools for post-analysis a stack of interferograms
-# Some functions are plots.
-# Some functions make masks.
-# Hopefully reducing the number of times I have to write these functions over and over again. 
+"""
+August 2020
+Here we have a number of tools for post-analysis a stack of interferograms
+Some functions are plots.
+Some functions make masks.
+Hopefully reducing the number of times I have to write these functions over and over again.
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-	specific driver for stacking, velocities, and time series
+specific driver for stacking, velocities, and time series
 """
 
 from . import stacking_configparser

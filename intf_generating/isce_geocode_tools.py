@@ -1,19 +1,19 @@
-# June 2020
-# A series of functions to geocode isce images and los.rdr.geo in various formats
-# Including the UAVSAR stacks
-# And the UAVSAR ground range igram format from the JPL website
+"""
+June 2020
+A series of functions to geocode isce images and los.rdr.geo in various formats
+Including the UAVSAR stacks
+And the UAVSAR ground range igram format from the JPL website
+"""
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 import sys, glob
 from subprocess import call
-from read_write_insar_utilities import isce_read_write, jpl_uav_read_write
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-from Tectonic_Utils.geodesy import haversine
-from Tectonic_Utils.geodesy import insar_vector_functions
-from read_write_insar_utilities.isce_read_write import get_xmin_xmax_xinc_from_xml
-from math_tools import mask_and_interpolate
+from Tectonic_Utils.geodesy import haversine, insar_vector_functions
+from ..read_write_insar_utilities import isce_read_write, jpl_uav_read_write
+from ..math_tools import mask_and_interpolate
 
 
 # ------------ UTILITY FUNCTIONS -------------- #
@@ -248,7 +248,7 @@ def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
         data_surviving[counter, :] = data[i, :];
     (ny, nx) = np.shape(data_surviving);
 
-    firstLon, firstLat, dE, dN, xmin, xmax = get_xmin_xmax_xinc_from_xml(unw_xml);
+    firstLon, firstLat, dE, dN, xmin, xmax = isce_read_write.get_xmin_xmax_xinc_from_xml(unw_xml);
 
     isce_read_write.write_isce_unw(data_surviving, data_surviving, nx, ny, "FLOAT", unw_file_final, firstLat=firstLat,
                                    firstLon=firstLon, deltaLon=dE, deltaLat=dN, Xmin=xmin, Xmax=xmax);

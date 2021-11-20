@@ -7,7 +7,7 @@ from subprocess import call
 import glob, sys
 from copy import deepcopy
 import datetime as dt
-from intf_generating import sentinel_utilities
+from ..intf_generating import sentinel_utilities
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 

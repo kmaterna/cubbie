@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+
 import numpy as np
 import glob
-
-import read_write_insar_utilities.netcdf_plots as netcdf_plots
+from ..read_write_insar_utilities import netcdf_plots
 from . import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write
 

@@ -11,8 +11,7 @@ Output Table:
 # TABLE...
 # TABLE...
 """
-import sys
-import glob
+import sys, glob
 import numpy as np
 import datetime as dt
 import xml.etree.ElementTree as ET

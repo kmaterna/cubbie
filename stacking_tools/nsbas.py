@@ -1,9 +1,7 @@
-# This is in Python
 
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
-import math
+import sys, math
 import datetime as dt
 from . import stacking_utilities
 from . import dem_error_correction

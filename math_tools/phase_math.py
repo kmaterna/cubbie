@@ -1,6 +1,5 @@
 import numpy as np
-import math
-import sys
+import math, sys
 
 
 def real_imag2phase_amp(real, imag):

@@ -38,7 +38,7 @@
     You will control how the program operates through the processing stages specified in the batch.config file.
 """
 
-from intf_generating import sentinel_main_functions
+from . import sentinel_main_functions
 
 if __name__ == "__main__":
     config_params = sentinel_main_functions.read_config_argument_parsing();

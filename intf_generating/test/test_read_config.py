@@ -1,7 +1,7 @@
 # Do the example configs in the repo actually parse through the configparser?
 
 import unittest
-from intf_generating import sentinel_main_functions
+from .. import sentinel_main_functions
 
 
 class ConfigTests(unittest.TestCase):

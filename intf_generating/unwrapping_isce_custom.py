@@ -1,20 +1,22 @@
-# Deal with unwrapping in ISCE interferograms
-# This is a code to take interferograms, cut and mask them, interpolate over bad areas, 
-# unwrap them, and re-mask them again. 
-# The new unwrapped files live in an alt_unwrapped directory inside each Igram dir. 
-# Inspired by Jiang and Lohman, 2020, S1 Salton Sea project. 
-# It is able to re-make the interferogram stack with the right multilooks and filter. 
-# It is meant to be called from a directory parallel to the Igram and SLC directories
-# in the ISCE Stack processing workflow. 
-# February 26, 2020
+"""
+Deal with unwrapping in ISCE interferograms
+This is a code to take interferograms, cut and mask them, interpolate over bad areas,
+unwrap them, and re-mask them again.
+The new unwrapped files live in an alt_unwrapped directory inside each Igram dir.
+Inspired by Jiang and Lohman, 2020, S1 Salton Sea project.
+It is able to re-make the interferogram stack with the right multilooks and filter.
+It is meant to be called from a directory parallel to the Igram and SLC directories
+in the ISCE Stack processing workflow.
+February 26, 2020
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.cm as cm
 import subprocess, sys, glob
-from read_write_insar_utilities import isce_read_write
-from math_tools import mask_and_interpolate
+from ..read_write_insar_utilities import isce_read_write
+from ..math_tools import mask_and_interpolate
 
 
 def add_plot(axarr, plotnumber, data, title, colormap, aspect=1/7, is_complex=0, vmin=None, vmax=None):

@@ -1,6 +1,8 @@
-# A series of loops that overwrite the files they started with. 
-# Ex1: Multiply a bunch of grids by -1 to match someone else's velocity format
-# Ex2: Multiply a bunch of grids by a nanmask
+"""
+A series of loops that overwrite the files they started with.
+Ex1: Multiply a bunch of grids by -1 to match someone else's velocity format
+Ex2: Multiply a bunch of grids by a nanmask
+"""
 
 
 import numpy as np

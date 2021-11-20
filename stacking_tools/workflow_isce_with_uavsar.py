@@ -1,13 +1,10 @@
 import sys
 import numpy as np
-import read_write_insar_utilities.netcdf_plots
-from . import readmytupledata
-from . import stacking_utilities
-from . import stack_corr
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-from intf_generating import isce_geocode_tools, unwrapping_isce_custom
+from ..intf_generating import isce_geocode_tools, unwrapping_isce_custom
+from ..read_write_insar_utilities import netcdf_plots
 from . import stacking_configparser
-
+from . import readmytupledata, stacking_utilities, stack_corr
 
 def custom_isce_unwrapping(config_params):
     custom_params = stacking_configparser.read_config_isce(config_params.config_file)
@@ -28,11 +25,9 @@ def stack_corr_for_ref_unwrapped_isce(intf_files, rowref, colref, ts_output_dir,
     cor_data = readmytupledata.reader_isce(cor_files);
     a = stack_corr.stack_corr(cor_data, cor_value);
     rwr.produce_output_netcdf(cor_data.xvalues, cor_data.yvalues, a, 'Percentage', netcdfname)
-    read_write_insar_utilities.netcdf_plots.produce_output_plot(netcdfname, 'Signal Spread above cor=' + str(cor_value),
-                                                                ts_output_dir + '/signalspread_cut_ref' +
-                                                                label + '.png', 'Percentage of coherence',
-                                                                aspect=1 / 4, invert_yaxis=False,
-                                                                dot_points=[[colref], [rowref]]);
+    netcdf_plots.produce_output_plot(netcdfname, 'Signal Spread above cor=' + str(cor_value), ts_output_dir +
+                                     '/signalspread_cut_ref' + label + '.png', 'Percentage of coherence',
+                                     aspect=1 / 4, invert_yaxis=False, dot_points=[[colref], [rowref]]);
     signal_spread_ref = a[rowref, colref];
     print("Signal Spread of the reference pixel = %.2f " % signal_spread_ref);
     if signal_spread_ref < 50:

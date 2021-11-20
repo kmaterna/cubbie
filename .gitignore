@@ -2,6 +2,8 @@
 *.pyc
 *.csh~
 *.sh~
+*.grd
+*.nc
 .idea/*
 flatten_topo.f
 flatten_topo

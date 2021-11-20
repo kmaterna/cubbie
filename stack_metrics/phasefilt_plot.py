@@ -1,12 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import glob as glob
-import sys
+import sys, subprocess
 import datetime as dt
-import subprocess
 from Tectonic_Utils.read_write import netcdf_read_write
-
-# TOP LEVEL DRIVER
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 
 

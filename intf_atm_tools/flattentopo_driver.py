@@ -14,10 +14,9 @@ Then, this script does the following:
 
 
 import numpy as np
-import subprocess
-import glob, os
-from read_write_insar_utilities import readbin
-from math_tools import phase_math
+import glob, os, subprocess
+from ..read_write_insar_utilities import readbin
+from ..math_tools import phase_math
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 

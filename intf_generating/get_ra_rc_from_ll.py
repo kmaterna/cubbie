@@ -1,6 +1,8 @@
-# A set of python scripts
-# What is the range/azimuth and row/col of a particular geographic coordinate? 
-# This will use trans.dat, and some inputs of an example .grd file and geographic coords. 
+"""
+A set of python scripts
+What is the range/azimuth and row/col of a particular geographic coordinate?
+This will use trans.dat, and some inputs of an example .grd file and geographic coords.
+"""
 
 import numpy as np
 import subprocess

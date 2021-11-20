@@ -1,10 +1,12 @@
-# Function that reads GPS field,
-# WARNING: PROBABLY BROKEN.
-# projects very simply into LOS, and subtracts a reflon and reflat
-# Writes an output text file that can be plotted in GMT, etc. 
-# For this driver, the reference point is a lat/lon pixel, not a particular GPS station 
-# (sometimes the situation isn't ideal and you have to do that!)
-# This script has been partly re-written but is still a bit dependent on earlier parts of my processing pipeline
+"""
+Function that reads GPS field,
+WARNING: PROBABLY BROKEN.
+projects very simply into LOS, and subtracts a reflon and reflat
+Writes an output text file that can be plotted in GMT, etc.
+For this driver, the reference point is a lat/lon pixel, not a particular GPS station
+(sometimes the situation isn't ideal and you have to do that!)
+This script has been partly re-written but is still a bit dependent on earlier parts of my processing pipeline
+"""
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +15,7 @@ from scipy import interpolate
 from Tectonic_Utils.read_write import netcdf_read_write
 import gps_io_functions
 import gps_vel_functions
-from GMTSAR_related_code.S1_batches.InSAR_GPS_Combo import los_projection_tools
+from . import los_projection_tools
 
 
 def top_level_driver(config_params, rowref, colref):

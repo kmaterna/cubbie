@@ -1,17 +1,16 @@
 # Stacking Utilities
 
-import os, sys, glob, re
+import os, sys, glob, re, collections
 import datetime as dt
 import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-import collections
-from read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write
-from intf_generating import get_ra_rc_from_ll
 from Tectonic_Utils.geodesy import haversine
+from ..intf_generating import get_ra_rc_from_ll
+from ..read_write_insar_utilities import isce_read_write
 
 
 def get_list_of_intf_all(config_params, returnval='all'):

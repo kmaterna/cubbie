@@ -1,8 +1,6 @@
 # Sentinel Utilities
 
-import subprocess
-import sys
-import glob, os, re
+import glob, os, re, sys, subprocess
 import datetime as dt
 from subprocess import check_output
 import matplotlib
