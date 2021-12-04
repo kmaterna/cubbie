@@ -1,24 +1,25 @@
+#!/usr/bin/env python
+# Specific driver for Brawley Project, 2020-2021
+
 import numpy as np
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
-from . import stacking_utilities
-
-
-# UAVSAR INPUT FUNCTIONS
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
+from .. import stacking_utilities
 
 
 def reshape_TS_into_standard(outdir, earlyfile, cofile, latefile, outfile):
-    # This is not particular general. It's using hard-coded information about time axis
-    # and the timing of the earthquake.
-    # It's for track 26509.
-    # This function pastes together a pre-seismic, co-seismic, and post-seismic set of time series or jumps.
-    # On the same xy grid.
+    """
+    This is not particular general. It's using hard-coded information about time axis
+    and the timing of the earthquake.
+    It's for track 26509.
+    This function pastes together a pre-seismic, co-seismic, and post-seismic set of time series or jumps.
+    On the same xy grid.
+    """
     tolerance = 300;  # Purposely killing all pixels above this value.
     print("Reshaping UAVSAR file into single TS File");
-    [tdata1, xdata1, ydata1, zdata1] = netcdf_read_write.read_3D_netcdf(earlyfile);
-    [xdata2, ydata2, zdata2] = read_netcdf3(cofile);
-    [tdata3, xdata3, ydata3, zdata3] = netcdf_read_write.read_3D_netcdf(latefile);
+    [_tdata1, xdata1, ydata1, zdata1] = netcdf_read_write.read_3D_netcdf(earlyfile);
+    [_xdata2, _ydata2, zdata2] = netcdf_read_write.read_netcdf3(cofile);
+    [_tdata3, _xdata3, _ydata3, zdata3] = netcdf_read_write.read_3D_netcdf(latefile);
     print(np.shape(zdata1), np.shape(zdata2), np.shape(zdata3));
     ynum = np.shape(zdata1)[1];
     xnum = np.shape(zdata1)[2];

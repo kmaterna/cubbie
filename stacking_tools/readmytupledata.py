@@ -1,8 +1,7 @@
-#!/usr/bin/python
 import numpy as np
 import collections, re
 from datetime import datetime
-from ..read_write_insar_utilities import isce_read_write
+from S1_batches.read_write_insar_utilities import isce_read_write
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 from . import stacking_utilities
 

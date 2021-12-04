@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.geodesy import haversine
-from ..intf_generating import get_ra_rc_from_ll
-from ..read_write_insar_utilities import isce_read_write
+from S1_batches.intf_generating import get_ra_rc_from_ll
+from S1_batches.read_write_insar_utilities import isce_read_write
 
 
 def get_list_of_intf_all(config_params, returnval='all'):
@@ -46,8 +46,10 @@ def get_list_of_intf_all(config_params, returnval='all'):
         return intf_file_tuples;
 
 
-# Turn interferograms into date-date-filename tuples
 def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
+    """
+    Turn GMTSAR interferograms into date-date-filename tuples
+    """
     intf_tuple_list = [];
     for i in range(len(total_intf_list)):
         datesplit = re.findall(r"\d\d\d\d\d\d\d_\d\d\d\d\d\d\d", total_intf_list[i])[0];  # example: 2010040_2014064
@@ -58,6 +60,9 @@ def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
 
 
 def get_intf_datetuple_isce(total_intf_list, total_corr_list):
+    """
+    Turn GMTSAR interferograms into date-date-filename tuples
+    """
     intf_tuple_list = [];
     for i in range(len(total_intf_list)):
         datesplit = re.findall(r"\d\d\d\d\d\d\d\d_\d\d\d\d\d\d\d\d", total_intf_list[i])[0];  # ex: 20100402_20140304
@@ -342,7 +347,8 @@ def make_selection_of_intfs(config_params):
     """
     HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
     WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT, ETC IN CONFIG SETTINGS.
-    The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)"""
+    The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
+    """
     
     if config_params.ts_format == "velocities_from_timeseries":
         intf_files = get_list_of_ts_grids(config_params);

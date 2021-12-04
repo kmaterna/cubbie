@@ -8,7 +8,7 @@ Because it saves time to run in parallel.
 import numpy as np
 import glob
 from subprocess import call
-from ..read_write_insar_utilities import netcdf_plots
+from ...read_write_insar_utilities import netcdf_plots
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3, produce_output_netcdf
 
 

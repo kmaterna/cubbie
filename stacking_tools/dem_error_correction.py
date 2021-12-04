@@ -1,4 +1,3 @@
-#!/usr/bin/python
 
 """
 Perform a DEM error correction from Fattahi and Amelung, 2013, IEEE Proceedings.

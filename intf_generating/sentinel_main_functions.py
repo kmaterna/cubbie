@@ -3,8 +3,8 @@ import os, sys, argparse, configparser, glob
 import numpy as np
 from subprocess import call
 from . import sentinel_utilities, rose_baseline_plot
-from ..intf_atm_tools import flattentopo_driver
-from ..stack_metrics import analyze_coherence
+from S1_batches.intf_atm_tools import flattentopo_driver
+from S1_batches.stack_metrics import analyze_coherence
 
 Params = collections.namedtuple('Params',
                                 ['config_file', 'SAT', 'wavelength', 'startstage', 'endstage', 'master',

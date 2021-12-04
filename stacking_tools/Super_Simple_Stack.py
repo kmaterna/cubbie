@@ -1,7 +1,6 @@
-#!/usr/bin/python
 import numpy as np
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-from ..read_write_insar_utilities import netcdf_plots
+from S1_batches.read_write_insar_utilities import netcdf_plots
 from . import readmytupledata as rmd
 from . import stacking_utilities
 
@@ -79,9 +78,3 @@ def output_manager_simple_stack(x, y, velocities, rowref, colref, signal_spread_
                                      '/velo_simple_stack.png', 'velocity (mm/yr)');
     stacking_utilities.report_on_refpixel(rowref, colref, signal_spread_data, outdir);
     return;
-
-
-# --------- FOR TESTING AND MANUAL CONTROL ONLY ----------- # 
-
-if __name__ == "__main__":
-    print("Manual Control of Super Simple Stack.");

@@ -1,8 +1,6 @@
-#!/usr/bin/env python
 
 import numpy as np
-import glob
-from ..read_write_insar_utilities import netcdf_plots
+from S1_batches.read_write_insar_utilities import netcdf_plots
 from . import readmytupledata as rmd
 from Tectonic_Utils.read_write import netcdf_read_write
 
@@ -86,11 +84,3 @@ def drive_signal_spread_isce(corr_files, cutoff, output_dir, output_filename):
                                      output_dir + '/signalspread_full.png', 'Percentage of coherence', aspect=1 / 4,
                                      invert_yaxis=False);
     return;
-
-
-if __name__ == "__main__":
-    myfiles = glob.glob("intf_all_remote/???????_???????/corr.grd")
-    mytuple = rmd.reader(myfiles)
-    a = stack_corr(mytuple, 0.1)
-    netcdf_read_write.produce_output_netcdf(mytuple.xvalues, mytuple.yvalues, a, 'Percentage', 'signalspread.nc')
-    netcdf_plots.produce_output_plot('signalspread.nc', 'Signal Spread', 'signalspread.png', 'Percentage of coherence')

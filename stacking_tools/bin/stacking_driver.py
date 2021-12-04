@@ -3,8 +3,7 @@
 specific driver for stacking, velocities, and time series
 """
 
-from . import stacking_configparser
-from . import stacking_functions
+from S1_batches.stacking_tools import stacking_configparser, stacking_functions
 
 if __name__ == "__main__":
     conf, config_params = stacking_configparser.parse_cmd_and_config();

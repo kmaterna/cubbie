@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from . import io_functions
 from .. import nsbas, dem_error_correction
-from ...intf_generating import sentinel_utilities
+from S1_batches.intf_generating import sentinel_utilities
 
 
 def outputs(x_axis_days, ts):

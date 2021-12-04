@@ -1,10 +1,9 @@
 import sys
 import numpy as np
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-from ..intf_generating import isce_geocode_tools, unwrapping_isce_custom
-from ..read_write_insar_utilities import netcdf_plots
-from . import stacking_configparser
-from . import readmytupledata, stacking_utilities, stack_corr
+from S1_batches.intf_generating import isce_geocode_tools, unwrapping_isce_custom
+from S1_batches.read_write_insar_utilities import netcdf_plots
+from . import readmytupledata, stacking_utilities, stack_corr, stacking_configparser
 
 def custom_isce_unwrapping(config_params):
     custom_params = stacking_configparser.read_config_isce(config_params.config_file)

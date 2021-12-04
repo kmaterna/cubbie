@@ -1,4 +1,3 @@
-import sys
 import re, glob
 from subprocess import call
 from . import stacking_utilities
@@ -100,17 +99,6 @@ def geocode_vels(config_params):
     print("Start Stage 4 - Geocoding");
     if config_params.SAT == "UAVSAR":
         workflow_isce_with_uavsar.geocode_isce_uavsar(config_params);
-
-    # vel_name = "velo_nsbas"
-    # outfile=open("geocoding.txt",'w');
-    # outfile.write("#!/bin/bash\n");
-    # outfile.write("# Script to geocode velocities.\n\n");
-    # outfile.write("cd F"+str(config_params.swath)+"\n");
-    # outfile.write("geocode_mod.csh "+vel_name+".grd "+vel_name+"_ll.grd "+vel_name+"_ll "+directory+"\n");
-    # outfile.close();
-    # print("Ready to call geocoding.txt.")
-    # call("chmod +x geocoding.txt",shell=True);
-    # call("./geocoding.txt",shell=True); 
 
     # Then, quickly geocode all the time series files. 
     # Call from the processing directory

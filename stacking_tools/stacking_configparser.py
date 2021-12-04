@@ -35,8 +35,10 @@ def parse_cmd_and_config():
 
 
 def read_config_isce(config_file):
-    # ISCE-specific parameters
-    # read config file
+    """
+    ISCE-specific parameters
+    read config file
+    """
     config = configparser.ConfigParser()
     config.optionxform = str  # make the config file case-sensitive
     config.read(config_file)
@@ -58,8 +60,10 @@ def read_config_isce(config_file):
 
 
 def read_config_general(config_file):
-    # Common to both GMTSAR and ISCE.
-    # read config file
+    """
+    Common to both GMTSAR and ISCE.
+    read config file
+    """
     config = configparser.ConfigParser()
     config.optionxform = str  # make the config file case-sensitive
     config.read(config_file)
