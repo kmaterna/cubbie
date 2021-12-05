@@ -1,5 +1,5 @@
 # Stacking config parser
-import argparse, configparser
+import argparse, configparser, sys
 import datetime as dt
 import collections
 
@@ -25,13 +25,21 @@ def parse_cmd_and_config():
     ################################################
     # Stage 0: Read and check config parameters
     # read command line arguments and parse config file.
-    parser = argparse.ArgumentParser(description='Run stack processing. ')
-    parser.add_argument('config', type=str, help='supply name of config file to setup processing options. Required.')
-    parser.add_argument('--debug', action='store_true', help='Print extra debugging messages (default: false)')
+    parser = argparse.ArgumentParser(description='Run stack processing. Either config or print_config are required.')
+    parser.add_argument('--config', type=str, help='supply name of config file to setup processing options.')
+    parser.add_argument('--print_config', help='file system location where to print example config file.')
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     args = parser.parse_args()
-    config_file = args.config;
-    config, config_params = read_config_general(config_file);
-    return config, config_params;
+    if args.config is not None:
+        config_file = args.config;
+        config, config_params = read_config_general(config_file);
+        return config, config_params;
+    elif args.print_config is not None:
+        directory = args.print_config;
+        print_default_config(directory+"/stacking_default_config.txt");
+        sys.exit(0);
 
 
 def read_config_isce(config_file):
@@ -46,7 +54,8 @@ def read_config_isce(config_file):
     rlks = config.getint('py-config', 'rlks') if config.has_option('py-config', 'rlks') else 0;
     alks = config.getint('py-config', 'alks') if config.has_option('py-config', 'alks') else 0;
     filt = config.getfloat('py-config', 'filt') if config.has_option('py-config', 'filt') else 0;
-    cor_cutoff_mask = config.getfloat('py-config', 'cor_cutoff_mask') if config.has_option('py-config', 'cor_cutoff_mask') else 1;
+    cor_cutoff_mask = config.getfloat('py-config', 'cor_cutoff_mask') if \
+        config.has_option('py-config', 'cor_cutoff_mask') else 1;
     xbounds = config.get('py-config', 'xbounds') if config.has_option('py-config', 'xbounds') else '0/100';
     ybounds = config.get('py-config', 'ybounds') if config.has_option('py-config', 'ybounds') else '0/100';
     llh_file = config.get('py-config', 'llh_file') if config.has_option('py-config', 'llh_file') else '';
@@ -130,3 +139,70 @@ def read_config_general(config_file):
                            ts_output_dir=ts_output_dir);
 
     return config, config_params;
+
+
+def print_default_config(filename):
+    print("Writing %s " % filename);
+    ifile = open(filename, 'w');
+    ifile.write("# Config file for Stacking methods\n");
+    ifile.write("#############################################\n");
+    ifile.write("# Python configparser module section header \n");
+    ifile.write("[py-config]\n\n");
+    ifile.write("# satellite options: S1\n");
+    ifile.write("satellite = S1\n");
+    ifile.write("wavelength = 56\n\n");
+    ifile.write("# stage0: setup\n");
+    ifile.write("# stage1: corrections for atmosphere and errors etc.\n");
+    ifile.write("# stage2: get reference pixel\n");
+    ifile.write("# stage3: velocity and time series formation\n");
+    ifile.write("# stage4: geocode\n");
+    ifile.write("startstage = 0\n");
+    ifile.write("endstage  =  0\n\n");
+    ifile.write("# Reference pixel (lon/lat, and/or row/col)\n")
+    ifile.write("ref_loc = \n");
+    ifile.write("ref_idx = \n\n");
+    ifile.write("# timeseries type: STACK or NSBAS or WNSBAS or COSEISMIC\n");
+    ifile.write("# timeseries format: velocity, points, timeseries, velocities_from_timeseries\n");
+    ifile.write("ts_type = \n");
+    ifile.write("ts_format = \n\n");
+    ifile.write("# File I/O Options\n");
+    ifile.write("# intf_dir should have all the folders with intfs (format YYYYJJJ_YYYYJJJ)\n");
+    ifile.write("# geocoded_intfs: are the interferograms already geocoded? \n");
+    ifile.write("# ts_output_dir is where all outputs will live\n");
+    ifile.write("# file_format is either 'isce' or 'gmtsar'\n");
+    ifile.write("intf_dir = \n");
+    ifile.write("intf_filename = unwrap.grd\n");
+    ifile.write("corr_filename = corr.grd\n");
+    ifile.write("file_format = gmtsar\n");
+    ifile.write("geocoded_intfs = 1\n");
+    ifile.write("ts_output_dir = Output/\n");
+    ifile.write("make_signal_spread = 1\n");
+    ifile.write("signal_coh_cutoff = 0\n");
+    ifile.write("signal_spread_filename = signalspread.nc\n");
+    ifile.write("baseline_file = \n\n");
+    ifile.write("# sbas parameters\n");
+    ifile.write("sbas_smoothing = 1\n\n");
+    ifile.write("# nsbas parameters: minimum % of good igrams for nsbas, or -1 for full-rank pixels only\n");
+    ifile.write("nsbas_min_intfs = 50\n\n");
+    ifile.write("# Do you want to choose a subset of your images to generate a time series? \n");
+    ifile.write("# intf_timespan is the duration of interferograms you want to use (300- means less than 300 days; "
+                "300+ means greater than 300 days)\n");
+    ifile.write("start_time = 20141001\n");
+    ifile.write("end_time = 20190704\n");
+    ifile.write("coseismic = \n");
+    ifile.write("intf_timespan = \n\n");
+    ifile.write("# choose which interferograms to skip (bad intfs)\n");
+    ifile.write("skip_file = \n\n");
+    ifile.write("# Choose points to reverse-geocode and get their velocities and time series\n");
+    ifile.write("ts_points_file = \n\n");
+    ifile.write("#de-trending options, including GPS velocity file, optional to be used for de-trending\n");
+    ifile.write("detrend = False\n");
+    ifile.write("trendparams = \n");
+    ifile.write("flight_angle = 194\n");
+    ifile.write("look_angle = 30\n\n");
+    ifile.write("# Options for fancy corrections: phase unwrapping errors, and atmospheric corrections\n");
+    ifile.write("# DEM error: Fattahi and Amelung, IEEE, 2013. Assumes linear deformation. \n");
+    ifile.write("detrend_atm_topo = 0\n");
+    ifile.write("dem_error = 0\n");
+    ifile.close()
+    return;

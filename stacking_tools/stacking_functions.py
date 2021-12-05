@@ -1,11 +1,7 @@
 import re, glob
 from subprocess import call
-from . import stacking_utilities
-from . import nsbas_accessing
+from . import stacking_utilities, nsbas_accessing, coseismic_stack, stack_corr, workflow_isce_with_uavsar
 from . import Super_Simple_Stack as sss
-from . import coseismic_stack
-from . import stack_corr
-from . import workflow_isce_with_uavsar
 
 
 # --------------- STEP 0: Setting up ------------ # 
@@ -19,7 +15,8 @@ def set_up_output_directories(config_params):
     print('calling: mkdir -p %s' % config_params.ts_output_dir);
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
     print('calling: cp %s %s' % (config_params.config_file, config_params.ts_output_dir));
-    call(['cp', config_params.skip_file, config_params.ts_output_dir], shell=False);
+    if config_params.skip_file:
+        call(['cp', config_params.skip_file, config_params.ts_output_dir], shell=False);
     print("End Stage 0 - Setting up output directories (%s) \n" % config_params.ts_output_dir);
     return;
 
