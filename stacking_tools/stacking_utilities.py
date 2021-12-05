@@ -31,8 +31,7 @@ def get_list_of_intf_all(config_params, returnval='all'):
         total_corr_list = glob.glob("../Igrams/*/alt_unwrapped/filt*_fully_processed.cor");
         intf_file_tuples = get_intf_datetuple_isce(total_intf_list, total_corr_list);
     else:
-        total_intf_list, total_corr_list = [], [];
-        intf_file_tuples = [];
+        total_intf_list, total_corr_list, intf_file_tuples = [], [], [];
     print("Identifying all unwrapped intfs in %s: " % config_params.intf_dir);
     print("  Found %d interferograms for stacking. " % (len(total_intf_list)));
     print("  Found %d coherence files for stacking. " % (len(total_corr_list)));
@@ -49,6 +48,9 @@ def get_list_of_intf_all(config_params, returnval='all'):
 def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
     """
     Turn GMTSAR interferograms into date-date-filename tuples
+    :param total_intf_list: list of strings, filenames
+    :param total_corr_list: list of strings, filenames
+    :returns: list of tuples (dt, dt, filename, filename)
     """
     intf_tuple_list = [];
     for i in range(len(total_intf_list)):
@@ -61,7 +63,10 @@ def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
 
 def get_intf_datetuple_isce(total_intf_list, total_corr_list):
     """
-    Turn GMTSAR interferograms into date-date-filename tuples
+    Turn ISCE interferograms into date-date-filename tuples
+    :param total_intf_list: list of strings, filenames
+    :param total_corr_list: list of strings, filenames
+    :returns: list of tuples (dt, dt, filename, filename)
     """
     intf_tuple_list = [];
     for i in range(len(total_intf_list)):
@@ -98,7 +103,11 @@ def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files, signalspread_file
     Get the index of the reference pixel (generally using merged-subswath files)
     If you don't have the reference pixel in the config file,
     the program will stop execution so you can write it there.
-    intf_files are a list of tuples of (dt, dt, filename, filename)
+    :param ref_loc: string, lon/lat
+    :param ref_idx: string, int/int
+    :param geocoded_flag: bool
+    :param intf_files: list of tuples of (dt, dt, filename, filename)
+    :param signalspread_filename: string, filename of grid file
     """
     print("Identifying reference pixel:");
     if ref_idx == "" and ref_loc == "":
@@ -209,8 +218,7 @@ def get_nearest_pixel_in_raster(raster_lon, raster_lat, target_lon, target_lat):
         j_found = idx[1][0];
         print(raster_lon[i_found][j_found], raster_lat[i_found][j_found]);
     else:
-        i_found = -1;
-        j_found = -1;  # error codes
+        i_found, j_found = -1, -1;  # error codes
     return i_found, j_found;
 
 
@@ -247,10 +255,13 @@ def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
 # The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
 # For all of these functions.
 def exclude_intfs_manually(total_intf_tuple, skip_file):
+    """
+    :param total_intf_tuple: list of tuples (d1, d2, intf_filename, corr_filename)
+    :param skip_file: string, filename. Use "" to skip.
+    """
     print("Excluding intfs based on manual_exclude file %s." % skip_file);
     print(" Started with %d total interferograms. " % (len(total_intf_tuple)));
-    select_intf_tuple = [];
-    manual_removes = [];
+    select_intf_tuple, manual_removes = [], [];
     if skip_file == "":
         print(" No manual exclude file provided.\n Returning all %d interferograms. " % (len(total_intf_tuple)));
         select_intf_tuple = total_intf_tuple;
@@ -278,7 +289,11 @@ def exclude_intfs_manually(total_intf_tuple, skip_file):
 
 
 def include_only_coseismic_intfs(total_intf_tuple, coseismic):
-    """ Implements a filter for spanning a coseismic interval, if you include one. """
+    """
+    Implements a filter for spanning a coseismic interval, if included.
+    :param total_intf_tuple: list of tuples (d1, d2, intf_filename, corr_filename)
+    :param coseismic: string representing coseismic epoch, YYYYMMDD. Use "" to skip.
+    """
     select_intf_tuple = [];
     if coseismic == "":
         return total_intf_tuple;
@@ -293,8 +308,12 @@ def include_only_coseismic_intfs(total_intf_tuple, coseismic):
 
 
 def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
-    """Here, we look for each interferogram that falls totally within the time range
-    given in the config file."""
+    """
+    Look for each interferogram that falls totally within time range given in config file.
+    :param total_intf_tuple: list of tuples (d1, d2, intf_filename, corr_filename)
+    :param start_time: string, YYYY-MM-DD. Use "" to skip.
+    :param end_time: string, YYYY-MM-DD. Use "" to skip.
+    """
     if start_time == "" and end_time == "":
         return total_intf_tuple;
     print("Including only interferograms in time range %s to %s." % (dt.datetime.strftime(start_time, "%Y-%m-%d"),
@@ -352,7 +371,7 @@ def make_selection_of_intfs(config_params):
     
     if config_params.ts_format == "velocities_from_timeseries":
         intf_files = get_list_of_ts_grids(config_params);
-        return intf_files, [], []; 
+        return intf_files, [];
 
     intf_tuples = get_list_of_intf_all(config_params);
 
@@ -368,16 +387,21 @@ def make_selection_of_intfs(config_params):
 
     # Writing the exact interferograms used in this run, and returning file names. 
     write_intf_record(select_intf_tuples, config_params.ts_output_dir+"/intf_record.txt")
+    make_igram_stick_plot(select_intf_tuples, config_params.ts_output_dir);  # always make stick plot
     select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
     select_corr_list = [mytuple[3] for mytuple in select_intf_tuples]
     if len(select_intf_tuples) == 0:
         print("Error! Not starting with any interferograms. Exiting.");
         sys.exit(0);
-    return select_intf_list, select_corr_list, select_intf_tuples;
+    return select_intf_list, select_corr_list;
 
 
 # Metrics and Connected Components
 def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
+    """
+    :param intf_file_tuples: list of (d1, d2, filename, filename) tuples
+    :param ts_output_dir: string
+    """
     print("Making simple plot of interferograms used.")
     plt.figure(dpi=300, figsize=(8, 7));
     for i in range(len(intf_file_tuples)):
@@ -392,7 +416,13 @@ def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
 
 
 def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
-    """This function checks the quality of the reference pixel."""
+    """
+    Check quality of reference pixel.
+    :param rowref: int
+    :param colref: int
+    :param mytuple: intf_tuple**  of the form that will be re-factored soon.
+    :param signal_spread_data: 2D array, size matches GRD array data
+    """
     ref_pixel_values = mytuple.zvalues[:, rowref, colref];
     num_nans = np.sum(np.isnan(ref_pixel_values));
     num_intfs = len(ref_pixel_values);
@@ -634,10 +664,12 @@ def plot_incremental_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vma
 
 
 def get_TS_dates(date_julstrings):
-    """" Get the x axis associated with a certain set of interferograms
+    """"
+    Get the x axis associated with a certain set of interferograms
     Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
     Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
-    a dt object, and the number of days since first image. """
+    a dt object, and the number of days since first image.
+    """
     dates_total = [];
     for i in range(len(date_julstrings)):
         dates_total.append(date_julstrings[i][0:7])

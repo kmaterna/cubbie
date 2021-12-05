@@ -43,7 +43,7 @@ def get_ref(config_params):
         return;
     print("Start Stage 2 - Finding Files and Reference Pixel");
 
-    # Very general, returns the filenames of all interferograms, doesn't discriminate
+    # Very general, returns the (d1, d2, filenames) tuples of all interferograms; doesn't discriminate
     intfs = stacking_utilities.get_list_of_intf_all(config_params, returnval='intf_files');
     intfs = stacking_utilities.exclude_intfs_manually(intfs, config_params.skip_file);
 
@@ -65,10 +65,11 @@ def vels_and_ts(config_params):
     print("Start Stage 3 - Velocities and Time Series");
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
 
-    # This is where the hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
-    # We make the signal spread after excludes have taken place.
-    intf_files, corr_files, intf_file_tuples = stacking_utilities.make_selection_of_intfs(config_params);
-    stacking_utilities.make_igram_stick_plot(intf_file_tuples, config_params.ts_output_dir);
+    # This is where hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
+    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
+
+    # Make signal spread after excludes have taken place.
+    # Beginning of refactor is here.
     if config_params.make_signal_spread:
         stack_corr.drive_signal_spread_calculation(corr_files, config_params.signal_coh_cutoff,
                                                    config_params.ts_output_dir, config_params.signal_spread_filename);
