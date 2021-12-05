@@ -45,7 +45,7 @@ def reader(filepathslist):
             print('halfway done reading files...')
 
     # The sorted list of dates used in this interferogram network
-    ts_dates = stacking_utilities.get_xdates_from_intf_tuple_dates(np.array(date_pairs));
+    ts_dates = stacking_utilities.get_unique_dts_from_intf_dates(np.array(date_pairs));
 
     mydata = data(filepaths=np.array(filepaths), date_pairs_julian=np.array(date_pairs_julian),
                   date_deltas=np.array(date_deltas), xvalues=np.array(xdata), yvalues=np.array(ydata),
@@ -128,8 +128,11 @@ def reader_isce(filepathslist, band=1):
         if i == round(len(filepathslist) / 2):
             print('halfway done reading files...')
 
+    # The sorted list of dates used in this interferogram network
+    ts_dates = stacking_utilities.get_unique_dts_from_intf_dates(np.array(date_pairs));
+
     mydata = data(filepaths=np.array(filepaths), date_pairs_julian=np.array(date_pairs_julian),
                   date_deltas=np.array(date_deltas), xvalues=np.array(xvalues), yvalues=np.array(yvalues),
-                  zvalues=np.array(zvalues), date_pairs_dt=date_pairs, ts_dates=None);
+                  zvalues=np.array(zvalues), date_pairs_dt=np.array(date_pairs), ts_dates=ts_dates);
 
     return mydata;

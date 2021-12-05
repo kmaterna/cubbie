@@ -1,6 +1,7 @@
 import re, glob
 from subprocess import call
-from . import stacking_utilities, nsbas_accessing, coseismic_stack, stack_corr, workflow_isce_with_uavsar
+from . import stacking_utilities, nsbas_accessing, coseismic_stack, stack_corr, \
+    workflow_isce_with_uavsar, igram_selection
 from . import Super_Simple_Stack as sss
 
 
@@ -43,9 +44,8 @@ def get_ref(config_params):
         return;
     print("Start Stage 2 - Finding Files and Reference Pixel");
 
-    # Very general, returns the (d1, d2, filenames) tuples of all interferograms; doesn't discriminate
-    intfs = stacking_utilities.get_list_of_intf_all(config_params, returnval='intf_files');
-    intfs = stacking_utilities.exclude_intfs_manually(intfs, config_params.skip_file);
+    # Select interferograms used in search for reference pixel.
+    intfs, _ = igram_selection.make_selection_of_intfs(config_params);
 
     # Here we get ref_idx if we don't have it already
     stacking_utilities.get_ref_index(config_params.ref_loc, config_params.ref_idx, config_params.geocoded_intfs, intfs,
@@ -66,7 +66,7 @@ def vels_and_ts(config_params):
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
 
     # This is where hand-picking takes place: manual excludes, long intfs only, ramp-removed, atm-removed, etc.
-    intf_files, corr_files = stacking_utilities.make_selection_of_intfs(config_params);
+    intf_files, corr_files = igram_selection.make_selection_of_intfs(config_params);
 
     # Make signal spread after excludes have taken place.
     # Beginning of refactor is here.

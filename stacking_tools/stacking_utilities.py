@@ -13,13 +13,12 @@ from S1_batches.intf_generating import get_ra_rc_from_ll
 from S1_batches.read_write_insar_utilities import isce_read_write
 
 
-def get_list_of_intf_all(config_params, returnval='all'):
+def get_list_of_intf_all(config_params):
     """
     This is mechanical: just takes the list of interferograms in intf_all.
     It is designed to work with both ISCE and GMTSAR files.
     The more advanced selection takes place in make_selection_of_intfs.
-    By Default, returns a list of tuples like : (dt1, dt2, intf_file, corr_file).
-    If returnval is set, it can return a subset like a list of intf_filenames.
+    :returns: list of tuples like : (dt1, dt2, intf_file, corr_file).
     """
     if config_params.SAT == "S1":
         total_intf_list = glob.glob(config_params.intf_dir + "/???????_???????/"+config_params.intf_filename);
@@ -38,11 +37,7 @@ def get_list_of_intf_all(config_params, returnval='all'):
     if len(total_intf_list) != len(total_corr_list):
         print("ERROR!  Length of intfs does match length of coherence files!  Please fix this before proceeding. \n");
         sys.exit(1);
-    if returnval == 'intf_file':
-        intf_files = [x[2] for x in intf_file_tuples];
-        return intf_files;
-    else:
-        return intf_file_tuples;
+    return intf_file_tuples;
 
 
 def get_intf_datetuple_gmtsar(total_intf_list, total_corr_list):
@@ -77,7 +72,12 @@ def get_intf_datetuple_isce(total_intf_list, total_corr_list):
     return intf_tuple_list;
 
 
-def get_xdates_from_intf_tuple_dates(date_pairs_dt):
+def get_unique_dts_from_intf_dates(date_pairs_dt):
+    """
+    Construct a list of unique datetimes covered by a network of intf pairs
+    :param date_pairs_dt: list of objects of form [dt1, dt2]
+    :returns: list of datetime objects
+    """
     total_dates = [];
     for item in date_pairs_dt:
         total_dates.append(item[0]);
@@ -86,9 +86,26 @@ def get_xdates_from_intf_tuple_dates(date_pairs_dt):
     return xdates;
 
 
+def get_TS_dates(date_julstrings):
+    """"
+    Get the x axis associated with a certain set of interferograms
+    :param date_julstrings: list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
+    :returns: lists, length M, associated with TS. Strings in format YYYYJJJ, dts, and number of days since first image.
+    """
+    dates_total = [];
+    for i in range(len(date_julstrings)):
+        dates_total.append(date_julstrings[i][0:7])
+        dates_total.append(date_julstrings[i][8:15])
+    datestrs = sorted(set(dates_total));
+    x_axis_datetimes = [dt.datetime.strptime(x, "%Y%j") for x in datestrs];
+    x_axis_days = [(x - x_axis_datetimes[0]).days for x in
+                   x_axis_datetimes];  # number of days since first acquisition.
+    return datestrs, x_axis_datetimes, x_axis_days;
+
+
 def get_list_of_ts_grids(config_params):
     """
-    Useful for making velocities out of pre-existing time series grids. 
+    Glob function. Used instead of regular reader for making velocities out of pre-existing time series grids.
     """
     ts_slice_files = glob.glob(config_params.intf_dir + "/????????.grd");
     if len(ts_slice_files) == 0:
@@ -97,7 +114,7 @@ def get_list_of_ts_grids(config_params):
     return ts_slice_files;
 
 
-# Reference Pixel Math
+#  ----------- Reference Pixel Math ------------  #
 def get_ref_index(ref_loc, ref_idx, geocoded_flag, intf_files, signalspread_filename):
     """
     Get the index of the reference pixel (generally using merged-subswath files)
@@ -251,176 +268,12 @@ def get_reference_pixel_from_geocoded_grd(ref_lon, ref_lat, ifile):
     return row_idx, col_idx;
 
 
-# Exclude and Include criteria
-# The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
-# For all of these functions.
-def exclude_intfs_manually(total_intf_tuple, skip_file):
-    """
-    :param total_intf_tuple: list of tuples (d1, d2, intf_filename, corr_filename)
-    :param skip_file: string, filename. Use "" to skip.
-    """
-    print("Excluding intfs based on manual_exclude file %s." % skip_file);
-    print(" Started with %d total interferograms. " % (len(total_intf_tuple)));
-    select_intf_tuple, manual_removes = [], [];
-    if skip_file == "":
-        print(" No manual exclude file provided.\n Returning all %d interferograms. " % (len(total_intf_tuple)));
-        select_intf_tuple = total_intf_tuple;
-    else:
-        print(" Excluding the following interferograms based on SkipFile %s: " % skip_file);
-        ifile = open(skip_file, 'r');
-        for line in ifile:
-            manual_removes.append(line.split()[0]);
-        ifile.close();
-        print(manual_removes);
-
-        if not manual_removes:
-            select_intf_tuple = total_intf_tuple;
-        else:
-            # Checking to see if each interferogram should be included. 
-            for igram in total_intf_tuple:
-                include_flag = 1;
-                for scene in manual_removes:
-                    if scene in igram[2]:
-                        include_flag = 0;
-                if include_flag == 1:
-                    select_intf_tuple.append(igram);
-        print(" Returning %d interferograms " % len(select_intf_tuple));
-    return select_intf_tuple;
-
-
-def include_only_coseismic_intfs(total_intf_tuple, coseismic):
-    """
-    Implements a filter for spanning a coseismic interval, if included.
-    :param total_intf_tuple: list of tuples (d1, d2, intf_filename, corr_filename)
-    :param coseismic: string representing coseismic epoch, YYYYMMDD. Use "" to skip.
-    """
-    select_intf_tuple = [];
-    if coseismic == "":
-        return total_intf_tuple;
-    else:
-        print("Returning only interferograms that cross coseismic event at %s " % (
-            dt.datetime.strftime(coseismic, "%Y-%m-%d")))
-        for mytuple in total_intf_tuple:
-            if mytuple[0] < coseismic < mytuple[1]:
-                select_intf_tuple.append(mytuple);  # in the case of a coseismic constraint    
-        print(" Returning %d interferograms " % len(select_intf_tuple));
-        return select_intf_tuple;
-
-
-def include_intfs_by_time_range(total_intf_tuple, start_time, end_time):
-    """
-    Look for each interferogram that falls totally within time range given in config file.
-    :param total_intf_tuple: list of tuples (d1, d2, intf_filename, corr_filename)
-    :param start_time: string, YYYY-MM-DD. Use "" to skip.
-    :param end_time: string, YYYY-MM-DD. Use "" to skip.
-    """
-    if start_time == "" and end_time == "":
-        return total_intf_tuple;
-    print("Including only interferograms in time range %s to %s." % (dt.datetime.strftime(start_time, "%Y-%m-%d"),
-                                                                     dt.datetime.strftime(end_time, "%Y-%m-%d")));
-    print(" Starting with %d interferograms " % len(total_intf_tuple))
-    select_intf_tuple = [];
-    for mytuple in total_intf_tuple:
-        if start_time <= mytuple[0] <= end_time:
-            if start_time <= mytuple[1] <= end_time:
-                select_intf_tuple.append(mytuple);  # in the case of no coseismic constraint
-    print(" Returning %d interferograms " % len(select_intf_tuple));
-    return select_intf_tuple;
-
-
-def include_timeinterval_intfs(total_intf_tuple, intf_timespan):
-    """ Only include interferograms of a certain time interval (such as shorter than one year, or longer than one year);
-    intf_timespan is a string with the format '300+' for longer than 300 days etc. """
-    if intf_timespan == "":
-        return total_intf_tuple;
-    select_intf_tuple = [];
-    if intf_timespan[-1] == '+':
-        criterion = 'longer'
-    else:
-        criterion = 'shorter'
-    days = int(intf_timespan[0:-1]);
-    print("Only including interferograms %s than %d days " % (criterion, days));
-    for mytuple in total_intf_tuple:
-        datedelta = (mytuple[1] - mytuple[0]).days;
-        if criterion == "longer":
-            if datedelta > days:
-                select_intf_tuple.append(mytuple);
-        else:
-            if datedelta < days:
-                select_intf_tuple.append(mytuple);
-    print(" Returning %d interferograms " % len(select_intf_tuple));
-    return select_intf_tuple;
-
-
-def write_intf_record(intf_tuple_list, record_file):
-    print("Writing out list of %d interferograms used in this run to %s" % (len(intf_tuple_list), record_file));
-    ofile = open(record_file, 'w');
-    ofile.write("List of %d interferograms used in this run:\n" % (len(intf_tuple_list)));
-    for mytuple in intf_tuple_list:
-        ofile.write("%s\n" % (mytuple[2]));
-    ofile.close();
-    return;
-
-
-def make_selection_of_intfs(config_params):
-    """
-    HERE IS WHERE YOU SELECT WHICH INTERFEROGRAMS YOU WILL BE USING.
-    WE MIGHT APPLY A MANUAL EXCLUDE, OR A TIME CONSTRAINT, ETC IN CONFIG SETTINGS.
-    The working internal intf_tuple is: (d1, d2, intf_filename, corr_filename)
-    """
-    
-    if config_params.ts_format == "velocities_from_timeseries":
-        intf_files = get_list_of_ts_grids(config_params);
-        return intf_files, [];
-
-    intf_tuples = get_list_of_intf_all(config_params);
-
-    # Use the config file to excluse certain time ranges and implement coseismic constraints
-    select_intf_tuples = include_intfs_by_time_range(intf_tuples, config_params.start_time, config_params.end_time);
-    select_intf_tuples = include_only_coseismic_intfs(select_intf_tuples, config_params.coseismic);
-
-    # Do you only want to include long or short interferograms? 
-    select_intf_tuples = include_timeinterval_intfs(select_intf_tuples, config_params.intf_timespan);
-
-    # Manual Excludes? 
-    select_intf_tuples = exclude_intfs_manually(select_intf_tuples, config_params.skip_file);
-
-    # Writing the exact interferograms used in this run, and returning file names. 
-    write_intf_record(select_intf_tuples, config_params.ts_output_dir+"/intf_record.txt")
-    make_igram_stick_plot(select_intf_tuples, config_params.ts_output_dir);  # always make stick plot
-    select_intf_list = [mytuple[2] for mytuple in select_intf_tuples]
-    select_corr_list = [mytuple[3] for mytuple in select_intf_tuples]
-    if len(select_intf_tuples) == 0:
-        print("Error! Not starting with any interferograms. Exiting.");
-        sys.exit(0);
-    return select_intf_list, select_corr_list;
-
-
-# Metrics and Connected Components
-def make_igram_stick_plot(intf_file_tuples, ts_output_dir):
-    """
-    :param intf_file_tuples: list of (d1, d2, filename, filename) tuples
-    :param ts_output_dir: string
-    """
-    print("Making simple plot of interferograms used.")
-    plt.figure(dpi=300, figsize=(8, 7));
-    for i in range(len(intf_file_tuples)):
-        plt.plot([intf_file_tuples[i][0], intf_file_tuples[i][1]], [i, i], '.', markersize=7, linestyle=None,
-                 color='gray');
-        plt.plot([intf_file_tuples[i][0], intf_file_tuples[i][1]], [i, i], markersize=5);
-    plt.title(str(len(intf_file_tuples)) + ' Interferograms Used');
-    plt.xlabel('Time');
-    plt.ylabel('Interferogram Number');
-    plt.savefig(ts_output_dir + "/intf_record.png");
-    return;
-
-
 def check_clean_computation(rowref, colref, mytuple, signal_spread_data):
     """
     Check quality of reference pixel.
     :param rowref: int
     :param colref: int
-    :param mytuple: intf_tuple**  of the form that will be re-factored soon.
+    :param mytuple: intf_tuple**  of the form that may be re-factored soon.
     :param signal_spread_data: 2D array, size matches GRD array data
     """
     ref_pixel_values = mytuple.zvalues[:, rowref, colref];
@@ -442,6 +295,7 @@ def report_on_refpixel(rowref, colref, signal_spread_data, outdir):
     return;
 
 
+#  ----------- Connected Components ------------  #
 def find_largest_connected_component(labels):
     """ Return the number of the largest component in a connected component graph. """
     counting_elements = collections.defaultdict(int);
@@ -452,6 +306,10 @@ def find_largest_connected_component(labels):
 
 
 def find_connected_dates(date_pairs, sample_date):
+    """
+    :param date_pairs: list of strings with date pairs used, format '2015157_2018177' (real julian day)
+    :param sample_date: desired date, format '2015157'
+    """
     connected_dates = [];
     for i in range(len(date_pairs)):
         if date_pairs[i][0:7] == sample_date:
@@ -475,6 +333,8 @@ def connected_components_search(date_pairs, datestrs):
     Returns the number of the biggest connected component, the number of elements of that component, and
     the total labels, for each date.
     Reduces to a single connected component with length len(datestrs) if we have one cc that touches every date.
+    :param date_pairs: list of strings with date pairs used, format '2015157_2018177' (real julian day)
+    :param datestrs: list of strings with dates desired for inversion, format '2015157'
     """
 
     # Initializing first time through
@@ -504,7 +364,11 @@ def connected_components_search(date_pairs, datestrs):
 
 
 def reduce_graph_to_largest_cc(date_pairs, datestrs):
-    """Shrink a network to only the largest connected component of the graph"""
+    """
+    Shrink a network to only largest connected component of the graph
+    :param date_pairs: list of strings with date pairs used, format '2015157_2018177' (real julian day)
+    :param datestrs: list of strings with dates desired for inversion, format '2015157'
+    """
     cc_num, num_elements, labels = connected_components_search(date_pairs, datestrs);
     if num_elements == len(datestrs):
         return date_pairs, datestrs;
@@ -661,21 +525,3 @@ def plot_incremental_timeseries(TS_NC_file, xdates, TS_image_file, vmin=-50, vma
 
     plt.savefig(TS_image_file);
     return;
-
-
-def get_TS_dates(date_julstrings):
-    """"
-    Get the x axis associated with a certain set of interferograms
-    Takes a list of N date_julstrings in format [YYYYJJJ_YYYJJJ,...]
-    Returns lists of N long associated with each acquisition: a string in format YYYYJJJ,
-    a dt object, and the number of days since first image.
-    """
-    dates_total = [];
-    for i in range(len(date_julstrings)):
-        dates_total.append(date_julstrings[i][0:7])
-        dates_total.append(date_julstrings[i][8:15])
-    datestrs = sorted(set(dates_total));
-    x_axis_datetimes = [dt.datetime.strptime(x, "%Y%j") for x in datestrs];
-    x_axis_days = [(x - x_axis_datetimes[0]).days for x in
-                   x_axis_datetimes];  # number of days since first acquisition.
-    return datestrs, x_axis_datetimes, x_axis_days;
