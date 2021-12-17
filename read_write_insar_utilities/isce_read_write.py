@@ -1,12 +1,5 @@
 """
-# A set of functions that read and write vrt gdal grid files
-# Compatible with ISCE. 
-    read_complex_data(GDALfilename)
-    read_scalar_data(GDALfilename)
-    read_phase_data(GDALfilename)
-    write_isce_data(data, nx, ny, dtype, filename)
-    plot_scalar_data(GDALfilename,band=1,title="",colormap='gray',aspect=1....) 
-    plot_complex_data(GDALfilename,title="",aspect=1,....)
+A set of functions that read and write vrt gdal grid files compatible with ISCE.
 """
 
 import numpy as np
@@ -18,7 +11,9 @@ import struct
 
 
 def read_complex_data(GDALfilename):
-    # Reads data into a 2D array where each element is a complex number. 
+    """
+    Read isce SLC data into a 2D array where each element is a complex number.
+    """
     from osgeo import gdal  # GDAL support for reading virtual files
     print("Reading file %s " % GDALfilename);
     ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
@@ -26,17 +21,7 @@ def read_complex_data(GDALfilename):
     transform = ds.GetGeoTransform()
     ds = None
 
-    # getting the min max of the axes
-    firstx = transform[0]
-    firsty = transform[3]
-    deltay = transform[5]
-    deltax = transform[1]
-    lastx = firstx + slc.shape[1] * deltax
-    lasty = firsty + slc.shape[0] * deltay
-    ymin = np.min([lasty, firsty])
-    ymax = np.max([lasty, firsty])
-    xmin = np.min([lastx, firstx])
-    xmax = np.max([lastx, firstx])
+    _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, slc);
 
     # put all zero values to nan
     try:
@@ -48,8 +33,11 @@ def read_complex_data(GDALfilename):
 
 
 def read_scalar_data(GDALfilename, band=1, flush_zeros=True):
-    # band = 1;  # this seems right for most applications 
-    # For unwrapped files, band = 2
+    """
+    Read an isce data file.
+    band = 1 for most scalar fields, like coherence.
+    band = 2 for some unwrapped phase files.
+    """
     from osgeo import gdal  # GDAL support for reading virtual files
     print("Reading file %s " % GDALfilename);
     if ".unw" in GDALfilename and ".unw." not in GDALfilename and band == 1:
@@ -59,17 +47,7 @@ def read_scalar_data(GDALfilename, band=1, flush_zeros=True):
     transform = ds.GetGeoTransform()
     ds = None
 
-    # getting the min max of the axes
-    firstx = transform[0]
-    firsty = transform[3]
-    deltay = transform[5]
-    deltax = transform[1]
-    lastx = firstx + data.shape[1] * deltax
-    lasty = firsty + data.shape[0] * deltay
-    ymin = np.min([lasty, firsty])
-    ymax = np.max([lasty, firsty])
-    xmin = np.min([lastx, firstx])
-    xmax = np.max([lastx, firstx])
+    _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, data);
 
     # put all zero values to nan
     if flush_zeros:
@@ -82,14 +60,16 @@ def read_scalar_data(GDALfilename, band=1, flush_zeros=True):
 
 
 def read_phase_data(GDALfilename):
-    # Start with a complex quantity, and return only the phase of that quantity. 
+    """
+    Start with a complex quantity, and return only the phase of that quantity.
+    """
     slc = read_complex_data(GDALfilename);
     phasearray = np.angle(slc);
     return phasearray;
 
 
 def read_scalar_data_no_isce(filename, nx, ny):
-    # Takes float32 numbers from binary file into 2d array
+    """ Take float32 numbers from binary file into 2d array """
     final_shape = (ny, nx);
     num_data = nx * ny;
     print("Reading file %s into %d x %d array" % (filename, ny, nx));
@@ -117,26 +97,29 @@ def read_phase_data_no_isce(filename, nx, ny):
 
 
 def read_isce_unw_geo(filename):
-    # Read the isce unwrapped geocoded product.
-    # Return the x and y axes too, in lon/lat
-    # Part of public-facing part of this project
+    """
+    Read isce unwrapped geocoded product, which has two datasets interleaved: amp and unwrapped phase
+    Return x and y axes too, in lon/lat
+    """
     xml_file = filename+'.xml'
-    data = read_scalar_data(filename, band=2);
-    (y, x) = np.shape(data);
-    firstLon, firstLat, dE, dN, _, _ = get_xmin_xmax_xinc_from_xml(xml_file);
+    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(xml_file);
+    twox_data = read_scalar_data_no_isce(filename, nlon, nlat*2);   # separate the unw phase layer
+    unw_data = twox_data[nlat:, :];   # unw_phase is the second layer
+    (y, x) = np.shape(unw_data);
     xarray = np.arange(firstLon, firstLon+x*dE, dE);
     yarray = np.arange(firstLat, firstLat+y*dN, dN);
-    return xarray, yarray, data;
+    return xarray, yarray, unw_data;
 
 
 # ----------- WRITING FUNCTIONS ------------- #
 
 def write_isce_data(data, nx, ny, dtype, filename,
                     firstLat=None, firstLon=None, deltaLon=None, deltaLat=None, Xmin=None, Xmax=None):
-    # This function writes ISCE data into a single-band file with given filename
-    # Plus creating an associated .vrt and .xml file
-    # If DTYPE=="FLOAT": you're writing scalar data (float32)
-    # IF DTYPE=="CFLOAT": you're writing complex data (float32 + j*float32)
+    """
+    Write ISCE data into a single-band file with given filename with associated .vrt and .xml
+    If DTYPE=="FLOAT": write scalar data (float32)
+    IF DTYPE=="CFLOAT": write complex data (float32 + j*float32)
+    """
     from isce.components import isceobj
     print("Writing data as file %s " % filename);
     out = isceobj.createImage()
@@ -165,8 +148,10 @@ def write_isce_data(data, nx, ny, dtype, filename,
 
 def write_isce_unw(data1, data2, nx, ny, dtype, filename,
                    firstLat=None, firstLon=None, deltaLon=None, deltaLat=None, Xmin=None, Xmax=None):
-    # ISCE uses band=2 for the unwrapped phase of .unw files
-    # Writes to float32
+    """
+    ISCE uses band=2 for unwrapped phase, .unw files.
+    Write to float32
+    """
     from isce.components import isceobj
     print("Writing data as file %s " % filename);
     out = isceobj.Image.createUnwImage()
@@ -221,16 +206,7 @@ def plot_scalar_data(GDALfilename, band=1, title="", colormap='gray', aspect=1,
     # getting the min max of the axes
     # Note: this assumes that the transform is north-up
     # There are transform[2] and transform[4] for other projections (not implemented).
-    firstx = transform[0]
-    firsty = transform[3]
-    deltay = transform[5]
-    deltax = transform[1]
-    lastx = firstx + data.shape[1] * deltax
-    lasty = firsty + data.shape[0] * deltay
-    ymin = np.min([lasty, firsty])
-    ymax = np.max([lasty, firsty])
-    xmin = np.min([lastx, firstx])
-    xmax = np.max([lastx, firstx])
+    xmin, xmax, ymin, ymax = get_xmin_xmax_xinc_from_geotransform(transform, data);
 
     # put all zero values to nan and do not plot nan
     if background is None:
@@ -261,17 +237,7 @@ def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbo
     transform = ds.GetGeoTransform()
     ds = None
 
-    # getting the min max of the axes
-    firstx = transform[0]
-    firsty = transform[3]
-    deltay = transform[5]
-    deltax = transform[1]
-    lastx = firstx + slc.shape[1] * deltax
-    lasty = firsty + slc.shape[0] * deltay
-    ymin = np.min([lasty, firsty])
-    ymax = np.max([lasty, firsty])
-    xmin = np.min([lastx, firstx])
-    xmax = np.max([lastx, firstx])
+    xmin, xmax, ymin, ymax = get_xmin_xmax_xinc_from_geotransform(transform, slc);
 
     # put all zero values to nan and do not plot nan
     try:
@@ -284,14 +250,14 @@ def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbo
     cax1 = ax.imshow(np.abs(slc), vmin=datamin, vmax=datamax, cmap='gray', extent=[xmin, xmax, ymin, ymax])
     ax.set_title(title + " (amplitude)")
     if draw_colorbar is not None:
-        cbar1 = fig.colorbar(cax1, orientation=colorbar_orientation)
+        _cbar1 = fig.colorbar(cax1, orientation=colorbar_orientation)
     ax.set_aspect(aspect)
 
     ax = fig.add_subplot(1, 2, 2)
     cax2 = ax.imshow(np.angle(slc), cmap=colormap, extent=[xmin, xmax, ymin, ymax])
     ax.set_title(title + " (phase [rad])")
     if draw_colorbar is not None:
-        cbar2 = fig.colorbar(cax2, orientation=colorbar_orientation)
+        _cbar2 = fig.colorbar(cax2, orientation=colorbar_orientation)
     ax.set_aspect(aspect)
     if outname is None:
         plt.show()
@@ -299,6 +265,25 @@ def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbo
         fig.savefig(outname);
 
     return;
+
+
+# ----------- UTILITY FUNCTIONS ------------- #
+
+def get_xmin_xmax_xinc_from_geotransform(transform, dataset):
+    """
+    Get min/max of transform axes
+    """
+    firstx = transform[0]
+    firsty = transform[3]
+    deltay = transform[5]
+    deltax = transform[1]
+    lastx = firstx + dataset.shape[1] * deltax
+    lasty = firsty + dataset.shape[0] * deltay
+    ymin = np.min([lasty, firsty])
+    ymax = np.max([lasty, firsty])
+    xmin = np.min([lastx, firstx])
+    xmax = np.max([lastx, firstx])
+    return xmin, xmax, ymin, ymax;
 
 
 def get_xmin_xmax_xinc_from_xml(xml_file):
@@ -314,7 +299,7 @@ def get_xmin_xmax_xinc_from_xml(xml_file):
     firstLon = coord_lon['startingvalue']
     xmin = firstLon;
     xmax = coord_lon['startingvalue'] + (nlon * coord_lon['delta'])
-    return firstLon, firstLat, dE, dN, xmin, xmax;
+    return firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat;
 
 
 def ISCEXMLParser(filename):
