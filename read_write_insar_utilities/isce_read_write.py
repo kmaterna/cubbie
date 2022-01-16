@@ -111,6 +111,22 @@ def read_isce_unw_geo(filename):
     return xarray, yarray, unw_data;
 
 
+def read_isce_unw_geo_alternative(filename):
+    """
+    Read a custom isce unwrapped geocoded product, which has two copies of unwrapped phase
+    Uses a format found in some unwrapped files
+    Return x and y axes too, in lon/lat
+    """
+    xml_file = filename+'.xml'
+    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(xml_file);
+    twox_data = read_scalar_data_no_isce(filename, nlon*2, nlat);   # separate the unw phase layer
+    unw_data = twox_data[:, 0:nlon];   # unw_phase is the second layer
+    (y, x) = np.shape(unw_data);
+    xarray = np.arange(firstLon, firstLon+x*dE, dE);
+    yarray = np.arange(firstLat, firstLat+y*dN, dN);
+    return xarray, yarray, unw_data;
+
+
 # ----------- WRITING FUNCTIONS ------------- #
 
 def write_isce_data(data, nx, ny, dtype, filename,
