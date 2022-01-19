@@ -13,7 +13,7 @@
 ###############################
 # Download directory:
 # Uncomment this line and set the correct directory
-DOWN_DIR="S1_orbits_asf" # directory for store precise orbits files
+DOWN_DIR="S1_orbits" # directory for store precise orbits files. Looks like this is hard-coded right now.
 
 ###############################
 #      SCRIPT EXECUTION       #
@@ -23,7 +23,7 @@ DOWN_DIR="S1_orbits_asf" # directory for store precise orbits files
 if [ -z $DOWN_DIR ]; then
     echo "#######################################################"
     echo "You must set download directory before use this program"
-    echo "Edit sentinel1_orbit_downloader.sh and set the value of"
+    echo "Edit download_orbits_asf.sh and set the value of"
     echo "DOWN_DIR variable"
     echo "#######################################################"
     # cleanup
