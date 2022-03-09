@@ -13,8 +13,7 @@ import matplotlib.pyplot as plt
 import subprocess
 from scipy import interpolate
 from Tectonic_Utils.read_write import netcdf_read_write
-import gps_io_functions
-import gps_vel_functions
+from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions, gps_vel_functions
 from . import los_projection_tools
 
 

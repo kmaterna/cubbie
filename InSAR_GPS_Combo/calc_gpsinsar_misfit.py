@@ -11,15 +11,16 @@ from . import los_projection_tools
 from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 
-def top_level_driver(gps_los_file, geocoded_insar_file, plotname, txtname):
-    [gps_los_velfield, xarray, yarray, LOS_array] = inputs(gps_los_file, geocoded_insar_file);
+def top_level_driver(gps_los_file, geocoded_insar, plotname, txtname):
+    # [gps_los_velfield, xarray, yarray, LOS_array] = inputs(gps_los_file, geocoded_insar);
+    [gps_los_velfield, xarray, yarray, LOS_array] = inputs_dict(gps_los_file, geocoded_insar);
     insar_array, gps_array, rms_misfit = compute(gps_los_velfield, xarray, yarray, LOS_array);
     one_to_one_plot(insar_array, gps_array, rms_misfit, plotname, txtname)
     return;
 
 
 def inputs(gps_los_file, geocoded_insar_file):
-    print("Reading files %s and %s for calculating misfit." % (gps_los_file, geocoded_insar_file));
+    print("Reading file %s for calculating misfit." % (gps_los_file));
     [gps_los_velfield] = los_projection_tools.input_gps_as_los(gps_los_file);
     [xarray, yarray, LOS_array] = read_any_grd(geocoded_insar_file);
 
@@ -33,6 +34,20 @@ def inputs(gps_los_file, geocoded_insar_file):
         xarray = np.subtract(xarray, 360);  # some files come in with 244 instead of -115.  Fixing that.
     if 'velo_nsbas.grd' in geocoded_insar_file:  # a correction for when I used a flipped sign convention
         LOS_array = -1 * LOS_array;
+    return [gps_los_velfield, xarray, yarray, LOS_array];
+
+
+def inputs_dict(gps_los_file, insar_dict):
+    print("Reading file %s for calculating misfit." % (gps_los_file));
+    [gps_los_velfield] = los_projection_tools.input_gps_as_los(gps_los_file);
+    xarray = insar_dict['lon']
+    yarray = insar_dict['lat']
+    LOS_array = insar_dict['velocities'];
+    # Filter for spurious values
+    for i in range(len(yarray)):
+        for j in range(len(xarray)):
+            if abs(LOS_array[i][j]) > 1e20:
+                LOS_array[i][j] = np.nan;
     return [gps_los_velfield, xarray, yarray, LOS_array];
 
 

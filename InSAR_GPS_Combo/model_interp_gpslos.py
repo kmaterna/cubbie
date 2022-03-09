@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.path as path
 import collections
 from scipy import interpolate
-import gps_io_functions
+from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions
 from . import los_projection_tools as los_proj
 from Tectonic_Utils.geodesy import haversine
 

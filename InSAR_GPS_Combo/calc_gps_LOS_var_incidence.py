@@ -6,16 +6,16 @@ The reference pixel must be a GPS station in the Velfield
 """
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.geodesy import insar_vector_functions
-import gps_io_functions
-import gps_vel_functions
+from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions, gps_vel_functions
 from . import los_projection_tools
 
 
-def top_level_driver(config_dict):
+def top_level_driver(config_dict, insar_data_dict):
+    """Now using insar inputs from InSAR CGM dictionary"""
     [gps_velfield] = inputs_gps(config_dict["gps_file"], config_dict["coordbox_gps"]);
-    [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv(config_dict["look_vector_files"]);
+    [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv_cgm_dict(insar_data_dict);
     [LOS_velfield] = compute(gps_velfield, config_dict["reference_gps"], xarray, yarray, lkv_east, lkv_north, lkv_up);
-    los_projection_tools.output_gps_as_los(gps_velfield, LOS_velfield, config_dict["outfile"]);
+    los_projection_tools.output_gps_as_los(gps_velfield, LOS_velfield, config_dict["outdir"] + config_dict["outfile"]);
     return;
 
 
@@ -37,6 +37,15 @@ def inputs_lkv(look_vector_files):
     [_, _, lkv_e] = netcdf_read_write.read_netcdf4(look_vector_files[0])
     [_, _, lkv_n] = netcdf_read_write.read_netcdf4(look_vector_files[1]);
     [xarray, yarray, lkv_u] = netcdf_read_write.read_netcdf4(look_vector_files[2]);
+    return [xarray, yarray, lkv_e, lkv_n, lkv_u];
+
+
+def inputs_lkv_cgm_dict(insar_dict):
+    xarray = insar_dict["lon"];
+    yarray = insar_dict["lat"];
+    lkv_e = insar_dict["lkv_E"];
+    lkv_n = insar_dict["lkv_N"];
+    lkv_u = insar_dict["lkv_U"];
     return [xarray, yarray, lkv_e, lkv_n, lkv_u];
 
 
@@ -68,7 +77,7 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
         one_station = gps_io_functions.Station_Vel(name=item.name, nlat=item.nlat, elon=item.elon,
                                                    e=LOS_array_i - LOS_reference, n=0, u=0, sn=item.sn, se=item.se,
                                                    su=item.su, first_epoch=item.first_epoch, last_epoch=item.last_epoch,
-                                                   refframe=0, proccenter=0, subnetwork=0, survey=0);
+                                                   refframe=0, proccenter=0, subnetwork=0, survey=0, meas_type='gnss');
         LOS_velstations.append(one_station);
 
     return [LOS_velstations];
