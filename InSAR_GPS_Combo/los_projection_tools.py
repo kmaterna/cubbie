@@ -91,10 +91,9 @@ def get_point_enu_veltuple(vel_tuple, reference_point_coords=None, reference_pt_
 
 def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, window_pixels=5):
     """
-    A function to extract the paired LOS InSAR and GPS velocities
-    at pixels given by lons/lats in gps_los_velfield
-    It averages over a window of pixels whose width is given by an input parameter
-    It only returns non-nan values
+    Extract paired LOS InSAR and GPS velocities at pixels given by lons/lats in gps_los_velfield.
+    Average over a window of pixels whose width is given by an input parameter.
+    Returns non-nan values.
     """
     insar_los_array, gps_los_array = [], [];
     distance_tolerance = 0.01;  # degrees (approximately 1 km)
@@ -103,7 +102,7 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
         yi, deg_distance_y = closest_index(yarray, station_vel.nlat);
         if deg_distance_x < distance_tolerance and deg_distance_y < distance_tolerance:
             target_array = LOS_array[yi - window_pixels:yi + window_pixels, xi - window_pixels:xi + window_pixels]
-            # default tolerance is about 1 km, and it shows whether or not we are accidentally outside of InSAR domain
+            # default tolerance is about 1 km, and it shows whether we are accidentally outside of InSAR domain
             InSAR_LOS_value = np.nanmean(target_array);
             if ~np.isnan(InSAR_LOS_value):
                 insar_los_array.append(InSAR_LOS_value);

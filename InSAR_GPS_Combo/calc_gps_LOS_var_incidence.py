@@ -4,6 +4,7 @@ Using a grid of look vector components.
 The incidence angle of the look vector varies across the scene!
 The reference pixel must be a GPS station in the Velfield
 """
+import numpy as np
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.geodesy import insar_vector_functions
 from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions, gps_vel_functions
@@ -41,11 +42,8 @@ def inputs_lkv(look_vector_files):
 
 
 def inputs_lkv_cgm_dict(insar_dict):
-    xarray = insar_dict["lon"];
-    yarray = insar_dict["lat"];
-    lkv_e = insar_dict["lkv_E"];
-    lkv_n = insar_dict["lkv_N"];
-    lkv_u = insar_dict["lkv_U"];
+    xarray, yarray = insar_dict["lon"], insar_dict["lat"];
+    lkv_e, lkv_n, lkv_u = insar_dict["lkv_E"], insar_dict["lkv_N"], insar_dict["lkv_U"];
     return [xarray, yarray, lkv_e, lkv_n, lkv_u];
 
 
@@ -62,30 +60,49 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
     [flight_angle_ref, look_angle_ref] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e_ref,
                                                                                                     lkv_n_ref,
                                                                                                     lkv_u_ref);
+    # if reference_gps == 'P617':
+    #     ref_u = 4.0;   # REPORTED V_GNSS[E,N,U] in NAM: -3.92, 4.18, -0.06
+    # if reference_gps == 'P625':
+    #     ref_e = 0;   # REPORTED V_GNSS[E,N,U] in NAM: -2.10, 0.74, -0.23
+    #     ref_u = 4.0;
     LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(ref_e, ref_n, ref_u, flight_angle_ref,
                                                                    look_angle_ref);
+    print("ref_e, ref_n, ref_u, ref_LOS (mm/yr): ", ref_e, ref_n, ref_u, LOS_reference);
 
     # Now compute relative LOS for each GPS station
     LOS_velstations = [];
     for item in gps_velfield:
         lkv_e, lkv_n, lkv_u = get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up,
                                                               item.elon, item.nlat);
-        [flight_angle_i, look_angle_i] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e, lkv_n,
-                                                                                                    lkv_u);
-        LOS_array_i = los_projection_tools.simple_project_ENU_to_LOS(item.e, item.n,
-                                                                     item.u, flight_angle_i, look_angle_i);
-        one_station = gps_io_functions.Station_Vel(name=item.name, nlat=item.nlat, elon=item.elon,
-                                                   e=LOS_array_i - LOS_reference, n=0, u=0, sn=item.sn, se=item.se,
-                                                   su=item.su, first_epoch=item.first_epoch, last_epoch=item.last_epoch,
-                                                   refframe=0, proccenter=0, subnetwork=0, survey=0, meas_type='gnss');
+        if np.isnan(lkv_e):
+            one_station = gps_io_functions.Station_Vel(name=item.name, nlat=item.nlat, elon=item.elon,
+                                                       e=np.nan, n=0, u=0, sn=item.sn, se=item.se,
+                                                       su=item.su, first_epoch=item.first_epoch,
+                                                       last_epoch=item.last_epoch, refframe=0, proccenter=0,
+                                                       subnetwork=0, survey=0, meas_type='gnss');
+        else:
+            [flight_angle_i, look_angle_i] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e,
+                                                                                                        lkv_n,
+                                                                                                        lkv_u);
+            LOS_array_i = los_projection_tools.simple_project_ENU_to_LOS(item.e, item.n, item.u,
+                                                                         flight_angle_i, look_angle_i);
+            one_station = gps_io_functions.Station_Vel(name=item.name, nlat=item.nlat, elon=item.elon,
+                                                       e=LOS_array_i - LOS_reference, n=0, u=0, sn=item.sn, se=item.se,
+                                                       su=item.su, first_epoch=item.first_epoch,
+                                                       last_epoch=item.last_epoch, refframe=0, proccenter=0,
+                                                       subnetwork=0, survey=0, meas_type='gnss');
         LOS_velstations.append(one_station);
 
     return [LOS_velstations];
 
 
-def get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up, target_lon, target_lat):
+def get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up, target_lon, target_lat, tol=0.1):
     # Find target_lon and target_lat in a regular geocoded grid
-    xi, _ = los_projection_tools.closest_index(xarray, target_lon);
-    yi, _ = los_projection_tools.closest_index(yarray, target_lat);
-    lkv_e, lkv_n, lkv_u = lkv_east[yi, xi], lkv_north[yi, xi], lkv_up[yi, xi];
+    # tol is in degrees
+    xi, distance_x = los_projection_tools.closest_index(xarray, target_lon);
+    yi, distance_y = los_projection_tools.closest_index(yarray, target_lat);
+    if abs(distance_x) > tol or abs(distance_y) > tol:
+        lkv_e, lkv_n, lkv_u = np.nan, np.nan, np.nan;
+    else:
+        lkv_e, lkv_n, lkv_u = lkv_east[yi, xi], lkv_north[yi, xi], lkv_up[yi, xi];
     return [lkv_e, lkv_n, lkv_u];
