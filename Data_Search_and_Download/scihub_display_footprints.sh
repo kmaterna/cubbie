@@ -112,6 +112,8 @@ if [ $num_lines -eq 1 ]; then
 else
   gmt psxy $bounds_file -R$range -J$projection -Wthick,black -K -O -P >> $mapfile
 fi
+gmt psxy $footprints -R -J -Wthick,red -O -P >> $mapfile
+gmt psconvert -Tg $mapfile
 
 
 # Make the timing plot
@@ -124,7 +126,8 @@ gmt psbasemap -R$region1 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $nu
 gmt psxy $timing -R$region1 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
 
 gmt psbasemap -R$region2 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn -Bsxa1YS -K -O -Y-8 --FORMAT_DATE_MAP=mm/dd >> $timing_file
-gmt psxy $timing -R$region2 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
+gmt psxy $timing -R$region2 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -O >> $timing_file  # plotting the actual data.
+gmt psconvert -Tg $timing_file
 
 rm gmt.history new_footprints.txt
 rm $footprints
