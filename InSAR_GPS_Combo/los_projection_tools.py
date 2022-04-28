@@ -95,7 +95,7 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
     Average over a window of pixels whose width is given by an input parameter.
     Returns non-nan values.
     """
-    insar_los_array, gps_los_array = [], [];
+    insar_los_array, gps_los_array, lonarray, latarray = [], [], [], [];
     distance_tolerance = 0.01;  # degrees (approximately 1 km)
     for station_vel in gps_los_velfield:
         xi, deg_distance_x = closest_index(xarray, station_vel.elon);
@@ -107,7 +107,9 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
             if ~np.isnan(InSAR_LOS_value):
                 insar_los_array.append(InSAR_LOS_value);
                 gps_los_array.append(station_vel.e);  # the LOS velocity
-    return np.array(insar_los_array), np.array(gps_los_array);
+                lonarray.append(station_vel.elon);
+                latarray.append(station_vel.nlat);
+    return np.array(insar_los_array), np.array(gps_los_array), np.array(lonarray), np.array(latarray);
 
 
 # A little bit of IO for working with GPS velocity fields in LOS geometries

@@ -13,8 +13,8 @@ from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
 
 def top_level_driver(gps_los_file, geocoded_insar, plotname, txtname):
     [gps_los_velfield, xarray, yarray, LOS_array] = inputs_dict(gps_los_file, geocoded_insar);
-    insar_array, gps_array, rms_misfit = compute(gps_los_velfield, xarray, yarray, LOS_array);
-    one_to_one_plot(insar_array, gps_array, rms_misfit, plotname, txtname)
+    insar_array, gps_array, lons, lats, rms_misfit = compute(gps_los_velfield, xarray, yarray, LOS_array);
+    one_to_one_plot(insar_array, gps_array, lons, lats, rms_misfit, plotname, txtname)
     return;
 
 
@@ -37,17 +37,19 @@ def inputs_dict(gps_los_file, insar_dict):
 
 
 def compute(gps_los_velfield, xarray, yarray, LOS_array):
-    insar_array, gps_array = los_projection_tools.paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array,
-                                                                            window_pixels=10);
+    insar_array, gps_array, lonarray, latarray = los_projection_tools.paired_gps_geocoded_insar(gps_los_velfield,
+                                                                                                xarray, yarray,
+                                                                                                LOS_array,
+                                                                                                window_pixels=10);
     misfit_array = np.subtract(insar_array, gps_array);
     smaller_misfits = np.array([x for x in misfit_array if abs(x) < 15]);  # remove the biggest outliers
     rms_misfit = np.sqrt(np.nanmean(smaller_misfits ** 2));
     print("Results: RMS Misfit Between these two fields is %f mm/yr at %d GPS stations \n" % (rms_misfit,
                                                                                               len(insar_array)));
-    return insar_array, gps_array, rms_misfit;
+    return insar_array, gps_array, lonarray, latarray, rms_misfit;
 
 
-def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname, txtname):
+def one_to_one_plot(insar_array, gps_array, lonarray, latarray, rms_misfit, plotname, txtname):
     plt.figure(figsize=(9, 9), dpi=300);
     plt.plot(gps_array, insar_array, '.', markersize=10);
     bottom_level, top_level = -35, 35;
@@ -63,8 +65,8 @@ def one_to_one_plot(insar_array, gps_array, rms_misfit, plotname, txtname):
     plt.close();
 
     ofile = open(txtname, 'w');
-    ofile.write("# insar gnss\n");
+    ofile.write("# lon lat insar gnss\n");
     for i in range(len(insar_array)):
-        ofile.write("%f %f\n" % (insar_array[i], gps_array[i]) );
+        ofile.write("%f %f %f %f\n" % (lonarray[i], latarray[i], insar_array[i], gps_array[i]) );
     ofile.close();
     return;
