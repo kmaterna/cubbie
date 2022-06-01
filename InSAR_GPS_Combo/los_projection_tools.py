@@ -103,8 +103,11 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
         if deg_distance_x < distance_tolerance and deg_distance_y < distance_tolerance:
             target_array = LOS_array[yi - window_pixels:yi + window_pixels, xi - window_pixels:xi + window_pixels]
             # default tolerance is about 1 km, and it shows whether we are accidentally outside of InSAR domain
+            target_array = np.array(target_array);
             InSAR_LOS_value = np.nanmean(target_array);
-            if ~np.isnan(InSAR_LOS_value):
+            if np.isnan(InSAR_LOS_value):
+                continue;
+            else:
                 insar_los_array.append(InSAR_LOS_value);
                 gps_los_array.append(station_vel.e);  # the LOS velocity
                 lonarray.append(station_vel.elon);

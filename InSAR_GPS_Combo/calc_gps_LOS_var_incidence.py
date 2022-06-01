@@ -11,10 +11,10 @@ from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions, gps_vel_function
 from . import los_projection_tools
 
 
-def top_level_driver(config_dict, insar_data_dict):
+def top_level_driver(config_dict, insar_data_struct):
     """Now using insar inputs from InSAR CGM dictionary"""
-    [gps_velfield] = inputs_gps(config_dict["gps_file"], config_dict["coordbox_gps"]);
-    [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv_cgm_dict(insar_data_dict);
+    [gps_velfield] = inputs_gps(config_dict["gps_filename"], config_dict["coordbox_gps"]);
+    [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_insar(insar_data_struct);
     [LOS_velfield] = compute(gps_velfield, config_dict["reference_gps"], xarray, yarray, lkv_east, lkv_north, lkv_up);
     los_projection_tools.output_gps_as_los(gps_velfield, LOS_velfield, config_dict["outdir"] + config_dict["outfile"]);
     return;
@@ -25,12 +25,21 @@ def inputs_gps(gps_file, coordbox_gps):
     # The velocities within the lat/lon box.
     if '.vel' in gps_file:
         [gps_velfield] = gps_io_functions.read_gamit_velfile(gps_file);
+    elif '_human_' in gps_file:
+        [gps_velfield] = gps_io_functions.read_humanread_vel_file(gps_file);
     else:
         [gps_velfield] = gps_io_functions.read_pbo_vel_file(gps_file);
     gps_velfield = gps_vel_functions.remove_duplicates(gps_velfield);
     gps_velfield = gps_vel_functions.clean_velfield(gps_velfield, max_horiz_sigma=2, max_vert_sigma=5,
                                                     coord_box=coordbox_gps);
     return [gps_velfield];
+
+def inputs_insar(insar_data_struct):
+    if isinstance(insar_data_struct, dict):
+        [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv_cgm_dict(insar_data_struct);
+    else:
+        [xarray, yarray, lkv_east, lkv_north, lkv_up] = inputs_lkv(insar_data_struct);
+    return [xarray, yarray, lkv_east, lkv_north, lkv_up];
 
 
 def inputs_lkv(look_vector_files):
@@ -49,8 +58,10 @@ def inputs_lkv_cgm_dict(insar_dict):
 
 # ------------------ COMPUTE --------------- #
 def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lkv_up):
-    # Get the look angle for each point
-    # Transform GPS field into LOS field (all are arguments are single values)
+    """
+    Get look angle for each point
+    Transform GPS field into LOS field (all are arguments are single values)
+    """
 
     # Take the reference point and transform its velocity into LOS.
     ref_e, ref_n, ref_u, reflon, reflat = los_projection_tools.get_point_enu_veltuple(gps_velfield,
@@ -60,11 +71,7 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
     [flight_angle_ref, look_angle_ref] = insar_vector_functions.look_vector2flight_incidence_angles(lkv_e_ref,
                                                                                                     lkv_n_ref,
                                                                                                     lkv_u_ref);
-    # if reference_gps == 'P617':
-    #     ref_u = 4.0;   # REPORTED V_GNSS[E,N,U] in NAM: -3.92, 4.18, -0.06
-    # if reference_gps == 'P625':
-    #     ref_e = 0;   # REPORTED V_GNSS[E,N,U] in NAM: -2.10, 0.74, -0.23
-    #     ref_u = 4.0;
+
     LOS_reference = los_projection_tools.simple_project_ENU_to_LOS(ref_e, ref_n, ref_u, flight_angle_ref,
                                                                    look_angle_ref);
     print("ref_e, ref_n, ref_u, ref_LOS (mm/yr): ", ref_e, ref_n, ref_u, LOS_reference);
@@ -97,8 +104,10 @@ def compute(gps_velfield, reference_gps, xarray, yarray, lkv_east, lkv_north, lk
 
 
 def get_lookvectors_by_nearest_grid(xarray, yarray, lkv_east, lkv_north, lkv_up, target_lon, target_lat, tol=0.1):
-    # Find target_lon and target_lat in a regular geocoded grid
-    # tol is in degrees
+    """
+    Find target_lon and target_lat in a regular geocoded grid
+    tol is in degrees
+    """
     xi, distance_x = los_projection_tools.closest_index(xarray, target_lon);
     yi, distance_y = los_projection_tools.closest_index(yarray, target_lat);
     if abs(distance_x) > tol or abs(distance_y) > tol:
