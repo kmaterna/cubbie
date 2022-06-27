@@ -68,6 +68,16 @@ def read_phase_data(GDALfilename):
     return phasearray;
 
 
+def read_amplitude_data(GDALfilename):
+    """
+    Start with a complex quantity, and return only the amplitude of that quantity.
+    """
+    slc = read_complex_data(GDALfilename);
+    amparray = np.absolute(slc);
+    return amparray;
+
+
+
 def read_scalar_data_no_isce(filename, nx, ny):
     """ Take float32 numbers from binary file into 2d array """
     final_shape = (ny, nx);
