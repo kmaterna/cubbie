@@ -50,7 +50,7 @@ def make_coherence_mask(cor, threshold):
     return mask;
 
 
-def apply_coherence_mask(data, mask, is_complex=0, is_float32=False):
+def apply_coherence_mask(data, mask, is_complex=0, is_float32=False, mask_value=np.nan):
     """
     A future version of this function should probably check the type of the input data
     and return the same type that came in.
@@ -60,11 +60,13 @@ def apply_coherence_mask(data, mask, is_complex=0, is_float32=False):
             masked = np.complex64(np.multiply(data, mask));
         else:
             masked = np.float64(np.multiply(data, mask));
+            masked[np.isnan(masked)] = mask_value;
     else:
         if is_complex == 1:
             masked = np.complex32(np.multiply(data, mask));
         else:
             masked = np.float32(np.multiply(data, mask));
+            masked[np.isnan(masked)] = mask_value;
     return masked;
 
 
