@@ -106,18 +106,38 @@ def read_phase_data_no_isce(filename, nx, ny):
     return phase;
 
 
+def get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y):
+    """
+    Building x and y arrays of latitude and longitude
+    """
+    xarray = np.arange(firstLon, firstLon+x*dE, dE);
+    yarray = np.arange(firstLat, firstLat+y*dN, dN);
+    return xarray[0:x], yarray[0:y];
+
+
 def read_isce_unw_geo(filename):
     """
     Read isce unwrapped geocoded product, which has two datasets interleaved: amp and unwrapped phase
     Return x and y axes too, in lon/lat
     """
-    xml_file = filename+'.xml'
-    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(xml_file);
+    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml');
     twox_data = read_scalar_data_no_isce(filename, nlon, nlat*2);   # separate the unw phase layer
     unw_data = twox_data[nlat:, :];   # unw_phase is the second layer
     (y, x) = np.shape(unw_data);
-    xarray = np.arange(firstLon, firstLon+x*dE, dE);
-    yarray = np.arange(firstLat, firstLat+y*dN, dN);
+    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y);
+    return xarray, yarray, unw_data;
+
+
+def read_isce_unw_geo_single(filename):
+    """
+    Read isce unwrapped geocoded single-band, which has one dataset
+
+    :returns: 1D_xarray, 1D_yarray, 2D_data_array
+    """
+    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml');
+    unw_data = read_scalar_data_no_isce(filename, nlon, nlat);
+    (y, x) = np.shape(unw_data);
+    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y);
     return xarray, yarray, unw_data;
 
 
@@ -127,13 +147,11 @@ def read_isce_unw_geo_alternative(filename):
     Uses a format found in some unwrapped files
     Return x and y axes too, in lon/lat
     """
-    xml_file = filename+'.xml'
-    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(xml_file);
+    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml');
     twox_data = read_scalar_data_no_isce(filename, nlon*2, nlat);   # separate the unw phase layer
     unw_data = twox_data[:, 0:nlon];   # unw_phase is the second layer
     (y, x) = np.shape(unw_data);
-    xarray = np.arange(firstLon, firstLon+x*dE, dE);
-    yarray = np.arange(firstLat, firstLat+y*dN, dN);
+    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y);
     return xarray, yarray, unw_data;
 
 
