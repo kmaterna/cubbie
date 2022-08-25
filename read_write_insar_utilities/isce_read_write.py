@@ -150,6 +150,9 @@ def read_isce_unw_geo_alternative(filename):
     firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml');
     twox_data = read_scalar_data_no_isce(filename, nlon*2, nlat);   # separate the unw phase layer
     unw_data = twox_data[:, 0:nlon];   # unw_phase is the second layer
+    unw_data = twox_data[:, nlon:];   # unw_phase is the second layer
+
+
     (y, x) = np.shape(unw_data);
     xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y);
     return xarray, yarray, unw_data;
