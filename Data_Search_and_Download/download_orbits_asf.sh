@@ -43,9 +43,9 @@ grep -E 'S1[A-B]_OPER_AUX_POEORB_OPOD_[0-9]{8}T[0-9]{6}_V[0-9]{8}T[0-9]{6}_[0-9]
 # # Wget all the files
 while read p; do
   name_only=$p
-  echo $name_only
+  echo "$name_only"
   if [ ! -f "$name_only" ]; then
-    wget https://s1qc.asf.alaska.edu/aux_poeorb/$name_only
+    wget https://s1qc.asf.alaska.edu/aux_poeorb/"$name_only"
   fi
 done <list_of_addresses.txt
 
