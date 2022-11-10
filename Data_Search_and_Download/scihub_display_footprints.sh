@@ -117,16 +117,20 @@ gmt psconvert -Tg $mapfile
 
 
 # Make the timing plot
-projection="X10iTi/2i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
-region1="2014-10-01T00:00/2018-10-01T00:00/0.1/1"  # The beginning and end of Sentinel. 
-region2="2018-01-01T00:00/2022-10-01T00:00/0.1/1"  # The beginning and end of Sentinel. 
+projection="X10iTi/0.9i" #Make an xy projetion 6 inches in the horizontal direction and 2 inches in the vertical direction
+region1="2014-10-01T00:00/2018-01-01T00:00/0.1/1"  # The beginning and end of Sentinel.
+region2="2018-01-01T00:00/2021-04-01T00:00/0.1/1"  # The beginning and end of Sentinel.
+region3="2021-04-01T00:00/2024-07-01T00:00/0.1/1"  # The beginning and end of Sentinel.
 
-gmt psbasemap -R$region1 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K -Y10 --FORMAT_DATE_MAP=mm/dd > $timing_file
+gmt psbasemap -R$region1 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn+t"Displaying $num_results Acquisitions" -Bsxa1YS -K -Y14 --FORMAT_DATE_MAP=mm/dd > $timing_file
 # -Bpx = primary x-axis; -Bs = secondary. a6O means primary annotate every 6 months; f2O means secondary annotate every 2 months
 gmt psxy $timing -R$region1 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -K -O >> $timing_file  # plotting the actual data. 
 
-gmt psbasemap -R$region2 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn -Bsxa1YS -K -O -Y-8 --FORMAT_DATE_MAP=mm/dd >> $timing_file
-gmt psxy $timing -R$region2 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -O >> $timing_file  # plotting the actual data.
+gmt psbasemap -R$region2 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn -Bsxa1YS -K -O -Y-5 --FORMAT_DATE_MAP=mm/dd >> $timing_file
+gmt psxy $timing -R$region2 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -O -K >> $timing_file  # plotting the actual data.
+
+gmt psbasemap -R$region3 -J$projection -Bpxa6Of2O -Bpya2 -BWeSn -Bsxa1YS -K -O -Y-5 --FORMAT_DATE_MAP=mm/dd >> $timing_file
+gmt psxy $timing -R$region3 -J$projection --FORMAT_DATE_IN=yyyymmdd -Sc0.15 -Gblack -O >> $timing_file  # plotting the actual data.
 gmt psconvert -Tg $timing_file
 
 rm gmt.history new_footprints.txt

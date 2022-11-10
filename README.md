@@ -1,10 +1,12 @@
 # S1_batches
 
-This set of scripts is built on top of GMTSAR to perform Sentinel-1 batch processing. It will search the Sentinel-1 archive, download data, organize files, select the super-master, produce interferograms with GMTSAR, and perform other options. 
+This set of codes will help with Sentinel-1 batch processing. It will search the Sentinel-1 archive, download data, organize files, produce interferograms with GMTSAR, and perform other options. 
 
 ## Description
 
-Dislcaimer: this library is under development and is frequently updated.  Nonetheless, please feel free to read, fork, use, and/or contribute. 
+Disclaimer: Just use MintPy instead!  
+
+I still use this library for basic things like searching the Sentinel-1 archive, reading GMTSAR and ISCE files into Python, and maybe doing a simple average, but for my future time series needs, I intend to switch to MintPy.
 
 ### Capabilities: 
 * The scripts in Data_Search_and_Download will search through SciHub for Sentinel-1 images and make maps of image footprints and timing plots. You can optionally download all your search results too. 
