@@ -106,15 +106,6 @@ def read_phase_data_no_isce(filename, nx, ny):
     return phase;
 
 
-def get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y):
-    """
-    Building x and y arrays of latitude and longitude
-    """
-    xarray = np.arange(firstLon, firstLon+x*dE, dE);
-    yarray = np.arange(firstLat, firstLat+y*dN, dN);
-    return xarray[0:x], yarray[0:y];
-
-
 def read_isce_unw_geo(filename):
     """
     Read isce unwrapped geocoded product, which has two datasets interleaved: amp and unwrapped phase
@@ -347,6 +338,24 @@ def get_xmin_xmax_xinc_from_xml(xml_file):
     xmin = firstLon;
     xmax = coord_lon['startingvalue'] + (nlon * coord_lon['delta'])
     return firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat;
+
+
+def get_xarray_yarray_from_xml(filename):
+    """
+    Another function to get arrays from isce xml data
+    """
+    firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename);
+    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, nlon, nlat);
+    return xarray, yarray;
+
+
+def get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y):
+    """
+    Building x and y arrays of latitude and longitude
+    """
+    xarray = np.arange(firstLon, firstLon+x*dE, dE);
+    yarray = np.arange(firstLat, firstLat+y*dN, dN);
+    return xarray[0:x], yarray[0:y];
 
 
 def ISCEXMLParser(filename):
