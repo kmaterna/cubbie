@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import subprocess
 from scipy import interpolate
 from Tectonic_Utils.read_write import netcdf_read_write
-from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions, gps_vel_functions
+from GNSS_TimeSeries_Viewers.gps_tools import file_io, vel_functions
 from . import los_projection_tools
 
 
@@ -50,12 +50,12 @@ def inputs(gps_file, veldir, velfile, rowref, colref, coordbox_gps, coordbox_nea
     [reflon, reflat] = generate_reflon_reflat(velfile, veldir, rowref, colref);
 
     # The velocities within the latlon box.
-    [gps_velfield] = gps_io_functions.read_unr_vel_file(gps_file);
-    [gps_velfield] = gps_vel_functions.remove_duplicates(gps_velfield);
-    [gps_velfield] = gps_vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
+    [gps_velfield] = file_io.io_magnet_unr.read_unr_vel_file(gps_file);
+    [gps_velfield] = vel_functions.remove_duplicates(gps_velfield);
+    [gps_velfield] = vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps);
 
     # A small range near the reference pixel for interpolating later.
-    [gps_velfield_removed] = gps_vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_nearref);
+    [gps_velfield_removed] = vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_nearref);
 
     return [gps_velfield, gps_velfield_removed, reflon, reflat];
 

@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.path as path
 import collections
 from scipy import interpolate
-from GNSS_TimeSeries_Viewers.gps_tools import gps_io_functions
+from GNSS_TimeSeries_Viewers.gps_tools import file_io, gps_objects
 from . import los_projection_tools as los_proj
 from Tectonic_Utils.geodesy import haversine
 
@@ -67,7 +67,7 @@ def inputs(input_file, or_file, ca_file):
     """
     Input files. Should interpolate over the whole GPS field; don't chunk it smaller with clean_velfield.
     """
-    [vel_tuple] = gps_io_functions.read_pbo_vel_file(input_file);
+    [vel_tuple] = file_io.io_nota.read_pbo_vel_file(input_file);
     ca_border = np.loadtxt(ca_file);
     or_border = np.loadtxt(or_file);
     return [vel_tuple, ca_border, or_border];
@@ -144,16 +144,22 @@ def compute(vel_tuple, params, ca_border, or_border):
                                                                   params.desc_flight_angle, params.inc_angle)[0];
 
     for i in range(len(x_for_interp)):
-        item = gps_io_functions.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
-                                            e=ascending_LOS_array[i] - ascending_LOS_reference, n=0, u=0);
+        item = gps_objects.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
+                                       e=ascending_LOS_array[i] - ascending_LOS_reference, n=0, u=0,
+                                       se=0, sn=0, su=0, first_epoch=None, last_epoch=None, meas_type=None,
+                                       name='', proccenter=None, refframe=None, subnetwork=None, survey=None);
         los_ascending.append(item);
         # Packing up an object for returning
-        eastnorth_item = gps_io_functions.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
-                                                      e=new_east[i], n=new_north[i], u=0);
+        eastnorth_item = gps_objects.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
+                                                 e=new_east[i], n=new_north[i], u=0,
+                                                 se=0, sn=0, su=0, first_epoch=None, last_epoch=None, meas_type=None,
+                                                 name='', proccenter=None, refframe=None, subnetwork=None, survey=None);
         eastnorthfield.append(eastnorth_item);
         # Packing up descending item
-        item = gps_io_functions.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
-                                            e=descending_LOS_array[i] - descending_LOS_reference, n=0, u=0);
+        item = gps_objects.Station_Vel(elon=x_for_interp[i], nlat=y_for_interp[i],
+                                       e=descending_LOS_array[i] - descending_LOS_reference, n=0, u=0,
+                                       se=0, sn=0, su=0, first_epoch=None, last_epoch=None, meas_type=None,
+                                       name='', proccenter=None, refframe=None, subnetwork=None, survey=None);
         los_descending.append(item);
 
     # Here I want to evaluate gradients at two hard-coded points.
