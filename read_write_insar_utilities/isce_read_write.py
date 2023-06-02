@@ -77,7 +77,6 @@ def read_amplitude_data(GDALfilename):
     return amparray;
 
 
-
 def read_scalar_data_no_isce(filename, nx, ny):
     """ Take float32 numbers from binary file into 2d array """
     final_shape = (ny, nx);
@@ -142,7 +141,6 @@ def read_isce_unw_geo_alternative(filename):
     twox_data = read_scalar_data_no_isce(filename, nlon*2, nlat);   # separate the unw phase layer
     unw_data = twox_data[:, 0:nlon];   # unw_phase is the second layer
     unw_data = twox_data[:, nlon:];   # unw_phase is the second layer
-
 
     (y, x) = np.shape(unw_data);
     xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y);
