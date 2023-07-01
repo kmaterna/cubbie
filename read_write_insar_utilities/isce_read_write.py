@@ -9,6 +9,11 @@ import struct
 
 # ----------- READING FUNCTIONS ------------- #
 
+def read_isce_1d_arrays(filename):
+    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml');
+    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, nlon, nlat);
+    return xarray, yarray;
+
 
 def read_complex_data(GDALfilename):
     """
