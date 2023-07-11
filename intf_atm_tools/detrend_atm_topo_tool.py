@@ -13,16 +13,17 @@ from S1_batches.intf_atm_tools import plots
 
 def arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('-i', '--data_file', type=str, help='''filename for phase information, grd file''', required=True);
-    p.add_argument('-d', '--dem_file', type=str, help='''filename for dem information, grd file''', required=True);
-    p.add_argument('-o', '--outname', type=str, help='''Output filename for corrected phase information, grd file''',
-                   required=True);
-    p.add_argument('-r', '--detrend_topography', type=bool, default=True,
-                   help='''Remove topography-correlated trend, default is True''');
-    p.add_argument('-w', '--produce_plots', type=bool, default=True, help='''Plot the before-and-after images''');
+    p.add_argument('-i', '--data_file', type=str,
+                   help='''filename for phase information, grd file, REQUIRED''', required=True);
+    p.add_argument('-o', '--outname', type=str,
+                   help='''Output filename for corrected phase information, grd file, REQUIRED''', required=True);
+    p.add_argument('-w', '--produce_plots', action="store_true",
+                   help='''Plot the before-and-after images, default is False''');
+    p.add_argument('-r', '--detrend_topography', action="store_true",
+                   help='''Remove topography-correlated trend, default is False''');
+    p.add_argument('-d', '--dem_file', type=str, help='''filename for dem information, grd file''', required=False);
+    p.add_argument('-p', '--remove_xy_plane', action="store_true", help='''Planar removal feature, default is False''');
     p.add_argument('-m', '--mask_polygon', type=str, help='''Future: will have a masked polygon feature''');
-    p.add_argument('-p', '--remove_xy_plane', type=bool, default=False,
-                   help='''Future: will have planar removal feature, default is False''');
     p.add_argument('-c', '--coherence', type=str, help='''Future: will have a coherence file, grd file''');
     p.add_argument('-t', '--coherence_cutoff', type=float, help='''Future: will have a coherence mask cutoff''');
     exp_dict = vars(p.parse_args())
@@ -61,7 +62,7 @@ def correct_for_topo_trend(phasedata, demdata, exp_dict):
     print("Best-fitting Slope: %f " % coef[0]);
     if exp_dict["produce_plots"]:
         plots.before_after_images(phasedata, corrected_array_2d,
-                                  outfilename=exp_dict['outname'].split('.grd')[0] + '_before_after.png');
+                                  outfilename=exp_dict['outname'].split('.grd')[0] + '_before_after_topo.png');
         plots.linear_topo_phase_plot(phase_array_1d, demarray_1d, corrected_array_1d,
                                      outfilename=exp_dict['outname'].split('.grd')[0] + '_phase_topo.png');
     return corrected_array_2d;
@@ -72,7 +73,7 @@ def correct_for_plane(xdata, ydata, phasedata, exp_dict):
     :param xdata: 1d array
     :param ydata: 1d array
     :param phasedata: 2d array
-    :param exp_dict: dictionary of parameter values
+    :param exp_dict: dictionary of parameter values, including outfilename
     :returns: 2d array of corrected unwrapped phase values
     """
     print("Removing bilinear plane.")
@@ -81,8 +82,12 @@ def correct_for_plane(xdata, ydata, phasedata, exp_dict):
     x_nonans = full_x[np.where(~np.isnan(full_phase))];
     y_nonans = full_y[np.where(~np.isnan(full_phase))];
     phase_nonans = full_phase[np.where(~np.isnan(full_phase))];
-    coeffs = scipy.linalg.lstsq();  # the actual optimization step
-    corrected_phase_2d = phasedata.copy();
+    A = np.vstack((x_nonans, y_nonans, np.ones(np.shape(x_nonans)))).T;
+    coeffs = scipy.linalg.lstsq(np.array(A), np.array(phase_nonans));  # the actual optimization step
+    model_coeffs = coeffs[0];  # model: [z = ax + by + c]
+    full_phase_model = model_coeffs[0]*full_x + model_coeffs[1] * full_y + model_coeffs[2] * np.ones(np.shape(full_y));
+    full_corrected_phase = np.subtract(full_phase, full_phase_model);
+    corrected_phase_2d = np.reshape(full_corrected_phase, np.shape(phasedata));
     if exp_dict["produce_plots"]:
         plots.before_after_images(phasedata, corrected_phase_2d,
                                   outfilename=exp_dict['outname'].split('.grd')[0] + '_before_after_planar.png');
@@ -98,7 +103,7 @@ def defensive_checks_topo_phase(zdata, demdata):
         raise ValueError("Error! Phase and Topography arrays do not have the same shape.");
     if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
         raise ValueError("Error! Phase contains only nans");
-    print('Defensive checks passed');
+    print('Defensive checks passed for topography-correlated trend');
     return;
 
 
