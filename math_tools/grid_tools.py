@@ -6,7 +6,13 @@ import numpy as np
 
 def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
     """
-    Clip an array into a bounding box that's smaller than the original grid. Like grdcut.
+    Clip an array into a bounding box that's smaller than the original grid. Like grdcut, but python API.
+
+    :param x: 1d array, like lons
+    :param y: 1d array, like lats
+    :param array1: 2d array, shape is len(y) x len(x)
+    :param bbox: [W, E, S, N]
+    :param verbose: bool
     """
     original_bbox = (np.min(x), np.max(x), np.min(y), np.max(y));
     if bbox[0] < original_bbox[0] or bbox[1] > original_bbox[1] or \

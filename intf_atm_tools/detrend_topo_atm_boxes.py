@@ -66,7 +66,7 @@ def local_compute(topo, zdata, rowsample, colsample):
             # Here we need an adjustmenet for phase jumps. What is the appropriate slope?
 
             sea_level = 20;  # meters  If the span of elevation is less than this, we call it ocean.
-            if demarray == []:
+            if not demarray:
                 coef = [np.nan, np.nan];
             elif max(demarray) - min(demarray) <= sea_level:
                 print("we found an element with no topography: %d, %d " % (i, j));
@@ -79,7 +79,7 @@ def local_compute(topo, zdata, rowsample, colsample):
             # Making a plot
             if j == num_col_iterations / 2:  # and i<min(num_row_iterations, num_col_iterations):
                 print('editing slope_array %d' % i);
-                if demarray == []:
+                if not demarray:
                     continue;  # cannot make plot for empty array.
                 f, axarr = plt.subplots(1, 3);
                 axarr[0].plot(demarray, zarray, '.');
