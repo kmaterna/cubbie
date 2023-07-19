@@ -2,14 +2,15 @@
 
 """
 Post-processing of InSAR phase data, i.e., removing ramps and topography-correlated trend.
-Pass in a co-registered image and a DEM. Solve for best-fitting linear trend globally across the whole scene.
-Remove the topography-correlated trend and save the adjusted image to a file.
+Pass in a GRD file of unwrapped phase, and possibly a co-registered DEM.
+Option: Solve for best-fitting linear trend globally across the whole scene.
+Option: Remove the topography-correlated trend and save the adjusted image to a file.
 """
 
 import numpy as np
 import argparse, scipy
 from Tectonic_Utils.read_write import netcdf_read_write as rw
-from S1_batches.intf_atm_tools import plots
+from S1_batches.intf_postproc_tools import plots
 
 def arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
