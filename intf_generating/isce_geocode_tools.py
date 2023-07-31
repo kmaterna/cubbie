@@ -13,7 +13,7 @@ from subprocess import call
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 from Tectonic_Utils.geodesy import haversine, insar_vector_functions
 from ..read_write_insar_utilities import isce_read_write, jpl_uav_read_write
-from ..math_tools import mask_and_interpolate
+from . import unwrapping_isce_custom
 
 
 # ------------ UTILITY FUNCTIONS -------------- #
@@ -26,7 +26,7 @@ def cut_resampled_grid(outdir, filename, variable, config_params):
     print("Shape of the " + variable + " file: ", np.shape(temp));
     xbounds = [float(config_params.xbounds.split(',')[0]), float(config_params.xbounds.split(',')[1])];
     ybounds = [float(config_params.ybounds.split(',')[0]), float(config_params.ybounds.split(',')[1])];
-    cut_grid = mask_and_interpolate.cut_grid(temp, xbounds, ybounds, fractional=True, buffer_rows=3);
+    cut_grid = unwrapping_isce_custom.cut_grid(temp, xbounds, ybounds, fractional=True, buffer_rows=3);
     print("Shape of the cut lon file: ", np.shape(cut_grid));
     nx = np.shape(cut_grid)[1];
     ny = np.shape(cut_grid)[0];

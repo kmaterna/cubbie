@@ -8,9 +8,11 @@ Option: Remove the topography-correlated trend and save the adjusted image to a 
 """
 
 import numpy as np
-import argparse, scipy
+import argparse
+import scipy.linalg
 from Tectonic_Utils.read_write import netcdf_read_write as rw
 from S1_batches.intf_postproc_tools import plots
+from S1_batches.math_tools import mask_and_interpolate
 
 def arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
@@ -24,10 +26,11 @@ def arg_parser():
                    help='''Remove topography-correlated trend, default is False''');
     p.add_argument('-d', '--dem_file', type=str, help='''filename for dem information, grd file''', required=False);
     p.add_argument('-p', '--remove_xy_plane', action="store_true", help='''Planar removal feature, default is False''');
+    p.add_argument('-c', '--coherence_file', type=str, help='''A coherence file, grd file''');
+    p.add_argument('-t', '--coherence_cutoff', type=float, help='''A coherence mask cutoff''', default=0);
     p.add_argument('-m', '--mask_polygon', type=str, help='''Future: will have a masked polygon feature''');
-    p.add_argument('-c', '--coherence', type=str, help='''Future: will have a coherence file, grd file''');
-    p.add_argument('-t', '--coherence_cutoff', type=float, help='''Future: will have a coherence mask cutoff''');
     exp_dict = vars(p.parse_args())
+    print("\n\nPostprocessing file %s... " % (exp_dict['data_file']));
     return exp_dict;
 
 
@@ -35,6 +38,11 @@ def coordinator(exp_dict):
     """ Driver for the whole command-line program. """
     [xdata, ydata, phase_data] = rw.read_any_grd(exp_dict['data_file']);
     corrected_phase_2d = phase_data.copy();
+    if exp_dict['coherence_cutoff'] > 0:
+        _, _, cor = rw.read_any_grd(exp_dict['coherence_file']);
+        defensive_checks_cor(corrected_phase_2d, cor);
+        mask = mask_and_interpolate.make_coherence_mask(cor, exp_dict['coherence_cutoff']);
+        corrected_phase_2d = mask_and_interpolate.apply_coherence_mask(corrected_phase_2d, mask);
     if exp_dict['detrend_topography']:
         [_, _, demdata] = rw.read_any_grd(exp_dict['dem_file']);
         corrected_phase_2d = correct_for_topo_trend(corrected_phase_2d, demdata, exp_dict);
@@ -60,11 +68,12 @@ def correct_for_topo_trend(phasedata, demdata, exp_dict):
     coef = np.polyfit(demarray_1d, phase_array_1d, 1);  # Generate a best-fitting slope between phase and topography
     corrected_array_1d = full_phase_array_1d - coef[0] * full_dem_array_1d;  # Remove slope
     corrected_array_2d = np.reshape(corrected_array_1d, np.shape(phasedata));  # Reshape back into right shape
+    corrected_decarray_1d = corrected_array_1d[np.where(~np.isnan(full_phase_array_1d))];
     print("Best-fitting Slope: %f " % coef[0]);
     if exp_dict["produce_plots"]:
         plots.before_after_images(phasedata, corrected_array_2d,
                                   outfilename=exp_dict['outname'].split('.grd')[0] + '_before_after_topo.png');
-        plots.linear_topo_phase_plot(phase_array_1d, demarray_1d, corrected_array_1d,
+        plots.linear_topo_phase_plot(phase_array_1d, demarray_1d, corrected_decarray_1d,
                                      outfilename=exp_dict['outname'].split('.grd')[0] + '_phase_topo.png');
     return corrected_array_2d;
 
@@ -105,6 +114,19 @@ def defensive_checks_topo_phase(zdata, demdata):
     if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
         raise ValueError("Error! Phase contains only nans");
     print('Defensive checks passed for topography-correlated trend');
+    return;
+
+
+def defensive_checks_cor(zdata, cor):
+    """
+    :param zdata: 2d array of unwrapped phase
+    :param cor: 2d array of cor information
+    """
+    if np.shape(zdata) != np.shape(cor):
+        raise ValueError("Error! Phase and Correlation arrays do not have the same shape.");
+    if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
+        raise ValueError("Error! Phase contains only nans");
+    print('Defensive checks passed for correlation-based masking');
     return;
 
 

@@ -19,6 +19,43 @@ from ..read_write_insar_utilities import isce_read_write
 from ..math_tools import mask_and_interpolate
 
 
+def cut_grid(data, xbounds, ybounds, fractional=True, buffer_rows=3):
+    """
+    Cut a grid. We express the desired bounds as either an index  or a fraction of the domain in that axis.
+    This is useful when we haven't decided on a resolution.
+    xbounds refer to columns
+    ybounds refer to rows
+    """
+    xmin, xmax = xbounds[0], xbounds[1];
+    ymin, ymax = ybounds[0], ybounds[1];
+    xmax_orig = np.shape(data)[1];
+    ymax_orig = np.shape(data)[0];
+
+    if fractional is True:
+        xmin = int(xmin * xmax_orig)
+        xmax = int(xmax * xmax_orig);
+        ymin = int(ymin * ymax_orig);
+        ymax = int(ymax * ymax_orig);
+
+    # Defensive programming
+    # I found a few columns of nans, so I'm protecting against them with buffer rows/cols.
+    if xmin < buffer_rows:
+        xmin = buffer_rows;
+    if ymin < buffer_rows:
+        ymin = buffer_rows;
+    if xmax > np.shape(data)[1] - buffer_rows:
+        xmax = np.shape(data)[1] - buffer_rows;
+    if ymax > np.shape(data)[0] - buffer_rows:
+        ymax = np.shape(data)[0] - buffer_rows;
+
+    data_cut = data[ymin:ymax, xmin:xmax];
+
+    print("Shape of the original data are: ", np.shape(data));
+    print("Boundaries of the cut data are: ", ymin, ymax, xmin, xmax);
+    print("Shape of the new data are: ", np.shape(data_cut));
+    return data_cut;
+
+
 def add_plot(axarr, plotnumber, data, title, colormap, aspect=1/7, is_complex=0, vmin=None, vmax=None):
     x, y = get_axarr_numbers(2, 5, plotnumber);
     print(x, y);
@@ -45,7 +82,7 @@ def add_rectangle(axarr, plotnumber, xbounds, ybounds):
 
 def get_axarr_numbers(rows, cols, idx):
     # Given an incrementally counting idx number and a subplot dimension, where is our plot?
-    total_plots = rows*cols;
+    _total_plots = rows*cols;
     col_num = np.mod(idx, cols);
     row_num = int(np.floor(idx/cols));
     return row_num, col_num;
@@ -140,10 +177,10 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     axarr = add_rectangle(axarr, 1, xbounds, ybounds);
 
     # Step 2: Cut data
-    slc_cut = mask_and_interpolate.cut_grid(slc, xbounds, ybounds, buffer_rows=3);
-    cor_cut = mask_and_interpolate.cut_grid(cor, xbounds, ybounds, buffer_rows=3);
-    unw_cut = mask_and_interpolate.cut_grid(orig_unw, xbounds, ybounds, buffer_rows=3);
-    comps_cut = mask_and_interpolate.cut_grid(orig_comps, xbounds, ybounds, buffer_rows=3);
+    slc_cut = cut_grid(slc, xbounds, ybounds, buffer_rows=3);
+    cor_cut = cut_grid(cor, xbounds, ybounds, buffer_rows=3);
+    unw_cut = cut_grid(orig_unw, xbounds, ybounds, buffer_rows=3);
+    comps_cut = cut_grid(orig_comps, xbounds, ybounds, buffer_rows=3);
     axarr = add_plot(axarr, 2, slc_cut, 'phasefilt_cut', colormap='rainbow', aspect=plot_aspect, is_complex=1,
                      vmin=-np.pi, vmax=np.pi);
     axarr = add_plot(axarr, 3, unw_cut, 'unwrapped', colormap='rainbow', aspect=plot_aspect, is_complex=0, vmin=0,
@@ -182,7 +219,8 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     target_file = alt_filedir+"config_igram_"+date_string+"_local";
     write_local_iscestack_config(orig_config_file, target_file, date_string, alt_unwrapping=1);
     subprocess.call(['stripmapWrapper.py', '-c', target_file, '-s', 'Function-3', '-e', 'Function-3'], shell=False);
-    _, _, post_unwrapping = isce_read_write.read_scalar_data(alt_filedir + filestem + "_manually_masked_snaphu.unw", band=2);
+    _, _, post_unwrapping = isce_read_write.read_scalar_data(alt_filedir + filestem + "_manually_masked_snaphu.unw",
+                                                             band=2);
     axarr = add_plot(axarr, 7, post_unwrapping, 'Unwrapped', colormap='rainbow', aspect=plot_aspect, is_complex=0,
                      vmin=0, vmax=unw_max);
     comps = alt_filedir+filestem+"_manually_masked_snaphu.unw.conncomp.vrt"
@@ -193,15 +231,15 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     # Step 7: Re-apply the mask
     re_masked = mask_and_interpolate.apply_coherence_mask(post_unwrapping, coherence_mask_liberal, is_complex=0,
                                                           is_float32=True);
-    axarr = add_plot(axarr, 9, re_masked, 'UnwrappedMasked', colormap='rainbow', aspect=plot_aspect, is_complex=0,
-                     vmin=0, vmax=unw_max);
+    _ = add_plot(axarr, 9, re_masked, 'UnwrappedMasked', colormap='rainbow', aspect=plot_aspect, is_complex=0,
+                 vmin=0, vmax=unw_max);
 
     # MUST WRITE THE FINAL MASKED UNWRAPPED PHASE BACK INTO A FILE.
     isce_read_write.write_isce_data(re_masked, nx, ny, dtype='FLOAT',
                                     filename=alt_filedir + filestem + "_fully_processed.uwrappedphase");
 
     # Color bar for wrapped phase.
-    cbarax = f.add_axes([0.2, 0.35, 0.25, 0.8], visible=False);
+    _ = f.add_axes([0.2, 0.35, 0.25, 0.8], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=-np.pi, vmax=np.pi);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
     custom_cmap.set_array(np.arange(-np.pi, np.pi));
@@ -210,7 +248,7 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     cb.ax.tick_params(labelsize=12);
 
     # Color bar for unwrapped phase.
-    cbarax = f.add_axes([0.6, 0.35, 0.25, 0.8], visible=False);
+    _ = f.add_axes([0.6, 0.35, 0.25, 0.8], visible=False);
     color_boundary_object = matplotlib.colors.Normalize(vmin=0, vmax=unw_max);
     custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
     custom_cmap.set_array(np.arange(0, unw_max));
