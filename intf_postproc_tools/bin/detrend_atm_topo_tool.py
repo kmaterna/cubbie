@@ -12,7 +12,7 @@ import argparse
 import scipy.linalg
 from Tectonic_Utils.read_write import netcdf_read_write as rw
 from S1_batches.intf_postproc_tools import plots
-from S1_batches.math_tools import mask_and_interpolate
+from S1_batches.math_tools import mask_and_interpolate, grid_tools
 
 def arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
@@ -48,7 +48,11 @@ def coordinator(exp_dict):
         corrected_phase_2d = correct_for_topo_trend(corrected_phase_2d, demdata, exp_dict);
     if exp_dict['remove_xy_plane']:
         corrected_phase_2d = correct_for_plane(xdata, ydata, corrected_phase_2d, exp_dict);
-    rw.produce_output_netcdf(xdata, ydata, corrected_phase_2d, 'unwrapped_phase', exp_dict['outname']);
+    yinc = ydata[2] - ydata[1];
+    if yinc < 0:
+        rw.write_netcdf4(xdata, np.flip(ydata), np.flipud(corrected_phase_2d), exp_dict['outname']);
+    else:
+        rw.write_netcdf4(xdata, ydata, corrected_phase_2d, exp_dict['outname']);
     return;
 
 
@@ -109,7 +113,7 @@ def defensive_checks_topo_phase(zdata, demdata):
     :param zdata: 2d array of unwrapped phase
     :param demdata: 2d array of dem information
     """
-    if np.shape(zdata) != np.shape(demdata):
+    if grid_tools.mismatching_array_sizes((zdata, demdata)):
         raise ValueError("Error! Phase and Topography arrays do not have the same shape.");
     if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
         raise ValueError("Error! Phase contains only nans");
@@ -122,7 +126,7 @@ def defensive_checks_cor(zdata, cor):
     :param zdata: 2d array of unwrapped phase
     :param cor: 2d array of cor information
     """
-    if np.shape(zdata) != np.shape(cor):
+    if grid_tools.mismatching_array_sizes((zdata, cor)):
         raise ValueError("Error! Phase and Correlation arrays do not have the same shape.");
     if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
         raise ValueError("Error! Phase contains only nans");

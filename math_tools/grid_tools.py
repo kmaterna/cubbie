@@ -31,3 +31,14 @@ def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
     if verbose:
         print("  Revised grid and bbox: ", np.shape(new_array1), revised_bbox);
     return new_x, new_y, new_array1;
+
+
+def mismatching_array_sizes(array_tuple):
+    """
+    Return 0 if the array sizes match.
+    """
+    num_arrays = len(array_tuple);
+    for i in range(1, num_arrays):
+        if np.shape(array_tuple[0]) != np.shape(array_tuple[i]):
+            return 1;
+    return 0;
