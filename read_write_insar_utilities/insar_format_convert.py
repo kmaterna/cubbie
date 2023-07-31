@@ -9,7 +9,7 @@ from Tectonic_Utils.read_write import netcdf_read_write
 
 def isce_to_grd(isce_name, grdname):
     """ Convert an isce scalar file into a grdfile """
-    data = isce_read_write.read_scalar_data(isce_name);
+    _, _, data = isce_read_write.read_scalar_data(isce_name);
     firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat = isce_read_write.get_xmin_xmax_xinc_from_xml(isce_name+".xml");
     (y, x) = np.shape(data);
     xarr = np.arange(firstLon, firstLon+x*dE, dE);
@@ -42,7 +42,7 @@ def extract_unw_phase(infilename, outfilename):
     :param infilename: name of unw file, string
     :param outfilename: name of single-band file, string
     """
-    unw = isce_read_write.read_scalar_data(infilename, band=2);  # reading second band
+    _, _, unw = isce_read_write.read_scalar_data(infilename, band=2);  # reading second band
     ny, nx = np.shape(unw);
     isce_read_write.write_isce_data(unw, nx, ny, "FLOAT", outfilename);
     return;

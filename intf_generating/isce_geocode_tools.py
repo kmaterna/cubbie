@@ -22,7 +22,7 @@ def cut_resampled_grid(outdir, filename, variable, config_params):
     # This is for metadata like lon, lat, and lookvector
     # Given an isce file and a set of bounds to cut the file,
     # Produce the isce data and gmtsar netcdf that match each pixel.
-    temp = isce_read_write.read_scalar_data(outdir + "/" + filename);
+    _, _, temp = isce_read_write.read_scalar_data(outdir + "/" + filename);
     print("Shape of the " + variable + " file: ", np.shape(temp));
     xbounds = [float(config_params.xbounds.split(',')[0]), float(config_params.xbounds.split(',')[1])];
     ybounds = [float(config_params.ybounds.split(',')[0]), float(config_params.ybounds.split(',')[1])];
@@ -142,14 +142,14 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     isce_read_write.plot_scalar_data(geocoded_folder + '/cut_lat.gdal',
                                      colormap='rainbow', aspect=1 / 4,
                                      outname=geocoded_folder + '/cut_lat_geocoded.png');
-    cut_lon = isce_read_write.read_scalar_data(geocoded_folder + '/cut_lon.gdal');
-    cut_lat = isce_read_write.read_scalar_data(geocoded_folder + '/cut_lat.gdal');
+    _, _, cut_lon = isce_read_write.read_scalar_data(geocoded_folder + '/cut_lon.gdal');
+    _, _, cut_lat = isce_read_write.read_scalar_data(geocoded_folder + '/cut_lat.gdal');
     W, E = np.min(cut_lon), np.max(cut_lon);
     S, N = np.min(cut_lat), np.max(cut_lat);
 
     # This last thing may not work when finding the reference pixel, only when geocoding at the very last.
     # Double checking the shape of the interferogram data (should match!)
-    signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir + '/signalspread_cut.nc');
+    _, _, signalspread = isce_read_write.read_scalar_data(config_params.ts_output_dir + '/signalspread_cut.nc');
     print("For comparison, shape of cut data is: ", np.shape(signalspread));
 
     return W, E, S, N;
@@ -200,8 +200,8 @@ def create_isce_stack_rdr_geo(geocoded_dir, w, e, s, n):
     command = "geocodeGdal.py -l " + geocoded_dir + "/cut_lat.gdal -L " + geocoded_dir + "/cut_lon.gdal " + "-f " + \
               datafile + " -b \"" + str(s) + " " + str(n) + " " + str(w) + " " + str(s) + "\" -x 0.00025 -y 0.00025"
     call(command, shell=True);
-    grid_inc = isce_read_write.read_scalar_data(geocoded_dir + "/cut_incidence.gdal.geo", flush_zeros=False);
-    grid_az = isce_read_write.read_scalar_data(geocoded_dir + "/cut_azimuth.gdal.geo", flush_zeros=False);
+    _, _, grid_inc = isce_read_write.read_scalar_data(geocoded_dir + "/cut_incidence.gdal.geo", flush_zeros=False);
+    _, _, grid_az = isce_read_write.read_scalar_data(geocoded_dir + "/cut_azimuth.gdal.geo", flush_zeros=False);
     ny, nx = np.shape(grid_inc);
     filename = geocoded_dir + "/los.rdr.geo"
     isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", filename);
@@ -214,7 +214,7 @@ def inspect_isce(geocoded_dir):
     for folder_i in folders:
         datafile = glob.glob(folder_i + "/*.unw.geo");
         datafile = datafile[0];
-        grid = isce_read_write.read_scalar_data(datafile, flush_zeros=False);
+        _, _, grid = isce_read_write.read_scalar_data(datafile, flush_zeros=False);
         print("Statistics:")
         print("shape: ", np.shape(grid))
         print("max: ", np.nanmax(grid))
@@ -238,9 +238,9 @@ def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
     unw_file_final = geocoded_directory + 'BIL_correct/ts_slice_' + mynum + '.unw.geo';
 
     # Read the problematic bands and get ready to package them into a real geocoded file.
-    data_top = isce_read_write.read_scalar_data(unw_file, band=1);
+    _, _, data_top = isce_read_write.read_scalar_data(unw_file, band=1);
     # I'm not even sure how I'm allowed to read band 2 (xml says 1 band).
-    data_bottom = isce_read_write.read_scalar_data(unw_file, band=2);  # xml is clearly wrong.
+    _, _, data_bottom = isce_read_write.read_scalar_data(unw_file, band=2);  # xml is clearly wrong.
     data = np.vstack((data_top, data_bottom));  # each of these has a duplicate row by accident.
     data_surviving = np.zeros(np.shape(data_top));
     for i in range(np.shape(data)[0]):

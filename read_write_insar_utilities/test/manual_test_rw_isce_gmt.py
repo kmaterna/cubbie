@@ -31,7 +31,7 @@ def test_read_write_cycle(filename):
     isce_read_write.write_isce_data(slc, nx, ny, dtype="FLOAT", filename=isce_written);
 
     # Step 3: read phase again.
-    phase = isce_read_write.read_scalar_data(isce_written + ".vrt");
+    _, _, phase = isce_read_write.read_scalar_data(isce_written + ".vrt");
     print("Shape of phase is ", np.shape(phase));
     isce_read_write.plot_scalar_data("isce_written_phase.phase", colormap='rainbow', aspect=1 / 10,
                                      outname="isce_written_phase.png");
@@ -40,8 +40,7 @@ def test_read_write_cycle(filename):
     netcdfname = "netcdf_written_phase.grd"
     xdata = np.arange(0, nx);
     ydata = np.arange(0, ny);
-    phase = np.flipud(
-        phase);  # THIS SEEMS TO BE NECESSARY TO SWITCH BETWEEN CONVENTIONS. GRD PLOTS ARE UPSIDE DOWN FROM ISCE.
+    phase = np.flipud(phase);  # THIS SWITCHES BETWEEN CONVENTIONS. GRD PLOTS ARE UPSIDE DOWN FROM ISCE.
     netcdf_read_write.produce_output_netcdf(xdata, ydata, phase, "radians", netcdfname);
 
     # Step 5: look at what's inside;

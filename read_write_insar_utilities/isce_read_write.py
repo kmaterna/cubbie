@@ -53,6 +53,7 @@ def read_scalar_data(GDALfilename, band=1, flush_zeros=True):
     ds = None
 
     _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, data);
+    xarray, yarray = read_isce_1d_arrays(GDALfilename);
 
     # put all zero values to nan
     if flush_zeros:
@@ -61,7 +62,7 @@ def read_scalar_data(GDALfilename, band=1, flush_zeros=True):
         except:
             pass
 
-    return data;
+    return xarray, yarray, data;
 
 
 def read_phase_data(GDALfilename):

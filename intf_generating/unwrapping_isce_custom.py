@@ -130,10 +130,10 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
 
     # Step 1: Read the automatic data
     slc = isce_read_write.read_complex_data(filedir + filestem + ".int");
-    cor = isce_read_write.read_scalar_data(filedir + filestem + ".cor");
+    _, _, cor = isce_read_write.read_scalar_data(filedir + filestem + ".cor");
     # for unwrapped files, band = 2
-    orig_unw = isce_read_write.read_scalar_data(filedir + filestem + "_snaphu.unw", band=2);
-    orig_comps = isce_read_write.read_scalar_data(filedir + filestem + "_snaphu.unw.conncomp");
+    _, _, orig_unw = isce_read_write.read_scalar_data(filedir + filestem + "_snaphu.unw", band=2);
+    _, _, orig_comps = isce_read_write.read_scalar_data(filedir + filestem + "_snaphu.unw.conncomp");
     axarr = add_plot(axarr, 0, slc, 'phasefilt', colormap='rainbow', is_complex=1);
     axarr = add_rectangle(axarr, 0, xbounds, ybounds);
     axarr = add_plot(axarr, 1, cor, 'coherence', colormap='gray', is_complex=0);
@@ -182,11 +182,11 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     target_file = alt_filedir+"config_igram_"+date_string+"_local";
     write_local_iscestack_config(orig_config_file, target_file, date_string, alt_unwrapping=1);
     subprocess.call(['stripmapWrapper.py', '-c', target_file, '-s', 'Function-3', '-e', 'Function-3'], shell=False);
-    post_unwrapping = isce_read_write.read_scalar_data(alt_filedir + filestem + "_manually_masked_snaphu.unw", band=2);
+    _, _, post_unwrapping = isce_read_write.read_scalar_data(alt_filedir + filestem + "_manually_masked_snaphu.unw", band=2);
     axarr = add_plot(axarr, 7, post_unwrapping, 'Unwrapped', colormap='rainbow', aspect=plot_aspect, is_complex=0,
                      vmin=0, vmax=unw_max);
     comps = alt_filedir+filestem+"_manually_masked_snaphu.unw.conncomp.vrt"
-    comps = isce_read_write.read_scalar_data(comps);
+    _, _, comps = isce_read_write.read_scalar_data(comps);
     axarr = add_plot(axarr, 8, comps, 'ConnectedComps', colormap='rainbow', aspect=plot_aspect, is_complex=0,
                      vmin=0, vmax=8);
 

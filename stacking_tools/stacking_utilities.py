@@ -209,8 +209,8 @@ def uavsar_from_lonlat_get_rowcol(config_params):
     reflon = float(config_params.ref_loc.split(',')[0]);
     reflat = float(config_params.ref_loc.split(',')[1]);
     # Next we get the nearest pixel from the rasters
-    raster_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lon.gdal");
-    raster_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lat.gdal");
+    _, _, raster_lon = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lon.gdal");
+    _, _, raster_lat = isce_read_write.read_scalar_data(config_params.ts_output_dir + "/cut_lat.gdal");
     i_found, j_found = get_nearest_pixel_in_raster(raster_lon, raster_lat, reflon, reflat);
     print("From lon/lat, found Row and Column at %d, %d " % (i_found, j_found));
     print("STOPPING ON PURPOSE: Please write your reference pixel in your config file.");

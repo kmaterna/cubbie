@@ -119,8 +119,8 @@ def reader_isce(filepathslist, band=1):
         delta = abs(date1 - date2)
         date_deltas.append(delta.days / 365.24)  # in years.
 
-        zdata = isce_read_write.read_scalar_data(filepathslist[i], band,
-                                                 flush_zeros=False);  # NOTE: For unwrapped files, this will be band=2
+        _, _, zdata = isce_read_write.read_scalar_data(filepathslist[i], band,
+                                                       flush_zeros=False);  # NOTE: For unwrapped files, will be band=2
         # flush_zeros=False preserves the zeros in the input datasets. Added April 9 2020. uncertain results.
         xvalues = range(0, np.shape(zdata)[1]);
         yvalues = range(0, np.shape(zdata)[0]);
