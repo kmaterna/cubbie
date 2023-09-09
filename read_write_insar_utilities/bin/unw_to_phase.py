@@ -21,7 +21,7 @@ def cmd_parser(cmdargs):
     config_default = {};
     p.set_defaults(**config_default)
     config = vars(p.parse_args())
-    isce_filename = config['isce_file']
+    isce_filename = config['unw_file']
     outfile = config['outfile']
     return isce_filename, outfile;
 
