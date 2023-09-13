@@ -14,6 +14,9 @@ from Tectonic_Utils.read_write import netcdf_read_write as rw
 from S1_batches.intf_postproc_tools import plots
 from S1_batches.math_tools import mask_and_interpolate, grid_tools
 
+help_message = "Perform detrending and topo-correlated removal on interferogram files. \nUsage: " \
+               "detrend_atm_topo_tool.py --data_file unw_phase.grd --outname detrended_phase.grd"
+
 def arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('-i', '--data_file', type=str,
@@ -24,10 +27,13 @@ def arg_parser():
                    help='''Plot the before-and-after images, default is False''');
     p.add_argument('-r', '--detrend_topography', action="store_true",
                    help='''Remove topography-correlated trend, default is False''');
-    p.add_argument('-d', '--dem_file', type=str, help='''filename for dem information, grd file''', required=False);
-    p.add_argument('-p', '--remove_xy_plane', action="store_true", help='''Planar removal feature, default is False''');
+    p.add_argument('-p', '--remove_xy_plane', action="store_true",
+                   help='''Planar removal feature, default is False''');
+    p.add_argument('-d', '--dem_file', type=str, help='''filename for dem information, grd file''',
+                   required=False);
     p.add_argument('-c', '--coherence_file', type=str, help='''A coherence file, grd file''');
-    p.add_argument('-t', '--coherence_cutoff', type=float, help='''A coherence mask cutoff''', default=0);
+    p.add_argument('-t', '--coherence_cutoff', type=float,
+                   help='''A coherence mask cutoff applied before trend removal''', default=0);
     p.add_argument('-m', '--mask_polygon', type=str, help='''Future: will have a masked polygon feature''');
     exp_dict = vars(p.parse_args())
     print("\n\nPostprocessing file %s... " % (exp_dict['data_file']));
@@ -40,7 +46,7 @@ def coordinator(exp_dict):
     corrected_phase_2d = phase_data.copy();
     if exp_dict['coherence_cutoff'] > 0:
         _, _, cor = rw.read_any_grd(exp_dict['coherence_file']);
-        defensive_checks_cor(corrected_phase_2d, cor);
+        defensive_checks(corrected_phase_2d, cor, metadata="Coherence");
         mask = mask_and_interpolate.make_coherence_mask(cor, exp_dict['coherence_cutoff']);
         corrected_phase_2d = mask_and_interpolate.apply_coherence_mask(corrected_phase_2d, mask);
     if exp_dict['detrend_topography']:
@@ -65,7 +71,7 @@ def correct_for_topo_trend(phasedata, demdata, exp_dict):
     :returns: 2d array of corrected unwrapped phase values
     """
     print("Removing topography-correlated trend.")
-    defensive_checks_topo_phase(phasedata, demdata);
+    defensive_checks(phasedata, demdata, metadata="Topography");
     full_phase_array_1d, full_dem_array_1d = np.ravel(phasedata), np.ravel(demdata);
     phase_array_1d = full_phase_array_1d[np.where(~np.isnan(full_phase_array_1d))];  # non-nan data to 1D arrays
     demarray_1d = full_dem_array_1d[np.where(~np.isnan(full_phase_array_1d))];
@@ -108,29 +114,17 @@ def correct_for_plane(xdata, ydata, phasedata, exp_dict):
     return corrected_phase_2d;
 
 
-def defensive_checks_topo_phase(zdata, demdata):
+def defensive_checks(zdata, aux_array, metadata='Correlation'):
     """
     :param zdata: 2d array of unwrapped phase
-    :param demdata: 2d array of dem information
+    :param aux_array: 2d array of auxiliary information, such as correlation or topography data
+    :param metadata: string describing the type of information contained in this array
     """
-    if grid_tools.mismatching_array_sizes((zdata, demdata)):
-        raise ValueError("Error! Phase and Topography arrays do not have the same shape.");
+    if grid_tools.mismatching_array_sizes((zdata, aux_array)):
+        raise ValueError("Error! Phase and "+metadata+" arrays do not have the same shape.");
     if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
         raise ValueError("Error! Phase contains only nans");
-    print('Defensive checks passed for topography-correlated trend');
-    return;
-
-
-def defensive_checks_cor(zdata, cor):
-    """
-    :param zdata: 2d array of unwrapped phase
-    :param cor: 2d array of cor information
-    """
-    if grid_tools.mismatching_array_sizes((zdata, cor)):
-        raise ValueError("Error! Phase and Correlation arrays do not have the same shape.");
-    if np.sum(np.isnan(zdata)) == np.shape(zdata)[0] * np.shape(zdata)[1]:
-        raise ValueError("Error! Phase contains only nans");
-    print('Defensive checks passed for correlation-based masking');
+    print('Defensive checks passed for '+metadata+'-based processing');
     return;
 
 
