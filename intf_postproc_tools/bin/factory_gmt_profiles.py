@@ -42,6 +42,7 @@ def write_gmt_lines(profile_data, grdfile, outdir):
     print("# BEGIN AUTO GENERATED CODE");
     for profile in profile_data:
         grdfile_name = grdfile.split('.grd')[0];
+        grdfile_specific_name = grdfile_name.split('/')[-1];
         lby2 = profile[2] / 2;
         wby2 = profile[3] / 2;
         # Example: echo "-115.80 33.003 30 8 0.4" | gmt psxy -R -J -SJ -Wthick,purple -O -K >> $output
@@ -50,7 +51,7 @@ def write_gmt_lines(profile_data, grdfile, outdir):
         print("gmt grd2xyz " + grdfile + " | gmt project -C" + str(profile[0]) + "/" + str(profile[1]) + " -A" + str(
             profile[4]) +
               " -L" + str(-lby2) + "/" + str(lby2) + " -W" + str(-wby2) + "/" + str(wby2) + " -Q > " +
-              outdir + "/" + profile[5] + "_" + grdfile_name + ".txt");
+              outdir + "/" + grdfile_specific_name + "_"+profile[5]+".txt");
     print("# END AUTO GENERATED CODE");
     return;
 
