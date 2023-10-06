@@ -6,8 +6,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import glob
-import subprocess
+import glob, os
 from Tectonic_Utils.read_write import netcdf_read_write
 
 # BROKE AT LOOP # 120 OR # 121. NOT SURE WHY.
@@ -17,9 +16,7 @@ from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
 def identify_all_loops():
     # This function takes the glob intf_all directories and then makes all possible triangles.
     # It populates a list of loops, each containing three images.
-    loops = [];
-    edges = [];
-    nodes = [];
+    loops, edges, nodes = [], [], [];
     directories = glob.glob("intf_all/???????_???????");
     for item in directories:
         edgepair = item.split('/')[-1];
@@ -63,7 +60,7 @@ def identify_all_loops():
 
 
 def compute_loops(all_loops, loops_dir, loops_guide, rowref, colref):
-    subprocess.call(['mkdir', '-p', loops_dir], shell=False);
+    os.makedirs(loops_dir, exist_ok=True);
     ofile = open(loops_dir + loops_guide, 'w');
     for i in range(len(all_loops)):
         ofile.write("Loop %d: %s %s %s\n" % (i, all_loops[i][0], all_loops[i][1], all_loops[i][2]));
@@ -71,7 +68,7 @@ def compute_loops(all_loops, loops_dir, loops_guide, rowref, colref):
 
     unwrapped = 'unwrap.grd'
     wrapped = 'phasefilt.grd'
-    filename = 'intf_all/' + all_loops[0][0] + '_' + all_loops[0][1] + '/' + unwrapped
+    filename = os.path.join('intf_all', all_loops[0][0] + '_' + all_loops[0][1], unwrapped)
     z1_sample = read_netcdf3(filename)[2];
     number_of_errors = np.zeros(np.shape(z1_sample));
 
@@ -79,20 +76,19 @@ def compute_loops(all_loops, loops_dir, loops_guide, rowref, colref):
         edge1 = all_loops[i][0] + '_' + all_loops[i][1];
         edge2 = all_loops[i][1] + '_' + all_loops[i][2];
         edge3 = all_loops[i][0] + '_' + all_loops[i][2];
-        [xdata, ydata, z1] = netcdf_read_write.read_any_grd('intf_all/' + edge1 + '/' + unwrapped);
-        [_, _, z2] = netcdf_read_write.read_any_grd('intf_all/' + edge2 + '/' + unwrapped);
-        [_, _, z3] = netcdf_read_write.read_any_grd('intf_all/' + edge3 + '/' + unwrapped);
+        [_, _, z1] = netcdf_read_write.read_any_grd(os.path.join('intf_all', edge1, unwrapped));
+        [_, _, z2] = netcdf_read_write.read_any_grd(os.path.join('intf_all', edge2, unwrapped));
+        [_, _, z3] = netcdf_read_write.read_any_grd(os.path.join('intf_all', edge3, unwrapped));
 
-        [xdata, ydata, wr_z1] = netcdf_read_write.read_any_grd('intf_all/' + edge1 + '/' + wrapped);
-        [_, _, wr_z2] = netcdf_read_write.read_any_grd('intf_all/' + edge2 + '/' + wrapped);
-        [_, _, wr_z3] = netcdf_read_write.read_any_grd('intf_all/' + edge3 + '/' + wrapped);
+        [xdata, ydata, wr_z1] = netcdf_read_write.read_any_grd(os.path.join('intf_all', edge1, wrapped));
+        [_, _, wr_z2] = netcdf_read_write.read_any_grd(os.path.join('intf_all', edge2, wrapped));
+        [_, _, wr_z3] = netcdf_read_write.read_any_grd(os.path.join('intf_all', edge3, wrapped));
 
         print("Loop " + str(i) + ":");
 
         rowdim, coldim = np.shape(z1);
 
-        histdata_raw = [];
-        histdata_fix = [];
+        histdata_raw, histdata_fix = [], [];
         znew_raw = np.zeros(np.shape(z1));
         znew_fix = np.zeros(np.shape(z1));
         errorcount = 0;

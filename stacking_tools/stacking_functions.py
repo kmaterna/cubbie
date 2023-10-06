@@ -1,4 +1,4 @@
-import re, glob
+import re, glob, os
 from subprocess import call
 from . import stacking_utilities, nsbas_accessing, coseismic_stack, stack_corr, \
     workflow_isce_with_uavsar, igram_selection
@@ -12,7 +12,7 @@ def set_up_output_directories(config_params):
     if config_params.endstage < 0:
         return;
     print("\nStart Stage 0 - Setting up output directories");
-    call(['mkdir', '-p', config_params.ts_output_dir], shell=False);
+    os.makedirs(config_params.ts_output_dir, exist_ok=True);
     print('calling: mkdir -p %s' % config_params.ts_output_dir);
     call(['cp', config_params.config_file, config_params.ts_output_dir], shell=False);
     print('calling: cp %s %s' % (config_params.config_file, config_params.ts_output_dir));

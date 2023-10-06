@@ -6,7 +6,7 @@ Because it saves time to run in parallel.
 """
 
 import numpy as np
-import glob
+import glob, os
 from subprocess import call
 from ...read_write_insar_utilities import netcdf_plots
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3, produce_output_netcdf
@@ -20,7 +20,7 @@ def get_input_dirs():
 
 def get_datestrs():
     files = glob.glob("/Volumes/Ironwolf/Track_71/stacking/no_smoothing/0_3500000/*.grd");
-    datestrs = [i.split('/')[-1][0:8] for i in files];
+    datestrs = [os.path.split(i)[1][0:8] for i in files];
     print(datestrs);
     return datestrs;
 
@@ -28,9 +28,9 @@ def get_datestrs():
 def combine_all_files(datestr, input_dirs, output_dir):
     print("\nCombining files for date %s" % datestr);
 
-    filename = input_dirs[0] + "/" + datestr + ".grd"
+    filename = os.path.join(input_dirs[0], datestr + ".grd")
     xdata, ydata, zdata0 = read_netcdf3(filename);
-    filename1 = input_dirs[1] + "/" + datestr + ".grd"
+    filename1 = os.path.join(input_dirs[1], datestr + ".grd")
     xdata, ydata, zdata1 = read_netcdf3(filename1);
     zdata_total = np.zeros(np.shape(zdata0));
 
@@ -41,8 +41,8 @@ def combine_all_files(datestr, input_dirs, output_dir):
             vector = [zdata0[j][k],
                       zdata1[j][k]];  # , zdata2[j][k], zdata3[j][k], zdata4[j][k], zdata5[j][k], zdata6[j][k] ];
             zdata_total[j][k] = np.sum(vector);
-    output_file = output_dir + "/" + datestr + ".grd";
-    output_plot = output_dir + "/" + datestr + ".png";
+    output_file = os.path.join(output_dir, datestr + ".grd");
+    output_plot = os.path.join(output_dir, datestr + ".png");
     produce_output_netcdf(xdata, ydata, zdata_total, "mm", output_file);
     netcdf_plots.produce_output_plot(output_file, datestr, output_plot, "mm", aspect=1.0,
                                      invert_yaxis=True, vmin=-50, vmax=100);
@@ -51,7 +51,7 @@ def combine_all_files(datestr, input_dirs, output_dir):
 
 if __name__ == "__main__":
     output_dir = "/Volumes/Ironwolf/Track_71/stacking/no_smoothing/combined/"
-    call(["mkdir", "-p", output_dir], shell=False);
+    os.makedirs(output_dir, exist_ok=True);
     input_dirs = get_input_dirs();
     datestrs = get_datestrs();
     for i in range(len(datestrs)):

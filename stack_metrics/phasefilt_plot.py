@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import glob as glob
-import sys, subprocess
+import sys, os
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
@@ -18,11 +18,11 @@ def top_level_driver(skip_file=None):
 def configure():
     file_dir = "intf_all";
     file_type = "phasefilt.grd";
-    outdir = 'phasefilt/'
+    outdir = os.path.join('phasefilt', '')
 
-    subprocess.call(['mkdir', '-p', outdir], shell=False);
+    os.makedirs(outdir, exist_ok=True);
 
-    file_names = glob.glob(file_dir+"/*/"+file_type);
+    file_names = glob.glob(os.path.join(file_dir, "*", file_type));
     if len(file_names) == 0:
         print("Error! No files matching search pattern."); sys.exit(1);
     print("Reading "+str(len(file_names))+" files.");

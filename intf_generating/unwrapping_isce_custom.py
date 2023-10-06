@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.cm as cm
-import subprocess, sys, glob
+import subprocess, sys, glob, os
 from ..read_write_insar_utilities import isce_read_write
 from ..math_tools import mask_and_interpolate
 
@@ -161,7 +161,7 @@ def alt_isce_unwrapping_workflow(date_string, xbounds, ybounds, coherence_cutoff
     filestem = "filt_"+date_string;
     orig_config_file = "../configs/config_igram_"+date_string;  # *** this may change
     alt_filedir = filedir+"alt_unwrapped/";
-    subprocess.call(["mkdir", "-p", alt_filedir], shell=False);
+    os.makedirs(alt_filedir, exist_ok=True);
 
     f, axarr = plt.subplots(2, 5, figsize=(18, 16));
 

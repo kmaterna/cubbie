@@ -31,14 +31,14 @@ def get_all_xml_tiff_names(directory, polarization, swath, filetype='xml'):
 def get_all_safes_in_dir(directory):
     """A directory that contains a bunch of safe files.
     Give us the list of files and the datetimes they go with (matching lengths). """
-    dirlist = glob.glob(directory + '/*.SAFE');
+    dirlist = glob.glob(os.path.join(directory, '*.SAFE'));
     datelist = [];
     for item in dirlist:
         datelist.append(safe_to_date(item));
     return dirlist, datelist;
 
 def safe_to_date(filename):
-    temp = filename.split('/')[-1];
+    temp = os.path.split(filename)[1]
     datestr = temp[17:25];
     dtobj = dt.datetime.strptime(datestr, "%Y%m%d");
     return dtobj;
@@ -76,12 +76,12 @@ def get_datestr_from_xml(xml_name):
     xml file has name like s1a-iw1-slc-vv-20150121t134413-20150121t134424-004270-005317-001.xml
     We want to return 20150121. 
     """
-    xml_name = xml_name.split('/')[-1];
+    xml_name = os.path.split(xml_name)[1]
     mydate = xml_name[15:23];
     return mydate;
 
 def get_sat_from_xml(xml_name):
-    xml_name = xml_name.split('/')[-1];
+    xml_name = os.path.split(xml_name)[1]
     sat = xml_name[0:3];
     return sat;
 
@@ -118,7 +118,7 @@ def get_eof_from_date_sat(mydate, sat, eof_dir):
     [previous_day, following_day] = get_previous_and_following_day(mydate);
     previous_day = dt.datetime.strftime(previous_day, "%Y%m%d");
     following_day = dt.datetime.strftime(following_day, "%Y%m%d");
-    eof_name = glob.glob(eof_dir + "/" + sat.upper() + "*" + previous_day + "*" + following_day + "*.EOF");
+    eof_name = glob.glob(os.path.join(eof_dir, sat.upper() + "*" + previous_day + "*" + following_day + "*.EOF"));
     if not eof_name:
         print("ERROR: did not find any EOF files matching the pattern " + eof_dir + "/" + sat.upper() +
               "*" + previous_day + "*" + following_day + "*.EOF");
@@ -131,10 +131,10 @@ def get_eof_from_date_sat(mydate, sat, eof_dir):
 
 def glob_intf_computed(parent_dir):
     # Return format "2016332_2017308" (julian days)
-    full_names = glob.glob(parent_dir+"/intf_all/*");
+    full_names = glob.glob(os.path.join(parent_dir, "intf_all", "*"));
     intf_computed = [];
     for item in full_names:
-        intf_computed.append(item.split('/')[-1]);
+        intf_computed.append(os.path.split(item)[1]);
     return intf_computed;
 
 
@@ -185,13 +185,13 @@ def write_data_in(polarization, swath, master_date="", target_dir="F1"):
     master_date has format S1_20170204_ALL or 20170204
     """
     list_of_images, list_of_datestrs = get_all_xml_tiff_names("F" + swath + "/raw_orig", polarization, swath);
-    outfile = open(target_dir + "/data.in", 'w');
+    outfile = open(os.path.join(target_dir, "data.in"), 'w');
     if master_date == "":
         print("No master date selected by the user. Printing in random order.")
         for item, mydate in zip(list_of_images, list_of_datestrs):
-            item = item.split("/")[-1];  # getting rid of the directory
+            item = os.path.split(item)[1];  # getting rid of the directory
             sat = get_sat_from_xml(item);
-            eof_name = get_eof_from_date_sat(mydate, sat, "F" + swath + "/raw_orig");
+            eof_name = get_eof_from_date_sat(mydate, sat, os.path.join("F" + swath, "raw_orig"));
             outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
     else:
         # write the master date first.
@@ -199,17 +199,17 @@ def write_data_in(polarization, swath, master_date="", target_dir="F1"):
         for item, mydate in zip(list_of_images, list_of_datestrs):
             if mydate == master_date:
                 print("Found master date %s. Putting it on first line." % master_date);
-                item = item.split("/")[-1];  # getting rid of the directory
+                item = os.path.split(item)[1];  # getting rid of the directory
                 sat = get_sat_from_xml(item);
-                eof_name = get_eof_from_date_sat(mydate, sat, "F" + swath + "/raw_orig");
+                eof_name = get_eof_from_date_sat(mydate, sat, os.path.join("F" + swath, "raw_orig"));
                 outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
                 break;
         # then write the other dates. 
         for item, mydate in zip(list_of_images, list_of_datestrs):
             if mydate != master_date:
-                item = item.split("/")[-1];  # getting rid of the directory
+                item = os.path.split(item)[1];  # getting rid of the directory
                 sat = get_sat_from_xml(item);
-                eof_name = get_eof_from_date_sat(mydate, sat, "F" + swath + "/raw_orig");
+                eof_name = get_eof_from_date_sat(mydate, sat, os.path.join("F" + swath, "raw_orig"));
                 outfile.write(item[:-4] + ":" + eof_name.split("/")[-1] + "\n");
     outfile.close();
     print(target_dir+"/data.in successfully printed.")
@@ -311,7 +311,7 @@ def write_super_master_batch_config(masterid):
 def set_up_merge_unwrap(desired_swaths, outdir):
     print("Setting up merged unwrapping for swaths:");
     print(desired_swaths);
-    subprocess.call(["mkdir", "-p", outdir], shell=False);
+    os.makedirs(outdir, exist_ok=True);
     subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", outdir], shell=False);  # need copy, not soft link.
     subprocess.call(["cp", "batch.config", outdir], shell=False);
     intf_all = get_common_intfs(desired_swaths);
@@ -326,7 +326,7 @@ def write_merge_batch_input(intf_all, master_image, merge_dir, desired_swaths=("
     # Necessary for merge swaths step.
     # The master of the first line should be the super master.
     """
-    outfile = merge_dir+'/inputfile.txt'
+    outfile = os.path.join(merge_dir, 'inputfile.txt')
     print("\nWriting file " + outfile);
     master_image_in_format = ymd2yj(master_image[3:11])  # putting master image in the format taken by gmtsar dirs
     # Find the super master and stick it to the front.
@@ -401,7 +401,7 @@ def write_ordered_unwrapping(numproc, swath, sh_file, config_file):
 
 def write_unordered_unwrapping(numproc, swath, sh_file, config_file, multiple_swaths=False):
     print("Writing %s" % sh_file);
-    infile = 'F' + str(swath) + '/intf_record.in';
+    infile = os.path.join('F' + str(swath),  'intf_record.in');
     intfs = [];
     for line in open(infile):
         intfs.append(line[0:-1]);

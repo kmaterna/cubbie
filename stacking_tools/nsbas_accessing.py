@@ -1,5 +1,5 @@
-from subprocess import call
 import numpy as np
+import os
 from S1_batches.read_write_insar_utilities import netcdf_plots
 from S1_batches.intf_generating import sentinel_utilities
 from . import stacking_utilities, nsbas, velo_uncertainties
@@ -60,7 +60,8 @@ def repack_param_dictionary(config_params):
     param_dictionary = {"nsbas_good_perc": config_params.nsbas_min_intfs,
                         "sbas_smoothing": config_params.sbas_smoothing, "wavelength": config_params.wavelength,
                         "rowref": rowref, "colref": colref, "ts_output_dir": config_params.ts_output_dir,
-                        "signal_spread_filename": config_params.ts_output_dir+'/'+config_params.signal_spread_filename,
+                        "signal_spread_filename": os.path.join(config_params.ts_output_dir,
+                                                               config_params.signal_spread_filename),
                         "dem_error": config_params.dem_error, "ts_type": config_params.ts_type,
                         "reader": my_reader_function,
                         "baseline_file": config_params.baseline_file, "geocoded_flag": config_params.geocoded_intfs};
@@ -77,9 +78,10 @@ def write_output_metrics(param_dict, intf_tuple, metrics):
                 if "Kz_error" in metrics[i][j].keys():
                     Kz_grid[i][j] = metrics[i][j]["Kz_error"];
         rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, Kz_grid, 'm',
-                                  param_dict["ts_output_dir"] + '/kz_error.grd');
-        netcdf_plots.produce_output_plot(param_dict["ts_output_dir"] + '/kz_error.grd',
-                                         'DEM Error', param_dict["ts_output_dir"] + '/kz_error.png', 'DEM Error (m)');
+                                  os.path.join(param_dict["ts_output_dir"], 'kz_error.grd'));
+        netcdf_plots.produce_output_plot(os.path.join(param_dict["ts_output_dir"], 'kz_error.grd'),
+                                         'DEM Error', os.path.join(param_dict["ts_output_dir"], 'kz_error.png'),
+                                         'DEM Error (m)');
     return;
 
 
@@ -106,10 +108,10 @@ def drive_velocity(param_dict, intf_files, coh_files):
     [_, _, signal_spread_tuple] = rwr.read_any_grd(param_dict["signal_spread_filename"]);
     velocities, metrics = nsbas.Velocities(param_dict, intf_tuple, signal_spread_tuple, baseline_tuple, coh_tuple);
     rwr.produce_output_netcdf(intf_tuple.xvalues, intf_tuple.yvalues, velocities, 'mm/yr',
-                              param_dict["ts_output_dir"] + '/velo_nsbas.grd');
-    netcdf_plots.produce_output_plot(param_dict["ts_output_dir"] + '/velo_nsbas.grd',
-                                     'LOS Velocity', param_dict["ts_output_dir"] +
-                                     '/velo_nsbas.png', 'velocity (mm/yr)');
+                              os.path.join(param_dict["ts_output_dir"], 'velo_nsbas.grd'));
+    netcdf_plots.produce_output_plot(os.path.join(param_dict["ts_output_dir"], 'velo_nsbas.grd'),
+                                     'LOS Velocity', os.path.join(param_dict["ts_output_dir"], 'velo_nsbas.png'),
+                                     'velocity (mm/yr)');
     return;
 
 
@@ -133,8 +135,8 @@ def drive_point_ts(param_dict, intf_files, coh_files, ts_points_file):
     For general use, please provide a file with [lon, lat, row, col, name] """
     lons, lats, names, rows, cols = stacking_utilities.drive_cache_ts_points(ts_points_file, intf_files[0],
                                                                              param_dict["geocoded_flag"]);
-    outdir = param_dict["ts_output_dir"] + "/ts";
-    call(['mkdir', '-p', outdir], shell=False);
+    outdir = os.path.join(param_dict["ts_output_dir"], "ts");
+    os.makedirs(outdir, exist_ok=True);
     print("Computing TS for %d pixels" % len(lons));
     intf_tuple, coh_tuple, baseline_tuple = param_dict["reader"](intf_files, coh_files, param_dict["baseline_file"],
                                                                  param_dict["ts_type"], param_dict["dem_error"]);
@@ -155,10 +157,11 @@ def make_vels_from_ts_grids(param_dictionary, ts_slice_files):
     """
     mydata = rmd.reader_from_ts(ts_slice_files);  # read filelist of time series grids
     vel = nsbas.Velocities_from_TS(mydata);
-    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr', param_dictionary["ts_output_dir"] +
-                              '/velo_nsbas.grd');
-    netcdf_plots.produce_output_plot(param_dictionary["ts_output_dir"] + '/velo_nsbas.grd', 'LOS Velocity',
-                                     param_dictionary["ts_output_dir"] + '/velo_nsbas.png', 'velocity (mm/yr)');
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, vel, 'mm/yr',
+                              os.path.join(param_dictionary["ts_output_dir"], 'velo_nsbas.grd'));
+    netcdf_plots.produce_output_plot(os.path.join(param_dictionary["ts_output_dir"], 'velo_nsbas.grd'), 'LOS Velocity',
+                                     os.path.join(param_dictionary["ts_output_dir"], 'velo_nsbas.png'),
+                                     'velocity (mm/yr)');
     return;
 
 def make_vel_unc_from_ts_grids(ts_slice_files, outdir):
@@ -168,7 +171,7 @@ def make_vel_unc_from_ts_grids(ts_slice_files, outdir):
     """
     mydata = rmd.reader_from_ts(ts_slice_files);  # read filelist of time series grids
     unc = velo_uncertainties.empirical_uncertainty(mydata);
-    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, unc, 'mm/yr', outdir + '/velo_unc.grd');
-    netcdf_plots.produce_output_plot(outdir + '/velo_unc.grd', 'LOS Uncertainty',
-                                     outdir + '/velo_unc.png', 'Uncertainty (mm/yr)');
+    rwr.produce_output_netcdf(mydata.xvalues, mydata.yvalues, unc, 'mm/yr', os.path.join(outdir, 'velo_unc.grd'));
+    netcdf_plots.produce_output_plot(os.path.join(outdir, 'velo_unc.grd'), 'LOS Uncertainty',
+                                     os.path.join(outdir, 'velo_unc.png'), 'Uncertainty (mm/yr)');
     return;

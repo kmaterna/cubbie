@@ -69,9 +69,10 @@ def read_config(config_file):
     print("Running sentinel batch processing, starting with stage %d" % startstage);
 
     # if master specified in the config file disagrees with existing data.in, we must re-do the pre-processing.
-    if master and startstage > 1 and os.path.isfile('F' + str(swath) + '/raw/data.in'):
+    datain_file = os.path.join('F' + str(swath), 'raw', 'data.in')
+    if master and startstage > 1 and os.path.isfile(datain_file):
         master_datestr = sentinel_utilities.format_image_name_as_datestr(master);
-        dataDotIn = np.genfromtxt('F' + str(swath) + '/raw/data.in', dtype='str')
+        dataDotIn = np.genfromtxt(datain_file, dtype='str')
         oldmaster = dataDotIn[0].split(':')[0];
         if master_datestr not in oldmaster:
             # sometimes, oldmaster is formatted like s1a-iw1-slc-vv-20171201t142317-...;
@@ -81,7 +82,7 @@ def read_config(config_file):
             sys.exit(0);
 
     # if data.in is not found, we must do pre-processing.
-    if startstage > 1 and not os.path.isfile('F' + str(swath) + '/raw/data.in'):
+    if startstage > 1 and not os.path.isfile(datain_file):
         print('Warning: Pre-processing has not been run, changing startstage to 1')
         startstage = 1
 
@@ -121,12 +122,12 @@ def compile_frame_from_bursts(config_params):
 
     if config_params.frame1:
         print("Assembling frames based on pins. ")
-        pins_filename = config_params.FRAMES_dir+'/pins_ll.txt';
-        auto_script = config_params.FRAMES_dir+'/auto_frame_commands.sh';
+        pins_filename = os.path.join(config_params.FRAMES_dir, 'pins_ll.txt');
+        auto_script = os.path.join(config_params.FRAMES_dir, 'auto_frame_commands.sh');
 
         # Here we want a frame to be made. We write the near-range pins.
-        call(['mkdir', '-p', config_params.FRAMES_dir], shell=False);
-        if len(glob.glob(config_params.FRAMES_dir+'/*.SAFE')) > 0:
+        os.makedirs(config_params.FRAMES_dir, exist_ok=True);
+        if len(glob.glob(os.path.join(config_params.FRAMES_dir, '*.SAFE'))) > 0:
             print("Looks like we already have frames assembled. End stage -1.");
             sentinel_utilities.compare_frames_with_safes(config_params);
             return;
@@ -195,7 +196,7 @@ def manifest2raw_orig_eof(config_params):
     swath = config_params.swath
 
     # Unpack the .SAFE directories into raw_orig
-    call(["mkdir", "-p", "F" + swath + "/raw_orig"], shell=False);
+    os.makedirs(os.path.join("F" + swath, "raw_orig"), exist_ok=True);
     print("Copying xml files into raw_orig...")
     print("Copying manifest.safe files into raw_orig...")
     print("Copying tiff files into raw_orig...")
@@ -203,27 +204,29 @@ def manifest2raw_orig_eof(config_params):
     for onefile, onedt in zip(safe_file_list, dt_list):
 
         # Step 1: Get the names for tiff, xml, and eof files
-        xmls, yyyymmdd = sentinel_utilities.get_all_xml_tiff_names(onefile + '/annotation', config_params.polarization,
+        xmls, yyyymmdd = sentinel_utilities.get_all_xml_tiff_names(os.path.join(onefile, 'annotation'),
+                                                                   config_params.polarization,
                                                                    swath, filetype='xml');
-        manifest_safe_file = onefile+'/manifest.safe';
+        manifest_safe_file = os.path.join(onefile, 'manifest.safe');
         sat = sentinel_utilities.get_sat_from_xml(xmls[0]);
         eof_name = sentinel_utilities.get_eof_from_date_sat(onedt, sat, config_params.orbit_dir);
 
         # Copy various files
-        call(['cp', xmls[0], 'F' + swath + '/raw_orig'], shell=False);
-        call(['cp', manifest_safe_file, 'F' + swath + '/raw_orig/' + yyyymmdd[0] + '_manifest.safe'], shell=False);
-        tiff_files, _ = sentinel_utilities.get_all_xml_tiff_names(onefile + '/measurement', config_params.polarization,
-                                                                  swath, filetype='tiff');
+        call(['cp', xmls[0], os.path.join("F" + swath, "raw_orig")], shell=False);
+        call(['cp', manifest_safe_file, os.path.join('F' + swath, 'raw_orig', yyyymmdd[0] + '_manifest.safe')],
+             shell=False);
+        tiff_files, _ = sentinel_utilities.get_all_xml_tiff_names(os.path.join(onefile, 'measurement'),
+                                                                  config_params.polarization, swath, filetype='tiff');
         # only copy the tiff files if they don't already exist.
-        one_tiff_file = tiff_files[0].split("/")[-1];
-        if not os.path.isfile('F' + swath + '/raw_orig/' + one_tiff_file):
-            call(['cp', tiff_files[0], 'F' + swath + '/raw_orig'], shell=False);
+        one_tiff_file = os.path.split(tiff_files[0])[1];
+        if not os.path.isfile(os.path.join('F' + swath, 'raw_orig', one_tiff_file)):
+            call(['cp', tiff_files[0], os.path.join('F' + swath, 'raw_orig')], shell=False);
 
         # copy orbit files into the raw_orig directory
         print("Copying %s and associated tiff/xml/manifest.safe to raw_orig..." % eof_name);
-        call(['cp', eof_name, 'F' + swath + '/raw_orig'], shell=False);
+        call(['cp', eof_name, os.path.join('F' + swath, 'raw_orig')], shell=False);
     print("copying s1a-aux-cal.xml to raw_orig...");
-    call(['cp', config_params.orbit_dir + '/s1a-aux-cal.xml', 'F' + swath + '/raw_orig'], shell=False);
+    call(['cp', config_params.orbit_dir + '/s1a-aux-cal.xml', os.path.join('F' + swath, 'raw_orig')], shell=False);
     sentinel_utilities.check_raw_orig_sanity(swath);
     return;
 
@@ -236,10 +239,10 @@ def preprocess(config_params):
         return;
 
     # Check: Stop if the number of SLCs is equal to the number of images
-    outdir = 'F'+config_params.swath + '/raw'  # the output of this process
+    outdir = os.path.join('F'+config_params.swath, 'raw')  # the output of this process
     if os.path.isdir(outdir):
-        slc_list = glob.glob(outdir+'/*.SLC');
-        datadotin = list(sentinel_utilities.np.genfromtxt(outdir+'/data.in', dtype='str'));
+        slc_list = glob.glob(os.path.join(outdir, '*.SLC'));
+        datadotin = list(sentinel_utilities.np.genfromtxt(os.path.join(outdir, 'data.in'), dtype='str'));
         if len(datadotin) > 0:
             assert(len(slc_list) < len(datadotin)), AssertionError("You have "+str(len(slc_list)) +
                                                                    " SLCs already; you want to keep them.");
@@ -254,12 +257,12 @@ def preprocess(config_params):
     # MODE 1: Before you know your super-master
     if config_params.master == "":
         # Automatically decide on super-master and pop it to the front of data.in.
-        baseline_table_file = 'F'+config_params.swath+'/raw/baseline_table.dat';
+        baseline_table_file = os.path.join('F'+config_params.swath, 'raw', 'baseline_table.dat');
         masterid = sentinel_utilities.choose_master_image(baseline_table_file);
         sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, masterid,
                                          target_dir="F"+config_params.swath);
         sentinel_utilities.write_data_in(config_params.polarization, config_params.swath, masterid,
-                                         target_dir="F"+config_params.swath+'/raw');
+                                         target_dir=os.path.join("F"+config_params.swath, 'raw'));
         print("master image is... "+masterid);
         sentinel_utilities.write_super_master_batch_config(masterid);  # automatically put super-master in batch.config
         print("Please check to confirm that you are happy with this. ")
@@ -273,7 +276,8 @@ def preprocess(config_params):
 
 
 def write_xml_prep(polarization, swath):
-    list_xml, list_datestrs = sentinel_utilities.get_all_xml_tiff_names('F'+swath+'/raw_orig', polarization, swath);
+    list_xml, list_datestrs = sentinel_utilities.get_all_xml_tiff_names(os.path.join('F'+swath, 'raw_orig'),
+                                                                        polarization, swath);
     print("Writing xmls in README_prep.txt");
     outfile = open("README_prep.txt", 'w');
     outfile.write("#!/bin/bash\n");
@@ -337,7 +341,7 @@ def topo2ra(config_params):
 def get_total_intf_all(config_params):
     """Make a selection of interferograms to form.
     Hard coding which swath for consistency between swaths."""
-    baseline_tuple_list = sentinel_utilities.read_baseline_table('F1/raw/baseline_table.dat');
+    baseline_tuple_list = sentinel_utilities.read_baseline_table(os.path.join('F1', 'raw', 'baseline_table.dat'));
 
     # Retrieving interferogram pairs based on settings in config_files. 
     intf_pairs = [];
@@ -369,7 +373,7 @@ def get_total_intf_all(config_params):
 
     # Make the stick plot of baselines 
     sentinel_utilities.make_network_plot(intf_all, baseline_tuple_list,
-                                         "F"+config_params.swath+"/Network_Geometry.eps");
+                                         os.path.join("F"+config_params.swath, "Network_Geometry.eps"));
     return intf_all;
 
 
@@ -400,7 +404,7 @@ def make_interferograms(config_params):
         date1 = item[3:11];
         date2 = item[22:30];
         expected_folder = sentinel_utilities.ymd2yj(date1) + "_" + sentinel_utilities.ymd2yj(date2);
-        if os.path.isfile(outdir + expected_folder + "/phasefilt.grd"):
+        if os.path.isfile(os.path.join(outdir + expected_folder, "phasefilt.grd")):
             continue;
         else:
             # in case we're using one swath to generate intf_all for other swaths
@@ -444,15 +448,15 @@ def unwrapping(config_params):
     # Marie-Pierre's atmosphere correction, done before unwrapping
     if config_params.atm_topo_detrend == 1:
         if len(config_params.desired_swaths) == 1:  # for single swath
-            merge_directory = "F" + str(config_params.desired_swaths[0]) + "/intf_all/";
-            flattentopo_directory = "F" + str(config_params.desired_swaths[0]) + "/flattentopo/";
+            merge_directory = os.path.join("F" + str(config_params.desired_swaths[0]), "intf_all", "");
+            flattentopo_directory = os.path.join("F" + str(config_params.desired_swaths[0]), "flattentopo", "");
         else:   # Make merged wrapped files.  Doesn't need any metadata files except dem.grd.
-            merge_directory = 'merged/'
-            flattentopo_directory = 'merged_flattentopo/'
+            merge_directory = os.path.join('merged', '')
+            flattentopo_directory = os.path.join('merged_flattentopo', '')
             sentinel_utilities.merge_wrapped(config_params.desired_swaths, config_params.master, merge_directory);
 
-        flattentopo_example_rsc = flattentopo_directory + "/example_sd.int.rsc";    # set this up manually
-        flattentopo_topora_grd = flattentopo_directory + "/topo_ra.grd";           # set this up manually
+        flattentopo_example_rsc = os.path.join(flattentopo_directory, "example_sd.int.rsc");    # set this up manually
+        flattentopo_topora_grd = os.path.join(flattentopo_directory, "topo_ra.grd");           # set this up manually
         flattentopo_driver.main_function(merge_directory, flattentopo_directory,
                                          flattentopo_topora_grd, flattentopo_example_rsc);
         # Then unwrap.  Some quick and dirty code here to get things running
@@ -486,7 +490,7 @@ def metrics(config_params):
         return;
 
     print("Performing metrics on the stack.")
-    igram_dir = 'merged_flattentopo/';
-    raw_dir = 'F1/'
+    igram_dir = os.path.join('merged_flattentopo', '');
+    raw_dir = os.path.join('F1', '')
     analyze_coherence.analyze_coherence_function(igram_dir, raw_dir);
     return;
