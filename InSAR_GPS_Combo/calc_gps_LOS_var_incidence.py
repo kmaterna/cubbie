@@ -7,7 +7,7 @@ The reference pixel must be a GPS station in the Velfield
 import numpy as np
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.geodesy import insar_vector_functions
-from GNSS_TimeSeries_Viewers.gps_tools import vel_functions, file_io, gps_objects
+from gnss_timeseries_viewers.gps_tools import vel_functions, file_io, gps_objects
 from . import los_projection_tools
 
 
