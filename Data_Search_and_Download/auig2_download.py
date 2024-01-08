@@ -39,22 +39,22 @@ import argparse
 
 
 BASE_URL = 'https://auig2.jaxa.jp/openam/UI/Login'
-USERNAME='P1298002' # YOUR USERNAME CAN ALOS BE HARDWIRED HERE
-PASSWORD='Cba@8580247802645520813' # YOUR PASSWORD CAN ALOS BE HARDWIRED HERE
+USERNAME = 'P1298002'  # YOUR USERNAME CAN ALOS BE HARDWIRED HERE
+PASSWORD = 'Cba@8580247802645520813'  # YOUR PASSWORD CAN ALOS BE HARDWIRED HERE
 
-def loginToAUIG2(opener,inps):
+def loginToAUIG2(opener, inps):
     """
     Handle login. This should populate our cookie jar.
     """
     login_data = urllib.urlencode({
-        'IDToken1' : inps.username,
-        'IDToken2' : inps.password,
+        'IDToken1': inps.username,
+        'IDToken2': inps.password,
     })
     response = opener.open(BASE_URL, login_data)
     return ''.join(response.readlines())
 
 def parse():
-    '''Command line parser.'''
+    """Command line parser."""
     desc = """Command line client for downloading from AUIG2
 For questions or comments, contact Scott Baker: baker@unavco.org
     """
@@ -65,15 +65,16 @@ auig2_download.py -o ORDER_ID -u USERNAME -p PASSWORD
 If you have your credentials hardwired in this file, just do:
 auig2_download.py -o ORDER_ID
 """
-    parser = argparse.ArgumentParser(description=desc,epilog=epi,usage=usage)
-    parser.add_argument('-o','--orderid', action="store", dest="order_id", metavar='<ORDERID>', required=True, help='This is your AUIG2 Order ID')
-    parser.add_argument('-u','--username', action="store", dest="username", metavar='<USERNAME>', default=USERNAME, help='AUIG2 Login')
-    parser.add_argument('-p','--password', action="store", dest="password", metavar='<PASSWORD>', default=PASSWORD, help='AUIG2 Login')
+    parser = argparse.ArgumentParser(description=desc, epilog=epi, usage=usage)
+    parser.add_argument('-o', '--orderid', action="store", dest="order_id", metavar='<ORDERID>', required=True, help='This is your AUIG2 Order ID')
+    parser.add_argument('-u', '--username', action="store", dest="username", metavar='<USERNAME>', default=USERNAME, help='AUIG2 Login')
+    parser.add_argument('-p', '--password', action="store", dest="password", metavar='<PASSWORD>', default=PASSWORD, help='AUIG2 Login')
     inps = parser.parse_args()
     return inps
 
+
 if __name__ == '__main__':
-    if len(sys.argv)==1:
+    if len(sys.argv) == 1:
         sys.argv.append('-h')
     ### READ IN PARAMETERS FROM THE COMMAND LINE ###
     inps = parse()
@@ -91,22 +92,23 @@ if __name__ == '__main__':
     )
     opener.addheaders = [ ('User-agent', ('Mozilla/4.0 (compatible; MSIE 6.0; ' 'Windows NT 5.2; .NET CLR 1.1.4322)')) ]
     # need this twice - once to set cookies, once to log in...
-    loginToAUIG2(opener,inps)
-    loginToAUIG2(opener,inps)
+    loginToAUIG2(opener, inps)
+    loginToAUIG2(opener, inps)
 
     ### DOWNLOAD THE FILE WITH THE GIVEN ORDER ID ###
     url = "http://auig2.jaxa.jp/pp/service/download?downloadurl=/start/download/file&itemname=%s&itemtype=1" % inps.order_id
     f = opener.open(url)
     filename = f.headers['Content-Disposition'].split("=")[-1].strip()
-    print "ALOS-2 AUIG2 Download:",filename
+    print("ALOS-2 AUIG2 Download:", filename)
     start = time.time()
     CHUNK = 256 * 1024
     with open(filename, 'wb') as fp:
         while True:
             chunk = f.read(CHUNK)
-            if not chunk: break
+            if not chunk:
+                break
             fp.write(chunk)
     f.close()
-    total_time = time.time()-start
+    total_time = time.time() - start
     mb_sec = (os.path.getsize(filename)/(1024*1024.0))/total_time
-    print "%s download time: %.2f secs (%.2f MB/sec)" %(filename,total_time,mb_sec)
+    print("%s download time: %.2f secs (%.2f MB/sec)" % (filename, total_time, mb_sec))

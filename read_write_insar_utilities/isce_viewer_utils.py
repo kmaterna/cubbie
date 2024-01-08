@@ -1,9 +1,9 @@
 from shutil import copyfile
-from osgeo import gdal  ## GDAL support for reading virtual files
-import os  ## To create and remove directories
-import matplotlib.pyplot as plt  ## For plotting
-import numpy as np  ## Matrix calculations
-import glob  ## Retrieving list of files
+from osgeo import gdal  # GDAL support for reading virtual files
+import os  # To create and remove directories
+import matplotlib.pyplot as plt  # For plotting
+import numpy as np  # Matrix calculations
+import glob  # Retrieving list of files
 
 
 # Recovered from https://github.com/isce-framework/isce2-docs/blob/master/Notebooks/UNAVCO_2020/TOPS/topsApp.ipynb

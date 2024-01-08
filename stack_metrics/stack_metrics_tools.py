@@ -285,7 +285,7 @@ def all_gridded_histograms(data_all, date_pairs):
     return;
 
 
-def some_kind_of_nsbas_outputs(xdata, ydata, number_of_datas, zdim, vel, out_dir):
+def some_kind_of_nsbas_outputs(xdata, ydata, _number_of_datas, _zdim, vel, out_dir):
     # Probably hasn't been used in a long time?
     # Visualizing the velocity field in a few different ways.
     zdata2 = np.reshape(vel, [len(xdata) * len(ydata), 1])
