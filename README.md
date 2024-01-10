@@ -1,6 +1,6 @@
 # S1_batches
 
-This set of codes will help with Sentinel-1 batch processing. It will search the Sentinel-1 archive, download data, organize files, produce interferograms with GMTSAR, and perform other options. 
+This set of codes I use for help with Sentinel-1 data analysis. Its functionality is basically down to searching the Sentinel-1 archive and downloading data.  I used to use it for driving stack processing with GMTSAR and performing SBAS. 
 
 ## Description
 
@@ -9,26 +9,25 @@ Disclaimer: Just use MintPy instead!
 I still use this library for basic things like searching the Sentinel-1 archive, reading GMTSAR and ISCE files into Python, and maybe doing a simple average, but for my future time series needs, I intend to switch to MintPy.
 
 ### Capabilities: 
-* The scripts in Data_Search_and_Download will search through SciHub for Sentinel-1 images and make maps of image footprints and timing plots. You can optionally download all your search results too. 
-* The scripts in the main directory perform batch processing for Sentinel-1. The driver is sentinel_driver.py and the controls are manipulated via a batch.config file
-* The scripts in stacking_tools have an implementation of SBAS for stacked data
-* Example config files are kept in the configs_and_setup directory
+* The scripts in Data_Search_and_Download will search through SentinelHub for Sentinel-1 images and make maps of image footprints and timing plots. 
+* You will eventually be able to download all your search results too.
+
+### Notes:
+* [SciHub is deprecated as of October 2023](https://dataspace.copernicus.eu/news/2023-9-28-accessing-sentinel-mission-data-new-copernicus-data-space-ecosystem-apis).  January 2024: I switched my API to the Sentinel-Hub one. 
+* You will need a Copernicus login, [a Copernicus access token](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Overview/Authentication.html), and an ASF EarthData login to fully use these search and download features. 
 
 ### Usage of Data Search Features: 
-An example usage of the scripts to search the Sentinel-1 database is given here. The directory containing these scripts must be on your path. Type the name of each program by itself (with no arguments) to see a help menu.  If you want to download the .SAFE folders, you should have an ASF login. 
+An example usage of the scripts to search the Sentinel-1 database is given here. The directory containing these scripts (```Data_Search_and_Download/```) must be on your path. Type the name of any program by itself (with no arguments) to see a help menu.  If you want to download the .SAFE folders, you should have an ASF login. 
 ```bash
-scihub_search_s1_data.sh
-scihub_search_s1_data.sh -s 2015-01-01 -e 2020-07-01 -c -124/40.3 -d Descending -o 13
-scihub_display_footprints.sh -i search_results.txt 
-scihub_download_s1_sar.sh -i search_results.txt -u earthdatausername -p earthdatapassword
+s1_search_Odata.py
+s1_search_Odata.py -s 2014-01-01 -e 2024-02-01 -c="-122.6/38.1" 
 ```
 
 ## Example: 
 
 Map of the above search query:
-![Footprint](https://github.com/kmaterna/S1_batches/blob/master/Data_Search_and_Download/MTJ_footprints.png)
+![Footprint](https://github.com/kmaterna/S1_batches/blob/master/examples/footprints.png)
 
 Time-plot of the above search query:
-![Timing](https://github.com/kmaterna/S1_batches/blob/master/Data_Search_and_Download/MTJ_timing.png)
-
+![Timing](https://github.com/kmaterna/S1_batches/blob/master/examples/timing.png)
 
