@@ -143,7 +143,7 @@ def SentinelHub_query(args):
             direction = item['properties']['sat:orbit_state']
             track = item['properties']['sat:relative_orbit']
             slc_name = full_name.split('/')[-1]
-            # slc_name = slc_name.replace('_GRDH_', '_SLC__')
+            slc_name = slc_name.replace('_COG.SAFE', '')
             f.write(slc_name+' '+acq_date+' '+acq_time+' '+direction+' '+str(track) + '\n')
     print("Writing output file %s " % args['output_file'])
 

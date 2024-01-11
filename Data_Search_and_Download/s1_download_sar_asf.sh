@@ -11,7 +11,6 @@ if [[ "$#" -eq 0 ]]; then
   echo " -i input_file"
   echo " -u username"
   echo " -p password"
-  echo " -z unzip_flag. Will unzip results if set [default 0]"
   echo "Note: To use ASF, you will need a NASA Earthdata login."
   echo "    You can type them directly into the callstring with -u and -p, or "
   echo "    You can put your credentials into a file called ~/.wget_cred with format:"
@@ -39,10 +38,6 @@ while getopts i:u:p: opt; do
       p)  # password
         echo "-p was triggered, parameter: $OPTARG" >&2
         password=$OPTARG
-        ;;
-      z)  # unzip_flag
-        echo "-z was triggered, parameter: $OPTARG" >&2
-        unzip_flag=$OPTARG
         ;;
       \?)
         echo "Invalid option: -$OPTARG" >&2
@@ -78,27 +73,21 @@ fi
 
 # Where will the data live? 
 mkdir -p DATA
+cd DATA/
+
 id_results=ids.txt
-awk '(NR>1)' $input_file | awk '{print $1}' > $id_results  # extract the .SAFE names from the query results
+awk '(NR>1)' ../$input_file | awk '{print $1}' > $id_results  # extract the .SAFE names from the query results
 
 counter=0
 while read p; do
   if [ $counter = 0 ]; then
   	title=$p
 
-    if [ ! -d DATA/$title ]; then
+    if [ ! -d $title ]; then
     # In this version, I actually download from the ASF. The download goes about 5x faster than Copernicus for users in North America. 
     # You need your NASA/Earthdata/ASF credentials, either from the runstring or from your ~/.wget_cred file
-      echo "Downloading DATA/"$title
-      wget --http-user=$username --http-password=$password -c -O DATA/"$title".zip "https://datapool.asf.alaska.edu/SLC/SA/$title.zip"
+       aria2c --http-auth-challenge=true --http-user=$username --http-passwd=$password "https://api.daac.asf.alaska.edu/services/search/param?granule_list=$title&output=metalink"
 
-      if [ $unzip_flag != 0 ]; then
-         cd DATA
-         unzip $title.zip
-         rm $title.SAFE/measurement/*-slc-vh-*.tiff
-         rm $title.zip
-         cd ../
-      fi
     else
       echo "Already in the data directory: Skipping "$title
     fi
