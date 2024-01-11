@@ -142,7 +142,10 @@ def SentinelHub_query(args):
             acq_time = item['properties']['datetime'].split('T')[-1]
             direction = item['properties']['sat:orbit_state']
             track = item['properties']['sat:relative_orbit']
-            f.write(full_name.split('/')[-1]+' '+acq_date+' '+acq_time+' '+direction+' '+str(track) + '\n')
+            slc_name = full_name.split('/')[-1]
+            # slc_name = slc_name.replace('_GRDH_', '_SLC__')
+            f.write(slc_name+' '+acq_date+' '+acq_time+' '+direction+' '+str(track) + '\n')
+    print("Writing output file %s " % args['output_file'])
 
     # Pretty plots
     pygmt_plots(results, args)
