@@ -26,9 +26,10 @@ help_message = "\n"\
   "    Put your credentials into a file called ~/.wget_cred with format:\n"\
   "    Odata_client_id: your_client_id\n"\
   "    Odata_client_secret: your_client_secret\n\n\n"\
-  "Remember to surround numerical values in quotations if they begin with negative numbers (such as longitudes).\n\n\n"\
-  "Usage: ./s1_search_Odata.py -options\n"\
-  "Example: ./s1_search_Odata.py -s 2015-08-01 -e NOW -r \"-123.0/-123.3/40.0/40.2\" -d Descending\n\n"\
+  "Remember to surround numerical values in quotations and possibly with a space if they begin with negative numbers (such as longitudes).\n\n\n"\
+  "Usage: s1_search_Odata.py -options\n"\
+  "Example: s1_search_Odata.py -s 2015-08-01 -e NOW -r \"-123.0/-123.3/40.0/40.2\" -d Descending\n\n" \
+  "Example: s1_search_Odata.py -s 2015-08-01 -e 2017-01-01 -c \" -115.0/32\" -d Descending\n\n" \
   "\n"
 
 
@@ -38,7 +39,7 @@ def cmd_parse():
     p.add_argument('-e', '--end_time', type=str, help='''Ending date [yyyy-mm-dd]''', default='NOW')
     p.add_argument('-b', '--bbox', type=str, help='''Bounding box [lonW/lonE/latS/latN]''')
     p.add_argument('-r', '--region', type=str, help='''Four-sided polygon [lon1/lat1/lon2/lat2/lon3/lat3/lon4/lat4]''')
-    p.add_argument('-c', '--coordinate', type=str, help='''A single point [lon,lat]''')
+    p.add_argument('-c', '--coordinate', type=str, help='''A single point [lon/lat]''')
     p.add_argument('-o', '--orbit_number', type=int, help='''Track or relative orbit [0-175]''')
     p.add_argument('-d', '--orbit_direction', type=str, help='''[Ascending/Descending]''')
     p.add_argument('-m', '--sar_mode', type=str, help='''[IW/other/ALL]''', default='IW')
