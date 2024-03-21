@@ -211,7 +211,7 @@ def pygmt_plots(results, args):
             for i in range(len_coords):
                 f.write("%f %f\n" % (im['geometry']['coordinates'][0][i][0], im['geometry']['coordinates'][0][i][1]))
     fig.plot(data='tmp.txt', pen="0.4p,red")
-    os.remove('tmp.txt')
+    # os.remove('tmp.txt')
 
     # Write the search coordinate or search region
     if args['coordinate'] is not None:

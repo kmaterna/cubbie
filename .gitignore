@@ -10,3 +10,4 @@ flatten_topo
 *.png
 gmt.history
 *raw_search_results.txt
+*.DS_Store
