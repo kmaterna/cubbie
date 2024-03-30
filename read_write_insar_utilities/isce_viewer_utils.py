@@ -1,4 +1,3 @@
-from shutil import copyfile
 from osgeo import gdal  # GDAL support for reading virtual files
 import os  # To create and remove directories
 import matplotlib.pyplot as plt  # For plotting
@@ -37,7 +36,7 @@ def plotdata(GDALfilename, band=1, title=None, colormap='gray', aspect=1, datami
 
     fig = plt.figure(figsize=(18, 16))
     ax = fig.add_subplot(111)
-    cax = ax.imshow(data, vmin=datamin, vmax=datamax, cmap=colormap, extent=[xmin, xmax, ymin, ymax])
+    cax = ax.imshow(data, vmin=datamin, vmax=datamax, cmap=colormap, extent=(xmin, xmax, ymin, ymax))
     ax.set_title(title)
     if draw_colorbar is not None:
         cbar = fig.colorbar(cax, orientation=colorbar_orientation)
@@ -77,14 +76,14 @@ def plotcomplexdata(GDALfilename, title=None, aspect=1, datamin=None, datamax=No
 
     fig = plt.figure(figsize=(18, 16))
     ax = fig.add_subplot(1, 2, 1)
-    cax1 = ax.imshow(np.abs(slc), vmin=datamin, vmax=datamax, cmap='gray', extent=[xmin, xmax, ymin, ymax])
+    cax1 = ax.imshow(np.abs(slc), vmin=datamin, vmax=datamax, cmap='gray', extent=(xmin, xmax, ymin, ymax))
     ax.set_title(title + " (amplitude)")
     if draw_colorbar is not None:
         cbar1 = fig.colorbar(cax1, orientation=colorbar_orientation)
     ax.set_aspect(aspect)
 
     ax = fig.add_subplot(1, 2, 2)
-    cax2 = ax.imshow(np.angle(slc), cmap='rainbow', extent=[xmin, xmax, ymin, ymax])
+    cax2 = ax.imshow(np.angle(slc), cmap='rainbow', extent=(xmin, xmax, ymin, ymax))
     ax.set_title(title + " (phase [rad])")
     if draw_colorbar is not None:
         cbar2 = fig.colorbar(cax2, orientation=colorbar_orientation)

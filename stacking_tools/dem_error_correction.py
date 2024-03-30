@@ -20,16 +20,16 @@ def driver(ts_vector, datestrs, baseline_tuple):
     """
 
     if np.sum(np.isnan(ts_vector)) == len(ts_vector):
-        return ts_vector, np.nan;
+        return ts_vector, np.nan
 
-    ts_vector = np.multiply(ts_vector, 0.001);   # convert to meters
+    ts_vector = np.multiply(ts_vector, 0.001)   # convert to meters
 
     # if the igrams use the date, then calculate
-    baselines = [x[0] for x in baseline_tuple if x[2] in datestrs];
-    dtarray = [x[1] for x in baseline_tuple if x[2] in datestrs];
+    baselines = [x[0] for x in baseline_tuple if x[2] in datestrs]
+    dtarray = [x[1] for x in baseline_tuple if x[2] in datestrs]
 
     if len(datestrs) != len(baselines):
-        print("Error! Wrong number of baselines (%d) and dates in your intfs (%d)" % (len(baselines), len(datestrs)));
+        print("Error! Wrong number of baselines (%d) and dates in your intfs (%d)" % (len(baselines), len(datestrs)))
 
     # design matrix: phase(t) = v(t-t0) + other terms + .... (4pi/lamda B(ti)/rsin(theta) z_error)
     # Baseline history: Bdot(i) = B(t_i)-B(t_i-t_i-1) / (t_i-t_i-1), i=[1-N]
@@ -38,18 +38,18 @@ def driver(ts_vector, datestrs, baseline_tuple):
     # The units of everything seem to be in movement per day, not movement per year (this matters)
     # I call that constant K_z_error. If we want DEM error, we multiply by an estimate of rsintheta
     G = np.ones((len(datestrs)-1, 2))
-    v = np.zeros((len(datestrs)-1));
-    Bdot = np.zeros((len(datestrs)-1));
+    v = np.zeros((len(datestrs)-1))
+    Bdot = np.zeros((len(datestrs)-1))
     for i in range(0, len(datestrs)-1):
-        v[i] = (ts_vector[i+1] - ts_vector[i]) / (dtarray[i+1]-dtarray[i]).days;
-        Bdot[i] = (baselines[i+1] - baselines[i]) / (dtarray[i+1]-dtarray[i]).days;
-        G[i, 1] = Bdot[i];
+        v[i] = (ts_vector[i+1] - ts_vector[i]) / (dtarray[i+1]-dtarray[i]).days
+        Bdot[i] = (baselines[i+1] - baselines[i]) / (dtarray[i+1]-dtarray[i]).days
+        G[i, 1] = Bdot[i]
 
-    model = np.linalg.lstsq(G, v, rcond=0.1);  # rcond helps the solution converge
-    K_z_error = model[0][1]  # constant time z_error;
+    model = np.linalg.lstsq(G, v, rcond=0.1)  # rcond helps the solution converge
+    K_z_error = model[0][1]  # constant time z_error
 
-    topo_phase = [K_z_error * (x-baselines[0]) for x in baselines];
+    topo_phase = [K_z_error * (x-baselines[0]) for x in baselines]
 
-    corrected_ts_vector = np.subtract(ts_vector, topo_phase);
-    corrected_ts_vector = np.multiply(corrected_ts_vector, 1000);   # convert to mm
-    return corrected_ts_vector, K_z_error;
+    corrected_ts_vector = np.subtract(ts_vector, topo_phase)
+    corrected_ts_vector = np.multiply(corrected_ts_vector, 1000)   # convert to mm
+    return corrected_ts_vector, K_z_error

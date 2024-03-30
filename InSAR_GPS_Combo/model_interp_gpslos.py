@@ -96,7 +96,7 @@ def get_interp_points_within_grid(latlon_bounds, interval, optional_border_paths
             include_path = path.Path(optional_border_paths[k])
             for i in range(np.shape(X)[0]):
                 for j in range(np.shape(X)[1]):
-                    if include_path.contains_point([X[i, j], Y[i, j]]) == 1:  # example: if point is in CA or OR
+                    if include_path.contains_point((X[i, j], Y[i, j])) == 1:  # example: if point is in CA or OR
                         x_for_interp.append(X[i, j])
                         y_for_interp.append(Y[i, j])
     else:

@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import glob as glob
-import sys, os
+import sys
+import os
 import datetime as dt
 from Tectonic_Utils.read_write import netcdf_read_write
 from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3

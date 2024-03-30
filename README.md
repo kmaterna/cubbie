@@ -1,4 +1,4 @@
-# S1_batches
+# s1_batches
 
 This set of codes I use for help with Sentinel-1 data analysis. Its functionality is basically down to searching the Sentinel-1 archive and downloading data.  I used to use it for stack processing with GMTSAR and SBAS. 
 
@@ -26,8 +26,8 @@ s1_search_Odata.py -s 2014-01-01 -e 2024-02-01 -c="-122.6/38.1"
 ## Example: 
 
 Map of the above search query:
-![Footprint](https://github.com/kmaterna/S1_batches/blob/master/examples/footprints.png)
+![Footprint](https://github.com/kmaterna/s1_batches/blob/master/examples/footprints.png)
 
 Time-plot of the above search query:
-![Timing](https://github.com/kmaterna/S1_batches/blob/master/examples/timing.png)
+![Timing](https://github.com/kmaterna/s1_batches/blob/master/examples/timing.png)
 

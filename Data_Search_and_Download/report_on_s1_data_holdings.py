@@ -11,10 +11,12 @@ Output Table:
 # TABLE...
 # TABLE...
 """
-import sys, glob
+import sys
+import glob
 import numpy as np
 import datetime as dt
 import xml.etree.ElementTree as ET
+
 
 def parse_args(argv):
     if len(argv) == 1 or argv[1] == "--help" or argv[1] == '--h':
@@ -36,6 +38,7 @@ def parse_args(argv):
             list_of_dates = ()
     return datadir, polygon_file, list_of_dates
 
+
 def make_summary(datadir, polygon_file, list_of_dates=()):
     list_of_desired_dates = read_list_of_desired_dates(list_of_dates)
     polygon = read_polygon(polygon_file)
@@ -45,9 +48,11 @@ def make_summary(datadir, polygon_file, list_of_dates=()):
     write_table(list_of_desired_dates, information_tuples, "data_holdings_table.txt")
     return
 
+
 def glob_safe_files(datadir):
     filelist = glob.glob(datadir+"/*.SAFE")
     return filelist
+
 
 def safe_list_to_unique_dates(safe_files):
     # Get unique dates from list of files on the file system
@@ -58,6 +63,7 @@ def safe_list_to_unique_dates(safe_files):
         dates.append(dt.datetime.strptime(full_date[0:8], "%Y%m%d"))
     unique_dates = list(sorted(set(dates)))
     return unique_dates
+
 
 def read_list_of_desired_dates(list_of_dates):
     # Will read list of dates desired by user, in text file with standard format.
@@ -71,6 +77,7 @@ def read_list_of_desired_dates(list_of_dates):
     ifile.close()
     return date_list
 
+
 def read_polygon(polygon_file):
     # Read polygon file
     polygon = []
@@ -80,6 +87,7 @@ def read_polygon(polygon_file):
     ifile.close()
     return polygon
 
+
 def get_files_by_date(safe_files, date):
     # filter by date
     selected_files = []
@@ -87,6 +95,7 @@ def get_files_by_date(safe_files, date):
         if dt.datetime.strftime(date, "%Y%m%d") in file:
             selected_files.append(file)
     return selected_files
+
 
 def determine_continuous_safes(safe_files):
     # determine if a few safe directories involve continuous observation (no missing bursts)
@@ -109,6 +118,7 @@ def determine_continuous_safes(safe_files):
             continuous = 'gaps'
 
     return len(total_burst_times), continuous
+
 
 def determine_total_coverage(safe_files, polygon):
     # Given a list of several SAFE files and a polygon, is the SAFE footprint larger?
@@ -138,6 +148,7 @@ def determine_total_coverage(safe_files, polygon):
 
     return total_coverage
 
+
 def read_kml(infile):
     lats, lons = [], []
     ifile = open(infile, 'r')
@@ -151,6 +162,7 @@ def read_kml(infile):
                 lats.append(float(item.split(',')[1]))
     return lons, lats
 
+
 def get_information_tuples(unique_dates, safe_files, polygon):
     # Construct a tuple: date, num_files, num_bursts, cover_whole, continuous
     list_of_all_tuples = []
@@ -162,6 +174,7 @@ def get_information_tuples(unique_dates, safe_files, polygon):
         information_tuple = (date, len(selected_files), num_bursts, cover_whole, continuous)
         list_of_all_tuples.append(information_tuple)
     return list_of_all_tuples
+
 
 def write_table(list_of_desired_dates, information_tuples, outfile):
     ofile = open(outfile, 'w')

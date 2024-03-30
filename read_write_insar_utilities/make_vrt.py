@@ -8,5 +8,5 @@ from applications.gdal2isce_xml import gdal2isce_xml
 
 
 if __name__ == "__main__":
-    filename = sys.argv[1];
-    xml_file = gdal2isce_xml(filename);
+    filename = sys.argv[1]
+    xml_file = gdal2isce_xml(filename)

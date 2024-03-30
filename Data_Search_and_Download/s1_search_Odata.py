@@ -12,7 +12,10 @@ https://dataspace.copernicus.eu/news/2023-9-28-accessing-sentinel-mission-data-n
 import datetime as dt
 import pygmt
 import matplotlib.pyplot as plt
-import json, argparse, sys, os
+import json
+import argparse
+import sys
+import os
 from argparse import RawTextHelpFormatter
 from sentinelhub import SHConfig, DataCollection, SentinelHubCatalog, BBox, CRS
 
@@ -26,7 +29,8 @@ help_message = "\n"\
   "    Put your credentials into a file called ~/.wget_cred with format:\n"\
   "    Odata_client_id: your_client_id\n"\
   "    Odata_client_secret: your_client_secret\n\n\n"\
-  "Remember to surround numerical values in quotations and possibly with a space if they begin with negative numbers (such as longitudes).\n\n\n"\
+  "Remember to surround numerical values in quotations and possibly with a space "\
+               "if they begin with negative numbers (such as longitudes).\n\n\n"\
   "Usage: s1_search_Odata.py -options\n"\
   "Example: s1_search_Odata.py -s 2015-08-01 -e NOW -r \"-123.0/-123.3/40.0/40.2\" -d Descending\n\n" \
   "Example: s1_search_Odata.py -s 2015-08-01 -e 2017-01-01 -c \" -115.0/32\" -d Descending\n\n" \
@@ -158,6 +162,7 @@ def filter_by_relative_orbit(search_results, track_number):
     track_results = [item for item in search_results if int(item['properties']['sat:relative_orbit']) == track_number]
     return track_results
 
+
 def filter_by_sar_mode(search_results, mode='IW'):
     track_results = [item for item in search_results if item['properties']['sar:instrument_mode'] == mode]
     return track_results
@@ -171,7 +176,7 @@ def get_auth_token_and_pw():
                 token = line.split()[1]
             if 'Odata_client_secret' in line:
                 pw = line.split()[1]
-    return token, pw;
+    return token, pw
 
 
 def get_general_bbox(results):
@@ -180,28 +185,30 @@ def get_general_bbox(results):
     for item in results:
         new_bbox = item['bbox']
         if new_bbox[0] < overall_bbox[0]:
-            overall_bbox[0] = new_bbox[0];
+            overall_bbox[0] = new_bbox[0]
         if new_bbox[1] < overall_bbox[1]:
-            overall_bbox[1] = new_bbox[1];
+            overall_bbox[1] = new_bbox[1]
         if new_bbox[2] > overall_bbox[2]:
-            overall_bbox[2] = new_bbox[2];
+            overall_bbox[2] = new_bbox[2]
         if new_bbox[3] > overall_bbox[3]:
-            overall_bbox[3] = new_bbox[3];
+            overall_bbox[3] = new_bbox[3]
     return overall_bbox[0], overall_bbox[2], overall_bbox[1], overall_bbox[3]
+
 
 def get_bbox_drawing_points(bbox):
     lons = [bbox[0], bbox[0], bbox[1], bbox[1], bbox[0]]
     lats = [bbox[2], bbox[3], bbox[3], bbox[2], bbox[2]]
     return lons, lats
 
+
 def pygmt_plots(results, args):
     region = get_general_bbox(results)
     proj = "M6i"
     fig = pygmt.Figure()
-    title = "+t\"Search results: "+str(len(results))+" acquisitions\"";  # must put escaped quotations around title.
-    fig.basemap(region=region, projection=proj, frame=title);
-    fig.coast(shorelines="1.0p,black", region=region, borders="1", projection=proj, frame="1.0");  # the boundary.
-    fig.coast(region=region, projection=proj, borders='2', shorelines='0.5p,black', water='white');
+    title = "+t\"Search results: "+str(len(results))+" acquisitions\""  # must put escaped quotations around title.
+    fig.basemap(region=region, projection=proj, frame=title)
+    fig.coast(shorelines="1.0p,black", region=region, borders="1", projection=proj, frame="1.0")  # the boundary.
+    fig.coast(region=region, projection=proj, borders='2', shorelines='0.5p,black', water='white')
 
     # Write the footprint polygons
     with open("tmp.txt", 'w') as f:
@@ -220,9 +227,10 @@ def pygmt_plots(results, args):
         bbox_lons, bbox_lats = get_bbox_drawing_points(args['bbox'])
         fig.plot(x=bbox_lons, y=bbox_lats, pen="0.4p,black,dashed")
 
-    print("Mapping results in %s " % "footprints.png");
-    fig.savefig("footprints.png");
+    print("Mapping results in %s " % "footprints.png")
+    fig.savefig("footprints.png")
     return
+
 
 def timing_plots(results):
     borders = [dt.datetime.strptime("2014-07-01", "%Y-%m-%d"),
@@ -292,9 +300,9 @@ def timing_plots(results):
     axarr[3].legend(['Ascending', 'Descending'], fontsize=15)
     print("Plotting acquisitions in timing.png")
     fig.savefig("timing.png")
-    return;
+    return
 
 
 if __name__ == "__main__":
-    args = cmd_parse()
-    SentinelHub_query(args)
+    my_args = cmd_parse()
+    SentinelHub_query(my_args)

@@ -17,6 +17,7 @@ from ...math_tools import mask_and_interpolate, grid_tools
 help_message = "Perform detrending and topo-correlated removal on interferogram files. \nUsage: " \
                "detrend_atm_topo_tool.py --data_file unw_phase.grd --outname detrended_phase.grd"
 
+
 def arg_parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('-i', '--data_file', type=str,
@@ -79,7 +80,7 @@ def correct_for_topo_trend(phasedata, demdata, exp_dict):
     corrected_array_1d = full_phase_array_1d - coef[0] * full_dem_array_1d  # Remove slope
     corrected_array_2d = np.reshape(corrected_array_1d, np.shape(phasedata))  # Reshape back into right shape
     corrected_decarray_1d = corrected_array_1d[np.where(~np.isnan(full_phase_array_1d))]
-    print("Best-fitting Slope: %f " % coef[0])
+    print("Best-fitting Slope: %f " % float(coef[0]))
     if exp_dict["produce_plots"]:
         plots.before_after_images(phasedata, corrected_array_2d,
                                   outfilename=exp_dict['outname'].split('.grd')[0] + '_before_after_topo.png')

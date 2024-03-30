@@ -82,7 +82,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
     # In general we can figure this out from the flight_angle.
 
     print("\nHello! Your reference pixel is (row,col) = (%d, %d)" % (rowref, colref))
-    print("Its velocity is %.2f mm/yr\n" % zdata[rowref][colref])
+    print("Its velocity is %.2f mm/yr\n" % float(zdata[rowref][colref]))
     print("Its azimuth is %.2f " % ydata[rowref])
     print("Its range is %.2f \n\n" % xdata[colref])
 

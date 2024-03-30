@@ -75,9 +75,10 @@ def one_to_one_plot(insar_array, gps_array, lonarray, latarray, rms_misfit, plot
     ofile = open(txtname, 'w')
     ofile.write("# lon lat insar gnss\n")
     for i in range(len(insar_array)):
-        ofile.write("%f %f %f %f\n" % (lonarray[i], latarray[i], insar_array[i], gps_array[i]) )
+        ofile.write("%f %f %f %f\n" % (lonarray[i], latarray[i], insar_array[i], gps_array[i]))
     ofile.close()
     return
+
 
 def write_output(logname, gps_array, rms_misfit):
     ofile = open(logname, 'w')

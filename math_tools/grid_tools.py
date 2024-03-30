@@ -4,6 +4,7 @@ Grid tools in Python
 
 import numpy as np
 
+
 def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
     """
     Clip an array into a bounding box that's smaller than the original grid. Like grdcut, but python API.

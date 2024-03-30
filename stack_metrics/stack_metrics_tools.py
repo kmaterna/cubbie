@@ -15,42 +15,42 @@ from Tectonic_Utils.read_write import netcdf_read_write
 
 
 def produce_min_max(filename):
-    x, y, z = netcdf_read_write.read_any_grd(filename);
-    print("File:", filename);
-    print("Max: ", np.nanmax(z));
-    print("Min: ", np.nanmin(z));
-    print("Shape: ", np.shape(z));
-    return;
+    x, y, z = netcdf_read_write.read_any_grd(filename)
+    print("File:", filename)
+    print("Max: ", np.nanmax(z))
+    print("Min: ", np.nanmin(z))
+    print("Shape: ", np.shape(z))
+    return
 
 
 def remove_nans_array(myarray):
-    numarray = [];
+    numarray = []
     for i in range(len(myarray)):
         if ~np.isnan(myarray[i]):
-            numarray.append(myarray[i][0]);
-    return numarray;
+            numarray.append(myarray[i][0])
+    return numarray
 
 
 def how_many_nans(filename):
-    [_, _, zdata] = netcdf_read_write.read_any_grd(filename);
-    nan_pixels = np.count_nonzero(np.isnan(zdata));
-    total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1];
+    [_, _, zdata] = netcdf_read_write.read_any_grd(filename)
+    nan_pixels = np.count_nonzero(np.isnan(zdata))
+    total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1]
     print("For file %s: %d pixels of %d are NaNs (%f percent)." % (filename, nan_pixels, total_pixels,
                                                                    100*float(nan_pixels/float(total_pixels))))
-    return [nan_pixels, total_pixels];
+    return [nan_pixels, total_pixels]
 
 
 def number_below_value(filename, value):
-    [xdata, ydata, zdata] = netcdf_read_write.read_any_grd(filename);
-    count = 0;
+    [xdata, ydata, zdata] = netcdf_read_write.read_any_grd(filename)
+    count = 0
     for i in range(len(ydata)):
         for j in range(len(xdata)):
             if zdata[i][j] < value:
-                count = count+1;
-    total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1];
+                count = count+1
+    total_pixels = np.shape(zdata)[0]*np.shape(zdata)[1]
     print("For file %s: %d pixels of %d are below %f (%f percent)." % (filename, count, total_pixels, value,
                                                                        100*float(count/float(total_pixels))))
-    return;
+    return
 
 
 def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
@@ -61,17 +61,17 @@ def make_outlier_mask_for_stack(filelist, maskfile, outlier_cutoff=1e4):
     """
     filename = filelist[1]
     x, y, z = netcdf_read_write.read_any_grd(filename)  # just to get the shape of the outputs
-    crazy_mask = np.ones(np.shape(z));
+    crazy_mask = np.ones(np.shape(z))
     for ifile in filelist:
-        print(ifile);
-        x, y, ztemp = netcdf_read_write.read_any_grd(ifile);
+        print(ifile)
+        x, y, ztemp = netcdf_read_write.read_any_grd(ifile)
         for i in range(len(y)):
             for j in range(len(x)):
                 if abs(ztemp[i][j]) > outlier_cutoff:
-                    crazy_mask[i][j] = np.nan;
+                    crazy_mask[i][j] = np.nan
     # Put all the crazy pixels into a mask (across all images in the stack).
-    netcdf_read_write.produce_output_netcdf(x, y, crazy_mask, "", maskfile);
-    return;
+    netcdf_read_write.produce_output_netcdf(x, y, crazy_mask, "", maskfile)
+    return
 
 
 def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
@@ -81,60 +81,60 @@ def make_residual_plot(file1, file2, plotname, histname, vmin=-20, vmax=5,
     A basic function that takes two co-registered grids and subtracts them, showing residuals in the third panel
     and histogram of residuals in separate plot.
     """
-    data1 = netcdf_read_write.read_any_grd(file1)[2];
-    data2 = netcdf_read_write.read_any_grd(file2)[2];
+    data1 = netcdf_read_write.read_any_grd(file1)[2]
+    data2 = netcdf_read_write.read_any_grd(file2)[2]
     if flip_sign1:
-        data1 = -1 * data1;
+        data1 = -1 * data1
     if flip_sign2:
-        data2 = -1 * data2;
-    residuals = np.subtract(data1, data2);
-    residuals_vector = np.reshape(residuals, (np.shape(residuals)[0] * np.shape(residuals)[1],));
+        data2 = -1 * data2
+    residuals = np.subtract(data1, data2)
+    residuals_vector = np.reshape(residuals, (np.shape(residuals)[0] * np.shape(residuals)[1],))
 
-    fig, axarr = plt.subplots(1, 3, sharey='all', figsize=(20, 8), dpi=300);
-    axarr[0].imshow(data1, vmin=vmin, vmax=vmax, cmap='rainbow');
-    axarr[0].tick_params(labelsize=16);
-    axarr[0].set_title(title1, fontsize=20);
+    fig, axarr = plt.subplots(1, 3, sharey='all', figsize=(20, 8), dpi=300)
+    axarr[0].imshow(data1, vmin=vmin, vmax=vmax, cmap='rainbow')
+    axarr[0].tick_params(labelsize=16)
+    axarr[0].set_title(title1, fontsize=20)
     axarr[0].invert_yaxis()
 
-    axarr[1].imshow(data2, vmin=vmin, vmax=vmax, cmap='rainbow');
-    axarr[1].tick_params(labelsize=16);
-    axarr[1].set_title(title2, fontsize=20);
+    axarr[1].imshow(data2, vmin=vmin, vmax=vmax, cmap='rainbow')
+    axarr[1].tick_params(labelsize=16)
+    axarr[1].set_title(title2, fontsize=20)
     axarr[1].invert_yaxis()
 
-    axarr[2].imshow(residuals, vmin=-10, vmax=10, cmap='rainbow');
-    axarr[2].tick_params(labelsize=16);
-    axarr[2].set_title('Residuals', fontsize=20);
+    axarr[2].imshow(residuals, vmin=-10, vmax=10, cmap='rainbow')
+    axarr[2].tick_params(labelsize=16)
+    axarr[2].set_title('Residuals', fontsize=20)
     axarr[2].invert_yaxis()
 
     # Fancy color bar #1
-    _cbarax = fig.add_axes([0.85, 0.08, 0.1, 0.9], visible=False);
-    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax);
-    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
-    custom_cmap.set_array(np.arange(vmin, vmax, 0.1));
-    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='vertical');
-    cb.set_label(scalelabel + ' (' + units + ')', fontsize=18);
-    cb.ax.tick_params(labelsize=16);
+    _cbarax = fig.add_axes([0.85, 0.08, 0.1, 0.9], visible=False)
+    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow')
+    custom_cmap.set_array(np.arange(vmin, vmax, 0.1))
+    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='vertical')
+    cb.set_label(scalelabel + ' (' + units + ')', fontsize=18)
+    cb.ax.tick_params(labelsize=16)
 
     # Fancy color bar for residuals
-    _cbarax = fig.add_axes([0.68, 0.05, 0.1, 0.9], visible=False);
-    color_boundary_object = matplotlib.colors.Normalize(vmin=-10, vmax=10);
-    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow');
-    custom_cmap.set_array(np.arange(vmin, vmax, 0.1));
-    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='horizontal');
-    cb.set_label('Residual (' + units + ')', fontsize=16);
-    cb.ax.tick_params(labelsize=14);
-    plt.savefig(plotname);
-    plt.close();
+    _cbarax = fig.add_axes([0.68, 0.05, 0.1, 0.9], visible=False)
+    color_boundary_object = matplotlib.colors.Normalize(vmin=-10, vmax=10)
+    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap='rainbow')
+    custom_cmap.set_array(np.arange(vmin, vmax, 0.1))
+    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='horizontal')
+    cb.set_label('Residual (' + units + ')', fontsize=16)
+    cb.ax.tick_params(labelsize=14)
+    plt.savefig(plotname)
+    plt.close()
 
     plt.figure(dpi=300, figsize=(8, 6))
-    plt.hist(residuals_vector, bins=50, color='orange');
-    plt.yscale('log');
+    plt.hist(residuals_vector, bins=50, color='orange')
+    plt.yscale('log')
     plt.ylabel('Number of Pixels', fontsize=20)
     plt.xlabel('Residuals (' + units + ')', fontsize=20)
-    plt.gca().tick_params(axis='both', which='major', labelsize=16);
-    plt.savefig(histname);
-    plt.close();
-    return;
+    plt.gca().tick_params(axis='both', which='major', labelsize=16)
+    plt.savefig(histname)
+    plt.close()
+    return
 
 
 def plot_two_general_grids(file1, file2, plotname,
@@ -147,93 +147,93 @@ def plot_two_general_grids(file1, file2, plotname,
     If readfile=True: then we read files. Otherwise, those two arguments are actually data
     """
     if readfile:
-        data1 = netcdf_read_write.read_any_grd(file1)[2];
-        data2 = netcdf_read_write.read_any_grd(file2)[2];
+        data1 = netcdf_read_write.read_any_grd(file1)[2]
+        data2 = netcdf_read_write.read_any_grd(file2)[2]
     else:
-        data1 = file1;
-        data2 = file2;
+        data1 = file1
+        data2 = file2
     if flip_sign1:
-        data1 = -1 * data1;
+        data1 = -1 * data1
     if flip_sign2:
-        data2 = -1 * data2;
+        data2 = -1 * data2
     if vmin2 is None:
-        vmin2 = vmin1;
+        vmin2 = vmin1
     if vmax2 is None:
-        vmax2 = vmax1;
+        vmax2 = vmax1
 
     # First figure
-    fig, axarr = plt.subplots(1, 2, sharey='none', figsize=(15, 8), dpi=300);
-    axarr[0].imshow(data1, vmin=vmin1, vmax=vmax1, cmap=cmap);
-    axarr[0].tick_params(labelsize=16);
-    axarr[0].set_title(title1, fontsize=20);
+    fig, axarr = plt.subplots(1, 2, sharey='none', figsize=(15, 8), dpi=300)
+    axarr[0].imshow(data1, vmin=vmin1, vmax=vmax1, cmap=cmap)
+    axarr[0].tick_params(labelsize=16)
+    axarr[0].set_title(title1, fontsize=20)
     if invert_yaxis:
         axarr[0].invert_yaxis()
 
     # Second figure
-    axarr[1].imshow(data2, vmin=vmin2, vmax=vmax2, cmap=cmap);
-    axarr[1].tick_params(labelsize=16);
-    axarr[1].set_title(title2, fontsize=20);
+    axarr[1].imshow(data2, vmin=vmin2, vmax=vmax2, cmap=cmap)
+    axarr[1].tick_params(labelsize=16)
+    axarr[1].set_title(title2, fontsize=20)
     if invert_yaxis:
         axarr[1].invert_yaxis()
 
     # Colorbar #1
-    _cbarax = fig.add_axes([0.15, 0.06, 0.1, 0.9], visible=False);
-    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin1, vmax=vmax1);
-    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap);
-    custom_cmap.set_array(np.arange(vmin1, vmax1, 0.1));
-    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='horizontal');
-    cb.set_label(scalelabel1, fontsize=18);
-    cb.ax.tick_params(labelsize=16);
+    _cbarax = fig.add_axes([0.15, 0.06, 0.1, 0.9], visible=False)
+    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin1, vmax=vmax1)
+    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap)
+    custom_cmap.set_array(np.arange(vmin1, vmax1, 0.1))
+    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='horizontal')
+    cb.set_label(scalelabel1, fontsize=18)
+    cb.ax.tick_params(labelsize=16)
 
     # Colorbar #2
-    _cbarax = fig.add_axes([0.58, 0.06, 0.1, 0.9], visible=False);
-    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin2, vmax=vmax2);
-    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap);
-    custom_cmap.set_array(np.arange(vmin2, vmax2, 0.1));
-    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='horizontal');
-    cb.set_label(scalelabel2, fontsize=18);
-    cb.ax.tick_params(labelsize=16);
+    _cbarax = fig.add_axes([0.58, 0.06, 0.1, 0.9], visible=False)
+    color_boundary_object = matplotlib.colors.Normalize(vmin=vmin2, vmax=vmax2)
+    custom_cmap = cm.ScalarMappable(norm=color_boundary_object, cmap=cmap)
+    custom_cmap.set_array(np.arange(vmin2, vmax2, 0.1))
+    cb = plt.colorbar(custom_cmap, aspect=12, fraction=0.2, orientation='horizontal')
+    cb.set_label(scalelabel2, fontsize=18)
+    cb.ax.tick_params(labelsize=16)
 
-    plt.savefig(plotname);
-    plt.close();
-    return;
+    plt.savefig(plotname)
+    plt.close()
+    return
 
 
 def histogram_of_grd_file_values(filename, varname='Deviation', plotname='histogram_values.png'):
     """
     simple plot to make a histogram of a grid file
     """
-    z = netcdf_read_write.read_any_grd(filename)[2];
+    z = netcdf_read_write.read_any_grd(filename)[2]
     z_vector = np.reshape(z, (np.shape(z)[0] * np.shape(z)[1],))
-    plt.figure(dpi=250, figsize=(8, 7));
-    plt.hist(z_vector, bins=50, color='orange');
-    plt.yscale('log');
+    plt.figure(dpi=250, figsize=(8, 7))
+    plt.hist(z_vector, bins=50, color='orange')
+    plt.yscale('log')
     plt.ylabel('Number of Pixels', fontsize=20)
     plt.xlabel(varname, fontsize=20)
-    plt.gca().tick_params(axis='both', which='major', labelsize=16);
-    plt.savefig(plotname);
-    plt.close();
-    return;
+    plt.gca().tick_params(axis='both', which='major', labelsize=16)
+    plt.savefig(plotname)
+    plt.close()
+    return
 
 
 def scatterplot_of_grd_values(data1, data2, plotname='scatter.png', xlabel='', ylabel=''):
     """
     One-to-one scatter plot
     """
-    xy = np.shape(data1);
-    length = xy[0] * xy[1];
-    data1 = data1.reshape((length,));
-    data2 = data2.reshape((length,));
+    xy = np.shape(data1)
+    length = xy[0] * xy[1]
+    data1 = data1.reshape((length,))
+    data2 = data2.reshape((length,))
 
-    plt.figure(figsize=(10, 10), dpi=300);
-    plt.plot(data1, data2, '.', markersize=0.5);
-    plt.xlabel(xlabel);
-    plt.ylabel(ylabel);
+    plt.figure(figsize=(10, 10), dpi=300)
+    plt.plot(data1, data2, '.', markersize=0.5)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.xlim([0, 100])
-    plt.grid(True);
-    plt.savefig(plotname);
-    plt.close();
-    return;
+    plt.grid(True)
+    plt.savefig(plotname)
+    plt.close()
+    return
 
 
 def all_gridded_histograms(data_all, date_pairs):
@@ -242,100 +242,100 @@ def all_gridded_histograms(data_all, date_pairs):
     data_all is a list of 2d array data for each intf
     date_pairs is a list of strings like '2016292_2016316' for each intf
     """
-    num_plots_x = 4;
-    num_plots_y = 3;
+    num_plots_x = 4
+    num_plots_y = 3
 
     for i in range(len(data_all)):
         if np.mod(i, num_plots_y * num_plots_x) == 0:
-            count = i;
-            fignum = i / (num_plots_y * num_plots_x);
-            f, axarr = plt.subplots(num_plots_y, num_plots_x, figsize=(10, 10));
+            count = i
+            fignum = i / (num_plots_y * num_plots_x)
+            f, axarr = plt.subplots(num_plots_y, num_plots_x, figsize=(10, 10))
             for k in range(num_plots_y):
                 for m in range(num_plots_x):
                     if count == len(data_all):
-                        break;
+                        break
 
                     # How many days separate this interferogram?
-                    day1 = date_pairs[count].split('_')[0];
-                    day2 = date_pairs[count].split('_')[1];
-                    dt1 = dt.datetime.strptime(day1, '%Y%j');
-                    dt2 = dt.datetime.strptime(day2, '%Y%j');
-                    deltat = dt2 - dt1;
-                    daysdiff = deltat.days;
+                    day1 = date_pairs[count].split('_')[0]
+                    day2 = date_pairs[count].split('_')[1]
+                    dt1 = dt.datetime.strptime(day1, '%Y%j')
+                    dt2 = dt.datetime.strptime(day2, '%Y%j')
+                    deltat = dt2 - dt1
+                    daysdiff = deltat.days
 
-                    numelements = np.shape(data_all[count]);
-                    mycorrs = np.reshape(data_all[count], (numelements[0] * numelements[1], 1));
-                    nonans = mycorrs[~np.isnan(mycorrs)];
-                    above_threshold = mycorrs[np.where(mycorrs > 0.2)];
-                    above_threshold = int(len(above_threshold) / 1000);
+                    numelements = np.shape(data_all[count])
+                    mycorrs = np.reshape(data_all[count], (numelements[0] * numelements[1], 1))
+                    nonans = mycorrs[~np.isnan(mycorrs)]
+                    above_threshold = mycorrs[np.where(mycorrs > 0.2)]
+                    above_threshold = int(len(above_threshold) / 1000)
 
-                    axarr[k][m].hist(nonans);
+                    axarr[k][m].hist(nonans)
 
-                    axarr[k][m].set_title(str(date_pairs[count]) + '   ' + str(daysdiff) + ' days', fontsize=8);
-                    axarr[k][m].set_yscale('log');
-                    axarr[k][m].set_xlim([0, 1]);
-                    axarr[k][m].set_ylim([1, 1000 * 1000]);
-                    axarr[k][m].plot([0.1, 0.1], [0, 1000 * 1000], '--r');
-                    axarr[k][m].text(0.75, 200 * 1000, str(above_threshold) + 'K', fontsize=8);
+                    axarr[k][m].set_title(str(date_pairs[count]) + '   ' + str(daysdiff) + ' days', fontsize=8)
+                    axarr[k][m].set_yscale('log')
+                    axarr[k][m].set_xlim([0, 1])
+                    axarr[k][m].set_ylim([1, 1000 * 1000])
+                    axarr[k][m].plot([0.1, 0.1], [0, 1000 * 1000], '--r')
+                    axarr[k][m].text(0.75, 200 * 1000, str(above_threshold) + 'K', fontsize=8)
 
-                    count = count + 1;
-            plt.savefig("corr_hist_" + str(fignum) + ".eps");
-            plt.close();
-            print("writing corr_hist_" + str(fignum) + ".eps");
-    return;
+                    count = count + 1
+            plt.savefig("corr_hist_" + str(fignum) + ".eps")
+            plt.close()
+            print("writing corr_hist_" + str(fignum) + ".eps")
+    return
 
 
 def some_kind_of_nsbas_outputs(xdata, ydata, _number_of_datas, _zdim, vel, out_dir):
     # Probably hasn't been used in a long time?
     # Visualizing the velocity field in a few different ways.
     zdata2 = np.reshape(vel, [len(xdata) * len(ydata), 1])
-    zdata2 = remove_nans_array(zdata2);
-    plt.figure();
-    plt.hist(zdata2, bins=80);
-    plt.gca().set_yscale('log');
+    zdata2 = remove_nans_array(zdata2)
+    plt.figure()
+    plt.hist(zdata2, bins=80)
+    plt.gca().set_yscale('log')
     plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)))
-    plt.ylabel('Number of Pixels');
+    plt.ylabel('Number of Pixels')
     plt.xlabel('LOS velocity (mm/yr)')
-    plt.grid('on');
-    plt.savefig(out_dir + '/velocity_hist_log.png');
-    plt.close();
+    plt.grid(True)
+    plt.savefig(out_dir + '/velocity_hist_log.png')
+    plt.close()
 
-    plt.figure();
-    plt.gca().set_yscale('linear');
+    plt.figure()
+    plt.gca().set_yscale('linear')
     plt.title('Pixels by Velocity: mean=%.2fmm/yr, sdev=%.2fmm/yr' % (np.mean(zdata2), np.std(zdata2)))
-    plt.hist(zdata2, bins=80);
-    plt.ylabel('Number of Pixels');
+    plt.hist(zdata2, bins=80)
+    plt.ylabel('Number of Pixels')
     plt.xlabel('LOS velocity (mm/yr)')
-    plt.grid('on');
-    plt.savefig(out_dir + '/velocity_hist_lin.png');
-    plt.close();
+    plt.grid(True)
+    plt.savefig(out_dir + '/velocity_hist_lin.png')
+    plt.close()
 
-    plt.figure(figsize=(8, 10));
-    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-30, vmax=30);
+    plt.figure(figsize=(8, 10))
+    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-30, vmax=30)
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
-    plt.gca().get_xaxis().set_ticks([]);
-    plt.gca().get_yaxis().set_ticks([]);
-    plt.title("Velocity");
-    plt.gca().set_xlabel("Range", fontsize=16);
-    plt.gca().set_ylabel("Azimuth", fontsize=16);
-    cb = plt.colorbar();
-    cb.set_label("mm/yr", size=16);
-    plt.savefig(out_dir + "/vel_cutoff.png");
-    plt.close();
+    plt.gca().get_xaxis().set_ticks([])
+    plt.gca().get_yaxis().set_ticks([])
+    plt.title("Velocity")
+    plt.gca().set_xlabel("Range", fontsize=16)
+    plt.gca().set_ylabel("Azimuth", fontsize=16)
+    cb = plt.colorbar()
+    cb.set_label("mm/yr", size=16)
+    plt.savefig(out_dir + "/vel_cutoff.png")
+    plt.close()
 
-    plt.figure(figsize=(8, 10));
-    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-150, vmax=150);
+    plt.figure(figsize=(8, 10))
+    plt.imshow(vel, aspect=0.5, cmap='jet', vmin=-150, vmax=150)
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
-    plt.gca().get_xaxis().set_ticks([]);
-    plt.gca().get_yaxis().set_ticks([]);
-    plt.title("Velocity");
-    plt.gca().set_xlabel("Range", fontsize=16);
-    plt.gca().set_ylabel("Azimuth", fontsize=16);
-    cb = plt.colorbar();
-    cb.set_label("mm/yr", size=16);
-    plt.savefig(out_dir + "/vel.png");
-    plt.close();
+    plt.gca().get_xaxis().set_ticks([])
+    plt.gca().get_yaxis().set_ticks([])
+    plt.title("Velocity")
+    plt.gca().set_xlabel("Range", fontsize=16)
+    plt.gca().set_ylabel("Azimuth", fontsize=16)
+    cb = plt.colorbar()
+    cb.set_label("mm/yr", size=16)
+    plt.savefig(out_dir + "/vel.png")
+    plt.close()
 
-    return;
+    return

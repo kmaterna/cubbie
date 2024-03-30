@@ -42,6 +42,7 @@ BASE_URL = 'https://auig2.jaxa.jp/openam/UI/Login'
 USERNAME = 'P1298002'  # YOUR USERNAME CAN ALOS BE HARDWIRED HERE
 PASSWORD = 'Cba@8580247802645520813'  # YOUR PASSWORD CAN ALOS BE HARDWIRED HERE
 
+
 def loginToAUIG2(opener, inps):
     """
     Handle login. This should populate our cookie jar.
@@ -52,6 +53,7 @@ def loginToAUIG2(opener, inps):
     })
     response = opener.open(BASE_URL, login_data)
     return ''.join(response.readlines())
+
 
 def parse():
     """Command line parser."""
@@ -76,10 +78,10 @@ auig2_download.py -o ORDER_ID
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         sys.argv.append('-h')
-    ### READ IN PARAMETERS FROM THE COMMAND LINE ###
+    # ## READ IN PARAMETERS FROM THE COMMAND LINE ###
     inps = parse()
 
-    ### OPEN A CONNECTION TO AUIG2 AND LOG IN ###
+    # ## OPEN A CONNECTION TO AUIG2 AND LOG IN ###
     cookie_filename = "cookie_%s.txt" % datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     cj = cookielib.MozillaCookieJar(cookie_filename)
     if os.access(cookie_filename, os.F_OK):
@@ -95,7 +97,7 @@ if __name__ == '__main__':
     loginToAUIG2(opener, inps)
     loginToAUIG2(opener, inps)
 
-    ### DOWNLOAD THE FILE WITH THE GIVEN ORDER ID ###
+    # ## DOWNLOAD THE FILE WITH THE GIVEN ORDER ID ###
     url = "http://auig2.jaxa.jp/pp/service/download?downloadurl=/start/download/file&itemname=%s&itemtype=1" % inps.order_id
     f = opener.open(url)
     filename = f.headers['Content-Disposition'].split("=")[-1].strip()

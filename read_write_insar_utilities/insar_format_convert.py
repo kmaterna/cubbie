@@ -23,6 +23,7 @@ def isce_to_grd(isce_name, grdname):
     netcdf_read_write.write_netcdf4(xarr, yarr, data, grdname)
     return
 
+
 def convert_intf_phase(infilename, outfilename):
     """
     Writes a single-band floating point number representing the phase from a CFLOAT32
@@ -35,6 +36,7 @@ def convert_intf_phase(infilename, outfilename):
     ny, nx = np.shape(phase)
     isce_read_write.write_isce_data(phase, nx, ny, "FLOAT", outfilename)
     return
+
 
 def extract_unw_phase(infilename, outfilename):
     """

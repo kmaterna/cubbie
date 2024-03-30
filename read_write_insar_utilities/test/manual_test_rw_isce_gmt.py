@@ -20,33 +20,33 @@ def test_read_write_cycle(filename):
     # but it might never really be a problem.
 
     # Step 1: read phase
-    slc = isce_read_write.read_phase_data(filename);
-    print("Shape of slc is ", np.shape(slc));
-    isce_read_write.plot_complex_data(filename, aspect=1 / 10, outname="original.png");
+    slc = isce_read_write.read_phase_data(filename)
+    print("Shape of slc is ", np.shape(slc))
+    isce_read_write.plot_complex_data(filename, aspect=1 / 10, outname="original.png")
 
     # Step 2: write ISCE data file
-    ny, nx = np.shape(slc);
-    # dtype = 'FLOAT';
+    ny, nx = np.shape(slc)
+    # dtype = 'FLOAT'
     isce_written = "isce_written_phase.phase"
-    isce_read_write.write_isce_data(slc, nx, ny, dtype="FLOAT", filename=isce_written);
+    isce_read_write.write_isce_data(slc, nx, ny, dtype="FLOAT", filename=isce_written)
 
     # Step 3: read phase again.
-    _, _, phase = isce_read_write.read_scalar_data(isce_written + ".vrt");
-    print("Shape of phase is ", np.shape(phase));
+    _, _, phase = isce_read_write.read_scalar_data(isce_written + ".vrt")
+    print("Shape of phase is ", np.shape(phase))
     isce_read_write.plot_scalar_data("isce_written_phase.phase", colormap='rainbow', aspect=1 / 10,
-                                     outname="isce_written_phase.png");
+                                     outname="isce_written_phase.png")
 
     # Step 4: write that phase as grd.
     netcdfname = "netcdf_written_phase.grd"
-    xdata = np.arange(0, nx);
-    ydata = np.arange(0, ny);
-    phase = np.flipud(phase);  # THIS SWITCHES BETWEEN CONVENTIONS. GRD PLOTS ARE UPSIDE DOWN FROM ISCE.
-    netcdf_read_write.produce_output_netcdf(xdata, ydata, phase, "radians", netcdfname);
+    xdata = np.arange(0, nx)
+    ydata = np.arange(0, ny)
+    phase = np.flipud(phase)  # THIS SWITCHES BETWEEN CONVENTIONS. GRD PLOTS ARE UPSIDE DOWN FROM ISCE.
+    netcdf_read_write.produce_output_netcdf(xdata, ydata, phase, "radians", netcdfname)
 
-    # Step 5: look at what's inside;
-    netcdf_plots.produce_output_plot(netcdfname, "phase", "grdstyle_phase.png", "radians", aspect=1 / 10);
-    return;
+    # Step 5: look at what's inside
+    netcdf_plots.produce_output_plot(netcdfname, "phase", "grdstyle_phase.png", "radians", aspect=1 / 10)
+    return
 
 
 if __name__ == "__main__":
-    test_read_write_cycle("temp.int");
+    test_read_write_cycle("temp.int")

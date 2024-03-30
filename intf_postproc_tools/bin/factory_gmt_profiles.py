@@ -9,6 +9,7 @@ Example runstring: factory_gmt_profiles.py --profile_file profile_input_data/pro
 import numpy as np
 import argparse
 
+
 def arg_parser():
     p = argparse.ArgumentParser()
     p.add_argument('-p', '--profile_file', type=str,
@@ -57,5 +58,5 @@ def write_gmt_lines(profile_data, grdfile, outdir):
 
 
 if __name__ == "__main__":
-    exp_dict = arg_parser()
-    program_main(exp_dict)
+    my_exp_dict = arg_parser()
+    program_main(my_exp_dict)
