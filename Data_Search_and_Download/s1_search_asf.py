@@ -35,14 +35,14 @@ def cmd_parse():
     p.add_argument('-r', '--region', type=str, help='''Four-sided polygon [lon1/lat1/lon2/lat2/lon3/lat3/lon4/lat4]''')
     p.add_argument('-c', '--coordinate', type=str, help='''A single point [lon/lat]''')
     p.add_argument('-o', '--orbit_number', type=int, help='''Track or relative orbit [0-175]''')
-    p.add_argument('-d', '--orbit_direction', type=str, help='''[Ascending/Descending]''')
+    p.add_argument('-d', '--orbit_direction', type=str, help='''[Ascending/Descending]''', default='both')
     p.add_argument('-m', '--sar_mode', type=str, help='''[IW/other/ALL]''', default='IW')
     p.add_argument('-z', '--output_file', type=str, help='''Specified output file''', default="search_results.txt")
     exp_dict = vars(p.parse_args(args=None if sys.argv[1:] else ['--help']))
     return exp_dict
 
 
-def ASF_query(args):
+def asf_query(args):
     # This is a basic search
 
     # Defensive programming for basic inputs
@@ -69,6 +69,8 @@ def ASF_query(args):
         opts['flightDirection'] = 'ASCENDING'
     elif args['orbit_direction'] == 'Descending':
         opts['flightDirection'] = 'DESCENDING'
+    elif args['orbit_direction'] == 'both':
+        print("Searching both orbit directions.")
     else:
         print("Provided orbit direction is invalid: %s " % args['orbit_direction'])
         sys.exit(0)
@@ -263,4 +265,4 @@ def timing_plots(results):
 
 if __name__ == "__main__":
     my_args = cmd_parse()
-    ASF_query(my_args)
+    asf_query(my_args)
