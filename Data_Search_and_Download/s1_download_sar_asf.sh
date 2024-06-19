@@ -86,6 +86,8 @@ while read p; do
     if [ ! -d $title ]; then
     # In this version, I actually download from the ASF. The download goes about 5x faster than Copernicus for users in North America. 
     # You need your NASA/Earthdata/ASF credentials, either from the runstring or from your ~/.wget_cred file
+#       echo "aria2c --http-auth-challenge=true https://api.daac.asf.alaska.edu/services/search/param?granule_list=$title&output=metalink"
+       echo "$title"
        aria2c --http-auth-challenge=true --http-user=$username --http-passwd=$password "https://api.daac.asf.alaska.edu/services/search/param?granule_list=$title&output=metalink"
 
     else
