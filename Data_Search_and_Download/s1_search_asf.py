@@ -81,11 +81,11 @@ def asf_query(args):
 
     # Searching for bounding box
     if args['bbox'] is not None:
-        aoi = ('POLYGON((' + args['bbox'][0] + ' ' + args['bbox'][2] + ','
-                           + args['bbox'][0] + ' ' + args['bbox'][3] + ','
-                           + args['bbox'][1] + ' ' + args['bbox'][3] + ','
-                           + args['bbox'][1] + ' ' + args['bbox'][2] + ','
-                           + args['bbox'][0] + ' ' + args['bbox'][2] + '))')
+        aoi = ('POLYGON((' + str(args['bbox'][0]) + ' ' + str(args['bbox'][2]) + ','
+                           + str(args['bbox'][0]) + ' ' + str(args['bbox'][3]) + ','
+                           + str(args['bbox'][1]) + ' ' + str(args['bbox'][3]) + ','
+                           + str(args['bbox'][1]) + ' ' + str(args['bbox'][2]) + ','
+                           + str(args['bbox'][0]) + ' ' + str(args['bbox'][2]) + '))')
         results = asf.geo_search(intersectsWith=aoi, **opts)
     # Searching for point
     elif args['coordinate'] is not None:

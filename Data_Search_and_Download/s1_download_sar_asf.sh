@@ -76,7 +76,7 @@ mkdir -p DATA
 cd DATA/
 
 id_results=ids.txt
-awk '(NR>1)' ../$input_file | awk '{print $1}' > $id_results  # extract the .SAFE names from the query results
+awk '(NR>1)' ../$input_file | awk '{print $1}' > $id_results  # extract the .SAFE names from the query results.
 
 counter=0
 while read p; do
@@ -89,17 +89,8 @@ while read p; do
 #       echo "aria2c --http-auth-challenge=true https://api.daac.asf.alaska.edu/services/search/param?granule_list=$title&output=metalink"
        echo "$title"
        aria2c --http-auth-challenge=true --http-user=$username --http-passwd=$password "https://api.daac.asf.alaska.edu/services/search/param?granule_list=$title&output=metalink"
-
-    else
-      echo "Already in the data directory: Skipping "$title
     fi
-    counter=1
-  	continue
-  else
-    uuid=$p
   fi
-  #echo $title
-  #echo $uuid
   
   counter=0
   
