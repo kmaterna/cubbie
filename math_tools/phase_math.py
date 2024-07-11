@@ -6,6 +6,7 @@ import sys
 def real_imag2phase_amp(real, imag):
     """
     Simple math function operating on 1-d arrays.
+
     :param real: 1-d array
     :param imag: 1-d array
     :returns: [1-d array phase, 1-d array amp]
@@ -27,6 +28,7 @@ def real_imag2phase_amp(real, imag):
 def phase_amp2real_imag(phase, amp):
     """
     Simple math function operating on 1-d arrays.
+
     :param phase: 1-d array
     :param amp: 1-d array
     :returns: [1-d array real, 1-d array imag]
@@ -49,6 +51,7 @@ def develop_mean_phase(phase_array):
     """
     Takes 1D array of phase values, and determines mean phase value (sensitive to cycle slips)
     Uses the "mean of circular quantities" technique.
+
     :param phase_array: 1-D array of phase values
     :returns: mean, float
     """
@@ -70,6 +73,7 @@ def develop_median_phase(phase_array):
     """
     Takes 1D array of phase values, and determines median phase value (sensitive to cycle slips)
     Uses the "median of circular quantities" technique.
+
     :param phase_array: 1-D array of phase values
     :returns: median, float
     """

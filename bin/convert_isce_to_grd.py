@@ -33,5 +33,5 @@ def cmd_parser(cmdargs):
 
 
 if __name__ == "__main__":
-    isce_filename, grd_filename = cmd_parser(cmdargs=sys.argv)
-    insar_format_convert.isce_to_grd(isce_filename, grd_filename)
+    iscefilename, grdfilename = cmd_parser(cmdargs=sys.argv)
+    insar_format_convert.isce_to_grd(iscefilename, grdfilename)
