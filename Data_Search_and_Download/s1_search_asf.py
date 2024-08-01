@@ -194,10 +194,10 @@ def pygmt_plots(results, args):
 
 def timing_plots(results):
     borders = [dt.datetime.strptime("2014-07-01", "%Y-%m-%d"),
-               dt.datetime.strptime("2017-01-01", "%Y-%m-%d"),
-               dt.datetime.strptime("2019-07-01", "%Y-%m-%d"),
-               dt.datetime.strptime("2022-01-01", "%Y-%m-%d"),
-               dt.datetime.strptime("2024-07-01", "%Y-%m-%d")]
+               dt.datetime.strptime("2017-07-01", "%Y-%m-%d"),
+               dt.datetime.strptime("2020-07-01", "%Y-%m-%d"),
+               dt.datetime.strptime("2023-07-01", "%Y-%m-%d"),
+               dt.datetime.strptime("2026-07-01", "%Y-%m-%d")]
 
     # Divide the results into sub-plots
     a1, d1, a2, d2, a3, d3, a4, d4 = [], [], [], [], [], [], [], []
@@ -226,7 +226,7 @@ def timing_plots(results):
             else:
                 d4.append(acq_date)
 
-    fig, axarr = plt.subplots(4, 1, figsize=(12, 10), dpi=300)
+    fig, axarr = plt.subplots(4, 1, figsize=(14, 10), dpi=300)
     ms = 4
 
     axarr[0].set_title("Search Results: %s acquisitions" % (len(results)), fontsize=20)
