@@ -256,8 +256,8 @@ def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
 
     firstLon, firstLat, dE, dN, xmin, xmax = isce_read_write.get_xmin_xmax_xinc_from_xml(unw_xml)
 
-    isce_read_write.write_isce_unw(data_surviving, data_surviving, nx, ny, "FLOAT", unw_file_final, firstLat=firstLat,
-                                   firstLon=firstLon, deltaLon=dE, deltaLat=dN, Xmin=xmin, Xmax=xmax)
+    isce_read_write.write_isce_unw(data_surviving, data_surviving, nx, ny, "FLOAT", unw_file_final, firstlat=firstLat,
+                                   firstlon=firstLon, deltalon=dE, deltalat=dN, xmin=xmin, xmax=xmax)
     return
 
 
@@ -342,9 +342,9 @@ def write_unwrapped_ground_range_displacements(ground_range_phase_file, output_f
     (ny, nx) = np.shape(unw)
 
     # ISCE UNW.GEO (IN MM)
-    isce_read_write.write_isce_unw(unw, unw, nx, ny, "FLOAT", output_file,
-                                   firstLat=max(y_axis), firstLon=min(x_axis), deltaLon=lon_inc, deltaLat=lat_inc,
-                                   Xmin=min(x_axis), Xmax=max(x_axis))  # 2 bands, floats
+    isce_read_write.write_isce_unw(unw, unw, nx, ny, "FLOAT", output_file, firstlat=max(y_axis), firstlon=min(x_axis),
+                                   deltalon=lon_inc, deltalat=lat_inc, xmin=min(x_axis),
+                                   xmax=max(x_axis))  # 2 bands, floats
     return
 
 

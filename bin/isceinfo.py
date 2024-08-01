@@ -9,7 +9,7 @@ from s1_batches.math_tools import phase_math
 import matplotlib.pyplot as plt
 import argparse
 
-help_message = "Get information about an ISCE binary data file. \nUsage: " \
+help_message = "Get information about an ISCE binary data file, similar to gmt grdinfo. \nUsage: " \
                "isceinfo.py --data_file phase.int"
 
 

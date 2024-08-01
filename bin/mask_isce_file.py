@@ -4,7 +4,7 @@
 
 import argparse
 from s1_batches.read_write_insar_utilities import isce_read_write
-from s1_batches.math_tools import mask_and_interpolate
+from s1_batches.math_tools import mask_and_interpolate as mask_tools
 import numpy as np
 
 help_message = "Produce a masked version of an ISCE binary data file (single band file only). \nUsage: " \
@@ -22,6 +22,8 @@ def parse_arguments():
                    help='''filename for coherence data file, REQUIRED.''', required=True)
     p.add_argument('-t', '--threshold', type=float,
                    help='''Coherence threshold for masking (0-1).''', default=0.37)
+    p.add_argument('-v', '--mask_value', type=float,
+                   help='''Value used for masked data [default nan].''', default=np.nan)
     exp_dict = vars(p.parse_args())
     return exp_dict
 
@@ -29,8 +31,8 @@ def parse_arguments():
 def main_body(paramdict):
     x, y, scalars = isce_read_write.read_scalar_data(paramdict['data_file'], band=1)
     _, _, cor = isce_read_write.read_scalar_data(paramdict['maskfile'], band=1)
-    mask = mask_and_interpolate.make_coherence_mask(cor, paramdict['threshold'])
-    masked = mask_and_interpolate.apply_coherence_mask(scalars, mask, is_float32=True, mask_value=-9999)
+    mask = mask_tools.make_coherence_mask(cor, paramdict['threshold'])
+    masked = mask_tools.apply_coherence_mask(scalars, mask, is_float32=True, mask_value=paramdict['mask_value'])
     ny, nx = np.shape(masked)
     isce_read_write.write_isce_data(masked, nx, ny, "FLOAT", paramdict['outfile'])
     return

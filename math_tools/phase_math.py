@@ -6,8 +6,8 @@ def real_imag2phase_amp(real, imag):
     """
     Simple math function operating on arrays.
 
-    :param real: np.array
-    :param imag: np.array
+    :param real: 1d or 2d np.array
+    :param imag: 1d or 2d np.array
     :returns: [np.array phase, np.array amp]
     """
     phase = np.arctan2(imag, real)

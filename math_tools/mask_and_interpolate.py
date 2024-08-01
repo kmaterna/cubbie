@@ -6,10 +6,8 @@ def make_coherence_mask(cor, threshold):
     """Build a mask: 1 if above coherence threshold, nan if below coherence threshold. """
     print("Making coherence mask.")
     mask = np.ones(np.shape(cor))
-    for i in range(np.shape(cor)[0]):
-        for j in range(np.shape(cor)[1]):
-            if np.isnan(cor[i][j]) or cor[i][j] < threshold:
-                mask[i][j] = np.nan
+    mask[np.isnan(cor)] = np.nan
+    mask[cor < threshold] = np.nan
     return mask
 
 
@@ -18,24 +16,27 @@ def apply_coherence_mask(data, mask, is_complex=0, is_float32=False, mask_value=
     A future version of this function should probably check the type of the input data
     and return the same type that came in.
     """
-    if is_float32 is False:
-        if is_complex == 1:
-            masked = np.complex64(np.multiply(data, mask))
-        else:
-            masked = np.float64(np.multiply(data, mask))
-            masked[np.isnan(masked)] = mask_value
-    else:
+    if np.shape(data) != np.shape(mask):
+        raise ValueError("Error! Shape of data ("+str(np.shape(data))+") and shape of mask (" +
+                         str(np.shape(mask))+") do not match")
+    if is_float32:
         if is_complex == 1:
             masked = np.complex32(np.multiply(data, mask))
         else:
             masked = np.float32(np.multiply(data, mask))
             masked[np.isnan(masked)] = mask_value
+    else:
+        if is_complex == 1:
+            masked = np.complex64(np.multiply(data, mask))
+        else:
+            masked = np.float64(np.multiply(data, mask))
+            masked[np.isnan(masked)] = mask_value
     return masked
 
 
-def interpolate_2d(data_array, is_complex=0):
+def interpolate_2d(data_array, is_complex=False):
     print("Performing 2d interpolation")
-    if is_complex == 1:
+    if is_complex:
         data_array = np.angle(data_array)
 
     ymax, xmax = np.shape(data_array)
@@ -66,7 +67,7 @@ def interpolate_2d(data_array, is_complex=0):
     for i in range(len(xy_targets)):
         idxx = xarray.index(xy_targets[i][0])
         idxy = yarray.index(xy_targets[i][1])
-        if is_complex == 1:
+        if is_complex:
             r = 1
             smoothdata[idxy][idxx] = np.cmath.rect(r, z_targets[i])
         else:

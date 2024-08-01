@@ -10,18 +10,18 @@ import struct
 # ----------- READING FUNCTIONS ------------- #
 
 def read_isce_1d_arrays(filename):
-    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
-    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, nlon, nlat)
+    firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
+    xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, nlon, nlat)
     return xarray, yarray
 
 
-def read_complex_data(GDALfilename):
+def read_complex_data(gdal_filename):
     """
     Read isce SLC data into a 2D array where each element is a complex number.
     """
     from osgeo import gdal  # GDAL support for reading virtual files
-    print("Reading file %s " % GDALfilename)
-    ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
+    print("Reading file %s " % gdal_filename)
+    ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(1).ReadAsArray()
     transform = ds.GetGeoTransform()
     ds = None
@@ -29,56 +29,50 @@ def read_complex_data(GDALfilename):
     _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, slc)
 
     # put all zero values to nan
-    try:
-        slc[slc == 0] = np.nan
-    except:
-        pass
+    slc = flush_zeros_to_nans(slc)
 
     return slc
 
 
-def read_scalar_data(GDALfilename, band=1, flush_zeros=True):
+def read_scalar_data(gdal_filename, band=1, flush_zeros=True):
     """
     Read an isce data file.
     band = 1 for most scalar fields, like coherence.
     band = 2 for some unwrapped phase files.
     """
     from osgeo import gdal  # GDAL support for reading virtual files
-    print("Reading file %s " % GDALfilename)
-    if ".unw" in GDALfilename and ".unw." not in GDALfilename and band == 1:
+    print("Reading file %s " % gdal_filename)
+    if ".unw" in gdal_filename and ".unw." not in gdal_filename and band == 1:
         print("WARNING: We usually read band=2 for snaphu unwrapped files. Are you sure you want band 1 ????")
-    ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
+    ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
     ds = None
 
     _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, data)
-    xarray, yarray = read_isce_1d_arrays(GDALfilename)
+    xarray, yarray = read_isce_1d_arrays(gdal_filename)
 
     # put all zero values to nan
     if flush_zeros:
-        try:
-            data[data == 0] = np.nan
-        except:
-            pass
+        data = flush_zeros_to_nans(data)
 
     return xarray, yarray, data
 
 
-def read_phase_data(GDALfilename):
+def read_phase_data(gdal_filename):
     """
     Start with a complex quantity, and return only the phase of that quantity.
     """
-    slc = read_complex_data(GDALfilename)
+    slc = read_complex_data(gdal_filename)
     phasearray = np.angle(slc)
     return phasearray
 
 
-def read_amplitude_data(GDALfilename):
+def read_amplitude_data(gdal_filename):
     """
     Start with a complex quantity, and return only the amplitude of that quantity.
     """
-    slc = read_complex_data(GDALfilename)
+    slc = read_complex_data(gdal_filename)
     amparray = np.absolute(slc)
     return amparray
 
@@ -88,10 +82,9 @@ def read_scalar_data_no_isce(filename, nx, ny):
     final_shape = (ny, nx)
     num_data = nx * ny
     print("Reading file %s into %d x %d array" % (filename, ny, nx))
-    f = open(filename, 'rb')
-    rawnum = f.read()
-    f.close()
-    floats = np.array(struct.unpack('f' * num_data, rawnum))
+    with open(filename, 'rb') as f:
+        raw_num = f.read()
+    floats = np.array(struct.unpack('f' * num_data, raw_num))
     scalar_field = floats.reshape(final_shape)
     return scalar_field
 
@@ -116,11 +109,11 @@ def read_isce_unw_geo(filename):
     Read isce unwrapped geocoded product, which has two datasets interleaved: amp and unwrapped phase
     Return x and y axes too, in lon/lat
     """
-    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
+    firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
     twox_data = read_scalar_data_no_isce(filename, nlon, nlat*2)   # separate the unw phase layer
     unw_data = twox_data[nlat:, :]   # unw_phase is the second layer
     (y, x) = np.shape(unw_data)
-    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y)
+    xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, x, y)
     return xarray, yarray, unw_data
 
 
@@ -130,10 +123,10 @@ def read_isce_unw_geo_single(filename):
 
     :returns: 1D_xarray, 1D_yarray, 2D_data_array
     """
-    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
+    firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
     unw_data = read_scalar_data_no_isce(filename, nlon, nlat)
     (y, x) = np.shape(unw_data)
-    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y)
+    xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, x, y)
     return xarray, yarray, unw_data
 
 
@@ -143,20 +136,20 @@ def read_isce_unw_geo_alternative(filename):
     Uses a format found in some unwrapped files
     Return x and y axes too, in lon/lat
     """
-    firstLon, firstLat, dE, dN, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
+    firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
     twox_data = read_scalar_data_no_isce(filename, nlon*2, nlat)   # separate the unw phase layer
-    unw_data = twox_data[:, 0:nlon]   # unw_phase is the second layer
-    unw_data = twox_data[:, nlon:]   # unw_phase is the second layer
+    # unw_data = twox_data[:, 0:nlon]   # unw_phase is the second layer  # THIS COULD BE HAPPENING
+    unw_data = twox_data[:, nlon:]   # unw_phase is the second layer  # THIS COULD BE HAPPENING
 
     (y, x) = np.shape(unw_data)
-    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y)
+    xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, x, y)
     return xarray, yarray, unw_data
 
 
 # ----------- WRITING FUNCTIONS ------------- #
 
-def write_isce_data(data, nx, ny, dtype, filename,
-                    firstLat=None, firstLon=None, deltaLon=None, deltaLat=None, Xmin=None, Xmax=None):
+def write_isce_data(data, nx, ny, dtype, filename, firstlat=None, firstlon=None, deltalon=None, deltalat=None,
+                    xmin=None, xmax=None):
     """
     Write ISCE data into a single-band file with given filename with associated .vrt and .xml
     If DTYPE=="FLOAT": write scalar data (float32)
@@ -171,25 +164,25 @@ def write_isce_data(data, nx, ny, dtype, filename,
     out.setInterleavedScheme('BIP')  # 'BIP'/ 'BIL' / ‘BSQ’
     out.setAccessMode('READ')
     out.setDataType(dtype)
-    if firstLon is not None:  # Special options that aren't usually used. 
-        out.setFirstLongitude(firstLon)
-    if firstLat is not None:
-        out.setFirstLatitude(firstLat)
-    if deltaLon is not None:
-        out.setDeltaLongitude(deltaLon)
-    if deltaLat is not None:
-        out.setDeltaLatitude(deltaLat)
-    if Xmin is not None:
-        out.setXmin(Xmin)
-    if Xmax is not None:
-        out.setXmax(Xmax)
+    if firstlon is not None:  # Special options that aren't usually used.
+        out.setFirstLongitude(firstlon)
+    if firstlat is not None:
+        out.setFirstLatitude(firstlat)
+    if deltalon is not None:
+        out.setDeltaLongitude(deltalon)
+    if deltalat is not None:
+        out.setDeltaLatitude(deltalat)
+    if xmin is not None:
+        out.setXmin(xmin)
+    if xmax is not None:
+        out.setXmax(xmax)
     out.renderHdr()
     data.tofile(filename)  # write file out
     return
 
 
-def write_isce_unw(data1, data2, nx, ny, dtype, filename,
-                   firstLat=None, firstLon=None, deltaLon=None, deltaLat=None, Xmin=None, Xmax=None):
+def write_isce_unw(data1, data2, nx, ny, dtype, filename, firstlat=None, firstlon=None, deltalon=None, deltalat=None,
+                   xmin=None, xmax=None):
     """
     ISCE uses band=2 for unwrapped phase, .unw files.
     Write to float32
@@ -204,18 +197,18 @@ def write_isce_unw(data1, data2, nx, ny, dtype, filename,
     out.bands = 2
     out.scheme = "BIL"
     out.setAccessMode('read')
-    if firstLon is not None:  # Special options that aren't usually used. 
-        out.setFirstLongitude(firstLon)
-    if firstLat is not None:
-        out.setFirstLatitude(firstLat)
-    if deltaLon is not None:
-        out.setDeltaLongitude(deltaLon)
-    if deltaLat is not None:
-        out.setDeltaLatitude(deltaLat)
-    if Xmin is not None:
-        out.setXmin(Xmin)
-    if Xmax is not None:
-        out.setXmax(Xmax)
+    if firstlon is not None:  # Special options that aren't usually used.
+        out.setFirstLongitude(firstlon)
+    if firstlat is not None:
+        out.setFirstLatitude(firstlat)
+    if deltalon is not None:
+        out.setDeltaLongitude(deltalon)
+    if deltalat is not None:
+        out.setDeltaLatitude(deltalat)
+    if xmin is not None:
+        out.setXmin(xmin)
+    if xmax is not None:
+        out.setXmax(xmax)
     out.setDataType(dtype)
     out.renderHdr()
     data_to_file_2_bands(data1, data2, filename)  # dump the data into a binary file
@@ -236,11 +229,11 @@ def data_to_file_1_bands(data1, filename):
     return
 
 
-def plot_scalar_data(GDALfilename, band=1, title="", colormap='gray', aspect=1,
+def plot_scalar_data(gdal_filename, band=1, title="", colormap='gray', aspect=1,
                      datamin=None, datamax=None, draw_colorbar=True, colorbar_orientation="horizontal", background=None,
                      outname=None):
     from osgeo import gdal
-    ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
+    ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
     ds = None
@@ -252,17 +245,14 @@ def plot_scalar_data(GDALfilename, band=1, title="", colormap='gray', aspect=1,
 
     # put all zero values to nan and do not plot nan
     if background is None:
-        try:
-            data[data == 0] = np.nan
-        except:
-            pass
+        data = flush_zeros_to_nans(data)
 
     fig = plt.figure(figsize=(18, 16))
     ax = fig.add_subplot(111)
     cax = ax.imshow(data, vmin=datamin, vmax=datamax, cmap=colormap, extent=(xmin, xmax, ymin, ymax))
     ax.set_title(title)
     if draw_colorbar is not None:
-        cbar = fig.colorbar(cax, orientation=colorbar_orientation)
+        _cbar = fig.colorbar(cax, orientation=colorbar_orientation)
     ax.set_aspect(aspect)
     if outname is None:
         plt.show()
@@ -271,10 +261,10 @@ def plot_scalar_data(GDALfilename, band=1, title="", colormap='gray', aspect=1,
     return
 
 
-def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbow',
+def plot_complex_data(gdal_filename, title="", aspect=1, band=1, colormap='rainbow',
                       datamin=None, datamax=None, draw_colorbar=None, colorbar_orientation="horizontal", outname=None):
     from osgeo import gdal
-    ds = gdal.Open(GDALfilename, gdal.GA_ReadOnly)
+    ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
     ds = None
@@ -282,10 +272,7 @@ def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbo
     xmin, xmax, ymin, ymax = get_xmin_xmax_xinc_from_geotransform(transform, slc)
 
     # put all zero values to nan and do not plot nan
-    try:
-        slc[slc == 0] = np.nan
-    except:
-        pass
+    slc = flush_zeros_to_nans(slc)
 
     fig = plt.figure(figsize=(18, 16))
     ax = fig.add_subplot(1, 2, 1)
@@ -305,11 +292,18 @@ def plot_complex_data(GDALfilename, title="", aspect=1, band=1, colormap='rainbo
         plt.show()
     else:
         fig.savefig(outname)
-
     return
 
 
 # ----------- UTILITY FUNCTIONS ------------- #
+
+def flush_zeros_to_nans(data_array):
+    try:
+        data_array[data_array == 0] = np.nan
+    except:
+        pass
+    return data_array
+
 
 def get_xmin_xmax_xinc_from_geotransform(transform, dataset):
     """
@@ -329,42 +323,42 @@ def get_xmin_xmax_xinc_from_geotransform(transform, dataset):
 
 
 def get_xmin_xmax_xinc_from_xml(xml_file):
-    isce_xml = ISCEXMLParser(xml_file)
+    isce_xml = isce_xml_parser(xml_file)
 
-    coord_lon = getProperty(isce_xml, 'coordinate1')
-    coord_lat = getProperty(isce_xml, 'coordinate2')
-    dN = coord_lat['delta']
-    dE = coord_lon['delta']
+    coord_lon = get_property(isce_xml, 'coordinate1')
+    coord_lat = get_property(isce_xml, 'coordinate2')
+    dlat = coord_lat['delta']
+    dlon = coord_lon['delta']
     nlon = int(coord_lon['size'])
     nlat = int(coord_lat['size'])
-    firstLat = coord_lat['startingvalue']
-    firstLon = coord_lon['startingvalue']
-    xmin = firstLon
+    firstlat = coord_lat['startingvalue']
+    firstlon = coord_lon['startingvalue']
+    xmin = firstlon
     xmax = coord_lon['startingvalue'] + (nlon * coord_lon['delta'])
-    return firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat
+    return firstlon, firstlat, dlon, dlat, xmin, xmax, nlon, nlat
 
 
 def get_xarray_yarray_from_xml(filename):
     """
     Another function to get arrays from isce xml data
     """
-    firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename)
-    xarray, yarray = get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, nlon, nlat)
+    firstlon, firstlat, dlon, dlat, xmin, xmax, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename)
+    xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, nlon, nlat)
     return xarray, yarray
 
 
-def get_xarray_yarray_from_shape(firstLon, firstLat, dE, dN, x, y):
+def get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, x, y):
     """
     Building x and y arrays of latitude and longitude
     """
-    xarray = np.arange(firstLon, firstLon+x*dE, dE)
-    yarray = np.arange(firstLat, firstLat+y*dN, dN)
+    xarray = np.arange(firstlon, firstlon+x*dlon, dlon)
+    yarray = np.arange(firstlat, firstlat+y*dlat, dlat)
     return xarray[0:x], yarray[0:y]
 
 
-def ISCEXMLParser(filename):
-    import xml.etree.ElementTree as ET
-    root = ET.parse(filename).getroot()
+def isce_xml_parser(filename):
+    import xml.etree.ElementTree as et
+    root = et.parse(filename).getroot()
     return root
 
 
@@ -377,7 +371,7 @@ def type_convert(value):
     raise ValueError('Could not convert value')
 
 
-def getProperty(root, name):
+def get_property(root, name):
     name = name.lower()
     values = {}
 
