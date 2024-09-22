@@ -1,21 +1,20 @@
 """
-Function that reads GPS field,
 WARNING: PROBABLY BROKEN.
-projects very simply into LOS, and subtracts a reflon and reflat
+Function that reads GPS field,
+projects very simply into LOS, and subtracts a reflon and reflat.
+In the future, we should force the GPS-velocity-read-function to use a certain format, like we do in Strain_2d
 Writes an output text file that can be plotted in GMT, etc.
-For this driver, the reference point is a lat/lon pixel, not a particular GPS station
-(sometimes the situation isn't ideal and you have to do that!)
+In this example, the reference point is a lat/lon pixel, not a particular GPS station
 This script has been partly re-written but is still a bit dependent on earlier parts of my processing pipeline
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
+import os
 from scipy import interpolate
 from Tectonic_Utils.read_write import netcdf_read_write
-from gnss_timeseries_viewers.gps_tools import vel_functions
-from gnss_timeseries_viewers.gps_tools.file_io import io_magnet_unr
-from . import los_projection_tools
+from . import los_projection_tools, file_io
 
 
 def top_level_driver(config_params, rowref, colref):
@@ -25,20 +24,19 @@ def top_level_driver(config_params, rowref, colref):
                                                                   coordbox_nearref)
     [LOS_velfield] = compute(gps_velfield, gps_velfield_removed, reflon, reflat, config_params.flight_angle,
                              config_params.look_angle, type_of_interp, coordbox_nearref)
-    outputs(gps_velfield, LOS_velfield, reflon, reflat, outfile)
+    file_io.output_gps_as_los(gps_velfield, LOS_velfield, outfile)
     return
 
 
 # ----------------- CONFIGURE ----------------- #
 def configure(config_params):
     print("Starting gps_into_los.")
-    velfile = config_params.ts_output_dir + '/vel.grd'
-    outfile = config_params.ts_output_dir + '/gps_ll_enu_los.txt'
+    velfile = os.path.join(config_params.ts_output_dir, 'vel.grd')
+    outfile = os.path.join(config_params.ts_output_dir, 'gps_ll_enu_los.txt')
     coordbox_gps = [-125, -121, 38, 42.5]  # Good for Mendocino
-    # bounds = [-125, -115, 35, 46] # Good for WUS
-    nominal_boundary = 0.4
-    bounds_ref = [-nominal_boundary, nominal_boundary, -nominal_boundary,
-                  nominal_boundary]  # in Longitude/Latitude units away from reference pixel.
+    reflon, reflat = -122, 39.5
+    epsilon = 0.4
+    bounds_ref = [-epsilon, epsilon, -epsilon, epsilon]  # in Longitude/Latitude units away from reference pixel.
     coordbox_nearref = [reflon + bounds_ref[0], reflon + bounds_ref[1], reflat + bounds_ref[2], reflat + bounds_ref[3]]
     # For interpolating around reference, it is very important to restrict the spline's domain for stability.
     type_of_interp = 'linear'
@@ -49,15 +47,8 @@ def configure(config_params):
 
 def inputs(gps_file, veldir, velfile, rowref, colref, coordbox_gps, coordbox_nearref):
     [reflon, reflat] = generate_reflon_reflat(velfile, veldir, rowref, colref)
-
-    # The velocities within the latlon box.
-    [gps_velfield] = io_magnet_unr.read_unr_vel_file(gps_file)
-    [gps_velfield] = vel_functions.remove_duplicates(gps_velfield)
-    [gps_velfield] = vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_gps)
-
-    # A small range near the reference pixel for interpolating later.
-    [gps_velfield_removed] = vel_functions.clean_velfield(gps_velfield, coord_box=coordbox_nearref)
-
+    gps_velfield = file_io.inputs_gps_magent_like(gps_file, coordbox_gps)
+    gps_velfield_removed = file_io.inputs_gps_magent_like(gps_file, coordbox_nearref)  # small box near refpixel
     return [gps_velfield, gps_velfield_removed, reflon, reflat]
 
 
@@ -79,7 +70,7 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
     colref = len(xdata) - 1 - colref
     # rowref = len(ydata)-1-rowref
     zdata = np.fliplr(zdata)
-    # In general we can figure this out from the flight_angle.
+    # In general, we can figure this out from the flight_angle.
 
     print("\nHello! Your reference pixel is (row,col) = (%d, %d)" % (rowref, colref))
     print("Its velocity is %.2f mm/yr\n" % float(zdata[rowref][colref]))
@@ -96,18 +87,16 @@ def generate_reflon_reflat(velfile, veldir, rowref, colref):
 
     zarray = np.array([[0.0, 0.01], [0.01, 0.01]])
 
-    netcdf_read_write.produce_output_netcdf(colarray, rowarray, zarray, 'mm/yr', veldir + '/' + refpoint_file)
-    netcdf_read_write.flip_if_necessary(veldir + '/' + refpoint_file)
+    netcdf_read_write.produce_output_netcdf(colarray, rowarray, zarray, 'mm/yr',
+                                            os.path.join(veldir, refpoint_file))
     subprocess.call(['geocode_mod.csh', refpoint_file, ref_ll, ref_ll_name, veldir], shell=False)
 
-    [xll, yll, _] = netcdf_read_write.read_any_grd(veldir + '/' + ref_ll)
-    latref = yll[0]
-    lonref = xll[0]
+    [xll, yll, _] = netcdf_read_write.read_any_grd(os.path.join(veldir, ref_ll))
+    lonref, latref = xll[0], yll[0]
     print("\nReference Location is: ", lonref, latref)
 
-    subprocess.call(['rm', veldir + '/' + ref_ll_name + '.png'], shell=False)
-    subprocess.call(['rm', veldir + '/' + ref_ll_name + '.kml'], shell=False)
-
+    os.remove(os.path.join(veldir, ref_ll_name+'.png'))
+    os.remove(os.path.join(veldir, ref_ll_name + '.kml'))
     return [lonref, latref]
 
 
@@ -142,19 +131,6 @@ def compute(vel_tuple, vel_tuple_removed, reflon, reflat, flight_angle, look_ang
 
 
 # ------------------- OUTPUTS ------------- #
-def outputs(gps_velfield, LOS_velfield, reflon, reflat, outfile):
-    ofile = open(outfile, 'w')
-    for i in range(len(LOS_velfield.e)):
-        ofile.write("%f %f %f %f %f %f %s \n" % (
-            LOS_velfield.elon[i], LOS_velfield.nlat[i], gps_velfield.e[i], gps_velfield.n[i], gps_velfield.u[i],
-            LOS_velfield.e[i], LOS_velfield.name[i]))
-    ofile.write("%f %f %f %f %f %f %s\n" % (reflon, reflat, 0, 0, 0, 0, 'reference'))
-    ofile.close()
-    print("Outputs printed to %s" % outfile)
-
-    return
-
-
 def make_interp_checking_plot(vel_tuple, bounds, reflon, reflat, f_east, f_north):
     # A debugging plot
     # I've found that interp2d doesn't always give reasonable numbers.
@@ -205,7 +181,6 @@ def make_interp_checking_plot(vel_tuple, bounds, reflon, reflat, f_east, f_north
     print("Reference e: %f" % velref_e)
     print("Reference n: %f" % velref_n)
     print("Are these reasonable values?")
-
     return
 
 

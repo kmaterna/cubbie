@@ -7,41 +7,17 @@ Also make a 1-to-1 plot of LOS velocities
 
 import numpy as np
 import matplotlib.pyplot as plt
-from . import los_projection_tools
-from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
+from . import los_projection_tools, file_io
 
 
-def top_level_driver(gps_los_file, geocoded_insar, plotname, txtname, logname):
+def top_level_driver(gps_los_file, geocoded_insar_struct, plotname, txtname, logname):
     """Geocoded insar: a structure"""
-    [gps_los_velfield, xarray, yarray, LOS_array] = inputs_total(gps_los_file, geocoded_insar)
+    gps_los_velfield = file_io.input_gps_as_los(gps_los_file)  # input GPS data
+    [xarray, yarray, LOS_array] = file_io.inputs_insar_data(geocoded_insar_struct)  # input insar data
     insar_array, gps_array, lons, lats, rms_misfit = compute(gps_los_velfield, xarray, yarray, LOS_array)
     one_to_one_plot(insar_array, gps_array, lons, lats, rms_misfit, plotname, txtname)
     write_output(logname, gps_array, rms_misfit)
     return
-
-
-def inputs_total(gps_los_file, insar_struct):
-    print("Reading file %s for calculating misfit." % gps_los_file)
-    [gps_los_velfield] = los_projection_tools.input_gps_as_los(gps_los_file)
-    if isinstance(insar_struct, dict):
-        [xarray, yarray, LOS_array] = inputs_dict(insar_struct)
-    else:
-        [xarray, yarray, LOS_array] = inputs_grdfile(insar_struct[3])
-    return [gps_los_velfield, xarray, yarray, LOS_array]
-
-
-def inputs_grdfile(geocoded_insar_file):
-    [xarray, yarray, LOS_array] = read_any_grd(geocoded_insar_file)
-    LOS_array[np.where(LOS_array > 1e20)] = np.nan  # Filter spurious values from InSAR array
-    if np.nanmean(xarray) > 180:
-        xarray = np.subtract(xarray, 360)  # some files come in with lon=244 instead of -115.  Fixing that.
-    return [xarray, yarray, LOS_array]
-
-
-def inputs_dict(insar_dict):
-    LOS_array = insar_dict['velocities']
-    LOS_array[np.where(LOS_array > 1e20)] = np.nan  # Filter spurious values from InSAR array
-    return [insar_dict['lon'], insar_dict['lat'], LOS_array]
 
 
 def compute(gps_los_velfield, xarray, yarray, LOS_array):

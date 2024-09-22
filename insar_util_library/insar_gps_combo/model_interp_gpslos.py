@@ -10,6 +10,8 @@ Steps:
 - Project velocities into LOS
 - Subtract reference point
 - Report LOS gradient between points
+
+Future tool-like versions of this should probably use PYGMT instead of oregon/ca border files.
 """
 
 import numpy as np
@@ -17,10 +19,11 @@ import matplotlib.pyplot as plt
 import matplotlib.path as path
 import collections
 from scipy import interpolate
-from gnss_timeseries_viewers.gps_tools import file_io, vel_functions
-from gnss_timeseries_viewers.gps_tools.file_io import io_nota
+from gnss_timeseries_viewers.gps_tools import vel_functions
 from . import los_projection_tools as los_proj
+from . import file_io
 from Tectonic_Utils.geodesy import haversine
+
 
 param_object = collections.namedtuple("param_object", ['type_of_interp', 'asc_flight_angle', 'desc_flight_angle',
                                                        'inc_angle', 'bounds', 'inc', 'point1', 'point2',
@@ -66,12 +69,12 @@ def configure():
 # -------------- INPUTS  --------------- # 
 def inputs(input_file, or_file, ca_file):
     """
-    Input files. Should interpolate over the whole GPS field don't chunk it smaller with clean_velfield.
+    Input files. Should interpolate over the whole GPS field; don't chunk it smaller with clean_velfield.
     """
-    [vel_tuple] = file_io.io_nota.read_pbo_vel_file(input_file)
+    vel_tuples = file_io.inputs_gps_pbo_like(input_file)
     ca_border = np.loadtxt(ca_file)
     or_border = np.loadtxt(or_file)
-    return [vel_tuple, ca_border, or_border]
+    return [vel_tuples, ca_border, or_border]
 
 
 # ---------- COMPUTE --------------- #

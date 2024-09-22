@@ -8,7 +8,6 @@ In the LOS-projected case, we use 'e' as LOS velocity and other columns are zero
 
 import numpy as np
 from Tectonic_Utils.geodesy import insar_vector_functions
-from gnss_timeseries_viewers.gps_tools import vel_functions
 
 
 def closest_index(lst, K):
@@ -119,31 +118,3 @@ def paired_gps_geocoded_insar(gps_los_velfield, xarray, yarray, LOS_array, windo
                 lonarray.append(station_vel.elon)
                 latarray.append(station_vel.nlat)
     return np.array(insar_los_array), np.array(gps_los_array), np.array(lonarray), np.array(latarray)
-
-
-# A little bit of IO for working with GPS velocity fields in LOS geometries
-# -------------------------------- # 
-def input_gps_as_los(filename):
-    print("Reading file %s " % filename)
-    gps_velfield = []
-    [elon, nlat, los_vel, name] = np.loadtxt(filename, usecols=(0, 1, 5, 6), unpack=True,
-                                             dtype={'names': ('elon', 'nlat', 'los_vel', 'station_name'),
-                                                    'formats': (float, float, float, 'U4')})
-    for i in range(len(elon)):
-        gps_station_as_los = vel_functions.Station_Vel(name=name[i], elon=elon[i], nlat=nlat[i], e=los_vel[i], n=0, u=0,
-                                                       se=0, sn=0, su=0, first_epoch=0, last_epoch=0, refframe=0,
-                                                       proccenter=0, subnetwork=0, survey=0, meas_type='los')
-        gps_velfield.append(gps_station_as_los)
-    return [gps_velfield]
-
-
-def output_gps_as_los(gps_velfield, LOS_velfield, outfile):
-    ofile = open(outfile, 'w')
-    ofile.write("# lon lat gpsE gpsN gpsU LOS name\n")
-    for i in range(len(LOS_velfield)):
-        ofile.write("%f %f %f %f %f %f %s \n" %
-                    (LOS_velfield[i].elon, LOS_velfield[i].nlat, gps_velfield[i].e, gps_velfield[i].n,
-                     gps_velfield[i].u, LOS_velfield[i].e, LOS_velfield[i].name))
-    ofile.close()
-    print("-->Outputs printed to %s" % outfile)
-    return
