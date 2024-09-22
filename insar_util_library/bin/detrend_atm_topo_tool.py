@@ -11,8 +11,7 @@ import numpy as np
 import argparse
 import scipy.linalg
 from Tectonic_Utils.read_write import netcdf_read_write as rw
-from ...intf_postproc_tools import plots
-from ...math_tools import mask_and_interpolate, grid_tools
+from s1_batches.insar_util_library.math_tools import plots, mask_and_interpolate, grid_tools
 
 help_message = "Perform detrending and topo-correlated removal on interferogram files. \nUsage: " \
                "detrend_atm_topo_tool.py --data_file unw_phase.grd --outname detrended_phase.grd"
@@ -130,5 +129,5 @@ def defensive_checks(zdata, aux_array, metadata='Correlation'):
 
 
 if __name__ == "__main__":
-    exp_dict = arg_parser()
-    coordinator(exp_dict)
+    param_dict = arg_parser()
+    coordinator(param_dict)

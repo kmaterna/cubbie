@@ -10,6 +10,12 @@ import struct
 # ----------- READING FUNCTIONS ------------- #
 
 def read_isce_1d_arrays(filename):
+    """
+    Read only the axes of an ISCE file
+
+    :param filename: string, name of isce file
+    :return: 1d array for x-axis, 1d array for y-axis
+    """
     firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
     xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, nlon, nlat)
     return xarray, yarray
@@ -18,6 +24,9 @@ def read_isce_1d_arrays(filename):
 def read_complex_data(gdal_filename):
     """
     Read isce SLC data into a 2D array where each element is a complex number.
+
+    :param gdal_filename: string, name of file
+    :returns: 2d raster of complex values
     """
     from osgeo import gdal  # GDAL support for reading virtual files
     print("Reading file %s " % gdal_filename)
@@ -39,6 +48,11 @@ def read_scalar_data(gdal_filename, band=1, flush_zeros=True):
     Read an isce data file.
     band = 1 for most scalar fields, like coherence.
     band = 2 for some unwrapped phase files.
+
+    :param gdal_filename: string, filename
+    :param band: int representing the band of information, default is 1
+    :param flush_zeros: default True
+    :returns: x-axis 1d array, y-axis 1d array, data 2d raster array
     """
     from osgeo import gdal  # GDAL support for reading virtual files
     print("Reading file %s " % gdal_filename)
@@ -62,6 +76,9 @@ def read_scalar_data(gdal_filename, band=1, flush_zeros=True):
 def read_phase_data(gdal_filename):
     """
     Start with a complex quantity, and return only the phase of that quantity.
+
+    :param gdal_filename: string, name of file
+    :returns: 2d raster data representing phase only
     """
     slc = read_complex_data(gdal_filename)
     phasearray = np.angle(slc)
@@ -71,6 +88,9 @@ def read_phase_data(gdal_filename):
 def read_amplitude_data(gdal_filename):
     """
     Start with a complex quantity, and return only the amplitude of that quantity.
+
+    :param gdal_filename: string, name of file
+    :returns: 2d raster data representing amplitude only
     """
     slc = read_complex_data(gdal_filename)
     amparray = np.absolute(slc)
@@ -232,6 +252,22 @@ def data_to_file_1_bands(data1, filename):
 def plot_scalar_data(gdal_filename, band=1, title="", colormap='gray', aspect=1,
                      datamin=None, datamax=None, draw_colorbar=True, colorbar_orientation="horizontal", background=None,
                      outname=None):
+    """
+    Visualize scalar data within an ISCE file, assuming band 1 unless otherwise specified
+
+    :param gdal_filename: string, filename of isce file
+    :param band: int, default is 1
+    :param title: string, default is ""
+    :param colormap: string representing color map; default is 'gray'
+    :param aspect: default 1
+    :param datamin: float, minimum data value in color scale, default None
+    :param datamax: float, maximum data value in color scale, default None
+    :param draw_colorbar: bool, default True
+    :param colorbar_orientation: string, default 'horizontal'
+    :param background: default None
+    :param outname: string, default None
+    :return:
+    """
     from osgeo import gdal
     ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()
@@ -340,7 +376,10 @@ def get_xmin_xmax_xinc_from_xml(xml_file):
 
 def get_xarray_yarray_from_xml(filename):
     """
-    Another function to get arrays from isce xml data
+    Get 1d axis-arrays from isce xml data
+
+    :param filename: string, isce filename
+    :returns: 1d x-array, 1d y-array
     """
     firstlon, firstlat, dlon, dlat, xmin, xmax, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename)
     xarray, yarray = get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, nlon, nlat)
@@ -349,7 +388,15 @@ def get_xarray_yarray_from_xml(filename):
 
 def get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, x, y):
     """
-    Building x and y arrays of latitude and longitude
+    Build x and y arrays of latitude and longitude from the elements of the transform.
+
+    :param firstlon: beginning of the x-axis
+    :param firstlat: beginning of the y-axis
+    :param dlon: the increment of the x-axis
+    :param dlat: the increment of the y-axis
+    :param x: int, size of the eventual x-array
+    :param y: int, size of the eventual y-array
+    :returns: 1d array representing x-axis, 1d array representing y-axis
     """
     xarray = np.arange(firstlon, firstlon+x*dlon, dlon)
     yarray = np.arange(firstlat, firstlat+y*dlat, dlat)

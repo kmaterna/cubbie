@@ -16,10 +16,17 @@ def make_coherence_mask(cor, threshold):
     return mask
 
 
-def apply_coherence_mask(data, mask, is_complex=0, is_float32=False, mask_value=np.nan):
+def apply_coherence_mask(data, mask, is_complex=False, is_float32=False, mask_value=np.nan):
     """
     A future version of this function should probably check the type of the input data
     and return the same type that came in.
+
+    :param data: 2d raster
+    :param mask: 2d raster
+    :param is_complex: bool, default False
+    :param is_float32: bool, default False
+    :param mask_value: default is np.nan
+    :returns: 2d raster with mask applied, in the same format as the original data
     """
     if np.shape(data) != np.shape(mask):
         raise ValueError("Error! Shape of data ("+str(np.shape(data))+") and shape of mask (" +
@@ -40,6 +47,14 @@ def apply_coherence_mask(data, mask, is_complex=0, is_float32=False, mask_value=
 
 
 def interpolate_2d(data_array, is_complex=False):
+    """
+    A function to perform scipy linear interpolation scheme on 2d raster data, for custom workflows.
+    Removes nans and replaces them with an interpolated version.
+
+    :param data_array: 2d raster data
+    :param is_complex: bool, default is False
+    :returns: an interpolated 2d raster
+    """
     print("Performing 2d interpolation")
     if is_complex:
         data_array = np.angle(data_array)
@@ -53,7 +68,6 @@ def interpolate_2d(data_array, is_complex=False):
     # Time to get rid of nan's.
     for i in range(len(yarray)):
         for j in range(len(xarray)):
-            # xy_targets.append([xarray[j], yarray[i]])
             # Get the real values for use in interpolating
             if not np.isnan(data_array[i][j]):
                 x_interps.append(xarray[j])

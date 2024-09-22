@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from s1_batches.read_write_insar_utilities import insar_format_convert
+from s1_batches.insar_util_library.read_write_insar_utilities import insar_format_convert
 
 help_message = "Convert isce two-band binary unw datafile into single-band phase file. \nUsage: " \
                "unw_to_phase.py --unw_file filt_fine.unw --outfile filt_fine_single.unw"

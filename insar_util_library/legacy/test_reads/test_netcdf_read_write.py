@@ -27,9 +27,8 @@ class NetCDFTests(unittest.TestCase):
         self.assertTrue(z.any(), 'Could not read z of test file')
 
     def test_read_write_cycle(self):
-        relpath_to_testfiles = 'read_write_insar_utilities/test/'
-        filename = relpath_to_testfiles+'USGS_vel.nc4'
-        new_filename = relpath_to_testfiles + 'written_test.nc'
+        filename = 'USGS_vel.nc4'
+        new_filename = 'written_test.nc'
         lon, lat, z = read_netcdf4(filename)
         write_netcdf4(lon, lat, z, new_filename)
         lon2, lat2, z2 = read_netcdf4(new_filename)

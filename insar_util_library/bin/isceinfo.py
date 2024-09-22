@@ -4,8 +4,8 @@ The equivalent of gmt grdinfo for isce files, including displaying the number of
 """
 
 import numpy as np
-from s1_batches.read_write_insar_utilities import isce_read_write
-from s1_batches.math_tools import phase_math
+from s1_batches.insar_util_library.read_write_insar_utilities import isce_read_write
+from s1_batches.insar_util_library.math_tools import phase_math
 import matplotlib.pyplot as plt
 import argparse
 

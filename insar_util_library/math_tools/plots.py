@@ -7,6 +7,10 @@ import numpy as np
 def before_after_images(before_phase, after_phase, outfilename):
     """
     Produce a comparison plot of before-and-after images of unwrapped phase.
+
+    :param before_phase: 2d raster data
+    :param after_phase: 2d raster data
+    :param outfilename: string
     """
     plt.figure(figsize=(12, 7), dpi=300)
     plt.subplot(1, 2, 1)
@@ -20,11 +24,17 @@ def before_after_images(before_phase, after_phase, outfilename):
     print("Saving figure %s " % outfilename)
     plt.savefig(outfilename)
     plt.close()
+    return
 
 
 def linear_topo_phase_plot(phase_array_1d, dem_array_1d, corrected_phase_1d, outfilename):
     """
     Plot topography and phase as x-y scatter plot.
+
+    :param phase_array_1d: 1d array of phase values
+    :param dem_array_1d: 1d array of DEM values
+    :param corrected_phase_1d: 1d array of modified phase values
+    :param outfilename: string
     """
     plt.figure(figsize=(8, 6), dpi=300)
     plt.plot(dem_array_1d, phase_array_1d, '.', label='Before correction')
