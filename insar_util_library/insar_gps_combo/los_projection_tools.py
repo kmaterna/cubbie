@@ -12,10 +12,16 @@ from gnss_timeseries_viewers.gps_tools import vel_functions
 
 
 def closest_index(lst, K):
-    # Given list lst, and target K, which element is closest?
+    """
+    Given 1-dimensional list lst, and target K, which element is closest?
+
+    :param lst: 1-d list of floats
+    :param K: float, target for which you want to find the nearest element
+    :returns: index of nearest element, and distance between the nearest element and the target
+    """
     index = min(range(len(lst)), key=lambda i: abs(lst[i] - K))
-    deg_distance = lst[index] - K
-    return index, deg_distance
+    distance = lst[index] - K
+    return index, distance
 
 
 def simple_project_ENU_to_LOS(U_e, U_n, U_u, flight_angle, incidence_angle):

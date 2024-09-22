@@ -13,7 +13,7 @@ def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
     :param y: 1d array, like lats
     :param array1: 2d array, shape is len(y) x len(x)
     :param bbox: [W, E, S, N]
-    :param verbose: bool
+    :param verbose: bool, default is True
     """
     original_bbox = (np.min(x), np.max(x), np.min(y), np.max(y))
     if bbox[0] < original_bbox[0] or bbox[1] > original_bbox[1] or \
@@ -37,6 +37,9 @@ def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
 def mismatching_array_sizes(array_tuple):
     """
     Return 0 if the array sizes match.
+
+    :param array_tuple: list or tuple of 2d arrays
+    :returns: bool, 0 if all array sizes match, 1 if array sizes don't match
     """
     num_arrays = len(array_tuple)
     for i in range(1, num_arrays):

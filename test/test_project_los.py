@@ -1,10 +1,11 @@
+#!/usr/bin/env python
 
 import unittest
-from .. import los_projection_tools
+from s1_batches.insar_util_library.insar_gps_combo import los_projection_tools
 import numpy as np
 
 
-class LOSTests(unittest.TestCase):
+class Tests(unittest.TestCase):
 
     def test_descending_low_angle(self):
         # Test case 1: 14 degrees ascending orbit, with low-angle camera view, and optimally oriented def.

@@ -3,7 +3,12 @@ import scipy.interpolate
 
 
 def make_coherence_mask(cor, threshold):
-    """Build a mask: 1 if above coherence threshold, nan if below coherence threshold. """
+    """Build a mask: 1 if above coherence threshold, nan if below coherence threshold.
+
+    :param cor: 2D array of raster data, between 0 and 1, holding correlation data
+    :param threshold: float, used for the cutoff
+    :returns: mask, 2D raster, either ones or nans
+    """
     print("Making coherence mask.")
     mask = np.ones(np.shape(cor))
     mask[np.isnan(cor)] = np.nan
