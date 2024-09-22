@@ -9,7 +9,12 @@ from Tectonic_Utils.read_write import netcdf_read_write
 
 
 def isce_to_grd(isce_name, grdname):
-    """ Convert an isce scalar file into a grdfile """
+    """
+    Convert an isce scalar file into a grdfile.
+
+    :param isce_name: filename, string
+    :param grdname: another filename, string
+    """
     _, _, data = isce_read_write.read_scalar_data(isce_name)
     firstLon, firstLat, dE, dN, xmin, xmax, nlon, nlat = isce_read_write.get_xmin_xmax_xinc_from_xml(isce_name+".xml")
     (y, x) = np.shape(data)

@@ -98,7 +98,14 @@ def read_amplitude_data(gdal_filename):
 
 
 def read_scalar_data_no_isce(filename, nx, ny):
-    """ Take float32 numbers from binary file into 2d array """
+    """
+    Take float32 numbers from binary file into 2d array without using ISCE.
+
+    :param filename: string
+    :param nx: size of x-axis, int
+    :param ny: size of y-axis, int
+    :returns: 2d array of floats, of size (ny, nx)
+    """
     final_shape = (ny, nx)
     num_data = nx * ny
     print("Reading file %s into %d x %d array" % (filename, ny, nx))
@@ -110,6 +117,14 @@ def read_scalar_data_no_isce(filename, nx, ny):
 
 
 def read_phase_data_no_isce(filename, nx, ny):
+    """
+    Read phase data from binary file into 2d array without using ISCE.
+
+    :param filename: string
+    :param nx: size of x-axis, int
+    :param ny: size of y-axis, int
+    :returns: 2d array of phase values, floats, of size (ny, nx)
+    """
     final_shape = (ny, nx)
     num_data = nx * ny * 2
     print("Reading file %s into %d x %d array" % (filename, ny, nx))
@@ -141,6 +156,7 @@ def read_isce_unw_geo_single(filename):
     """
     Read isce unwrapped geocoded single-band, which has one dataset
 
+    :param filename: string
     :returns: 1D_xarray, 1D_yarray, 2D_data_array
     """
     firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
@@ -155,6 +171,7 @@ def read_isce_unw_geo_alternative(filename):
     Read a custom isce unwrapped geocoded product, which has two copies of unwrapped phase
     Uses a format found in some unwrapped files
     Return x and y axes too, in lon/lat
+    :param filename: string
     """
     firstlon, firstlat, dlon, dlat, _, _, nlon, nlat = get_xmin_xmax_xinc_from_xml(filename+'.xml')
     twox_data = read_scalar_data_no_isce(filename, nlon*2, nlat)   # separate the unw phase layer

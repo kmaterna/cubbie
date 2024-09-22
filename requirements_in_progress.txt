@@ -1,0 +1,8 @@
+numpy
+matplotlib
+scipy
+pygmt
+asf_search
+isce
+gdal
+Tectonic-Utils
