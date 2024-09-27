@@ -2,7 +2,7 @@
 
 import sys
 import argparse
-from s1_batches.insar_util_library.read_write_insar_utilities import insar_format_convert
+from cubbie.read_write_insar_utilities import insar_format_convert
 
 help_message = "Convert isce two-band binary interferogram into single-band phase file. \nUsage: " \
                "isceintf_to_phase.py --isce_file filt_fine.int --outfile phase.int"

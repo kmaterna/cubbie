@@ -1,10 +1,12 @@
-# s1_batches
+# cubbie
 
-This set of codes I use for help with Sentinel-1 data analysis. Its functionality is basically down to searching the Sentinel-1 archive and downloading data.  I used to use it for stack processing with GMTSAR and SBAS. 
+This set of codes I use for help with InSAR (mostly Sentinel-1) data analysis. Its functionality includes searching the Sentinel-1 archive, downloading data, reading many formats of InSAR, and basic math tools in pure Python.  I deprecated the SBAS and stack processing with GMTSAR. 
+
+```cubbie``` stands for "CU Boulder Big InSAR Exchange" library, a name it one day may live up to.   
 
 ## Description
 
-Disclaimer: Just use MintPy instead!  
+Disclaimer: For time series, just use MintPy instead!  
 
 I still use this library for basic things like searching the Sentinel-1 archive, reading GMTSAR and ISCE files into Python, and maybe doing a simple average, but for my future time series needs, I intend to switch to MintPy.
 

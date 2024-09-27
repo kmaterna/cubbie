@@ -3,8 +3,8 @@
 """Apply a mask to an isce file"""
 
 import argparse
-from s1_batches.insar_util_library.read_write_insar_utilities import isce_read_write
-from s1_batches.insar_util_library.math_tools import mask_and_interpolate as mask_tools
+from cubbie.read_write_insar_utilities import isce_read_write
+from cubbie.math_tools import mask_and_interpolate as mask_tools
 import numpy as np
 
 help_message = "Produce a masked version of an ISCE binary data file (single band file only). \nUsage: " \

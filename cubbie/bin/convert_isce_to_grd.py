@@ -6,7 +6,7 @@
 
 import sys
 import argparse
-from s1_batches.insar_util_library.read_write_insar_utilities import insar_format_convert
+from cubbie.read_write_insar_utilities import insar_format_convert
 
 help_message = "Convert geocoded isce interferogram into gmt grdfile. \nUsage: " \
                "convert_isce_to_grd --isce_file geo_fine_filt.int --grd_file phase_ll.grd"

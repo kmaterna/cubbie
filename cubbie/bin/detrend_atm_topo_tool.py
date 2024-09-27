@@ -11,7 +11,7 @@ import numpy as np
 import argparse
 import scipy.linalg
 from Tectonic_Utils.read_write import netcdf_read_write as rw
-from s1_batches.insar_util_library.math_tools import plots, mask_and_interpolate, grid_tools
+from cubbie.math_tools import plots, mask_and_interpolate, grid_tools
 
 help_message = "Perform detrending and topo-correlated removal on interferogram files. \nUsage: " \
                "detrend_atm_topo_tool.py --data_file unw_phase.grd --outname detrended_phase.grd"
