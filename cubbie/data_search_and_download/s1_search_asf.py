@@ -104,7 +104,9 @@ def asf_query(args):
     for item in results:
         print(item.properties['fileID'])
 
+    total_dates = [item.properties['startTime'].split('T')[0] for item in results]
     print("Total number of results:", len(results))
+    print("On total number of dates:", len(set(total_dates)))
     if len(results) == 0:
         print("Exiting.")
         sys.exit(0)
