@@ -38,6 +38,7 @@ def cmd_parse():
     p.add_argument('-d', '--orbit_direction', type=str, help='''[Ascending/Descending]''', default='both')
     p.add_argument('-m', '--sar_mode', type=str, help='''[IW/other/ALL]''', default='IW')
     p.add_argument('-z', '--output_file', type=str, help='''Specified output file''', default="search_results.txt")
+    p.add_argument('-v', '--write_footprints', help='''Write the footprints in GMT-friendly format''', action='store_true')
     exp_dict = vars(p.parse_args(args=None if sys.argv[1:] else ['--help']))
     return exp_dict
 
@@ -171,14 +172,19 @@ def pygmt_plots(results, args):
     fig.coast(region=region, projection=proj, borders='2', shorelines='0.5p,black', water='white')
 
     # Write the footprint polygons
-    with open("tmp.txt", 'w') as f:
+    if args['write_footprints']:
+        footprint_file = "footprints.txt"
+    else:
+        footprint_file = "tmp.txt"
+    with open(footprint_file, 'w') as f:
         for im in results:
             len_coords = len(im.geometry['coordinates'][0])
             f.write(">\n")
             for i in range(len_coords):
                 f.write("%f %f\n" % (im.geometry['coordinates'][0][i][0], im.geometry['coordinates'][0][i][1]))
-    fig.plot(data='tmp.txt', pen="0.4p,red")
-    os.remove('tmp.txt')
+    fig.plot(data=footprint_file, pen="0.4p,red")
+    if not args['write_footprints']:
+        os.remove(footprint_file)
 
     # Write the search coordinate or search region
     if args['coordinate'] is not None:
