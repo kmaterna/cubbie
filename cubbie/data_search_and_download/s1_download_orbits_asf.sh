@@ -5,7 +5,14 @@
 #      qc.sentinel1.eo.esa.int stopped responding,
 #      March 2021
 #      source: https://s1qc.asf.alaska.edu/aux_poeorb/
-#      PREFERRED METHOD FOR DOWNLOADING ORBITS.  March 2021.
+#      PREFERRED METHOD FOR DOWNLOADING ORBITS.  Still works as of 10/2024.
+#      You must have your credentials in a file called ~/.wgetrc with
+#             user=username
+#             password=pass
+#      Alternately, you could have your credentials in ~/.netrc with
+#             machine urs.earthdata.nasa.gov
+#             login username
+#             password pass
 ###############################################
 
 ###############################
