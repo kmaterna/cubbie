@@ -130,7 +130,7 @@ def asf_query(args):
 
     # Pretty plots
     pygmt_plots(results, args)
-    timing_plots(results)
+    timing_plots(args['output_file'], "timing.png")
     return
 
 
@@ -200,7 +200,13 @@ def pygmt_plots(results, args):
     return
 
 
-def timing_plots(results):
+def timing_plots(results_file, output_plot='timing.png'):
+    """
+    Build a plot of the acquisition timing for a set of ASF search results. Works from a text file directly now.
+
+    :param results_file: string, name of a text file with human-readable results from an ASF query
+    :param output_plot: string, name of the output png
+    """
     borders = [dt.datetime.strptime("2014-07-01", "%Y-%m-%d"),
                dt.datetime.strptime("2017-07-01", "%Y-%m-%d"),
                dt.datetime.strptime("2020-07-01", "%Y-%m-%d"),
@@ -209,10 +215,14 @@ def timing_plots(results):
 
     # Divide the results into sub-plots
     a1, d1, a2, d2, a3, d3, a4, d4 = [], [], [], [], [], [], [], []
-    for item in results:
-        acq_date = dt.datetime.strptime(item.properties['startTime'].split('T')[0], "%Y-%m-%d")
-        direction = item.properties['flightDirection']
-        _track = item.properties['pathNumber']
+
+    # Read the data in from the file
+    datestrs, flight_directions, tracks = np.loadtxt(results_file, usecols=(1, 3, 4), unpack=True,
+                                                     dtype={'names': ('dts', 'direction', 'track'),
+                                                            'formats': ('U10', 'U9', float)})
+
+    for datestr, direction, track in zip(datestrs, flight_directions, tracks):
+        acq_date = dt.datetime.strptime(datestr, "%Y-%m-%d")
         if borders[0] < acq_date < borders[1]:
             if direction == "ASCENDING":
                 a1.append(acq_date)
@@ -237,7 +247,7 @@ def timing_plots(results):
     fig, axarr = plt.subplots(4, 1, figsize=(14, 10), dpi=300)
     ms = 4
 
-    axarr[0].set_title("Search Results: %s acquisitions" % (len(results)), fontsize=20)
+    axarr[0].set_title("Search Results: %s acquisitions" % (len(datestrs)), fontsize=20)
     axarr[0].set_xlim([borders[0], borders[1]])
     axarr[0].set_ylim([0, 1])
     axarr[0].set_yticks([])
@@ -266,8 +276,8 @@ def timing_plots(results):
     axarr[3].plot(d4, [0.7 for _x in d4], color='blue', marker='o', markersize=ms, linestyle=None, linewidth=0)
     axarr[3].grid(True)
     axarr[3].legend(['Ascending', 'Descending'], fontsize=15)
-    print("Plotting acquisitions in timing.png")
-    fig.savefig("timing.png")
+    print("Plotting acquisitions in "+output_plot)
+    fig.savefig(output_plot)
     return
 
 
