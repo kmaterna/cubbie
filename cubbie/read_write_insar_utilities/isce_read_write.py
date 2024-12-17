@@ -26,21 +26,18 @@ def read_complex_data(gdal_filename):
     Read isce SLC data into a 2D array where each element is a complex number.
 
     :param gdal_filename: string, name of file
-    :returns: 2d raster of complex values
+    :returns: x-axis 1d array, y-axis 1d array, data 2d raster array of complex values
     """
     from osgeo import gdal  # GDAL support for reading virtual files
     print("Reading file %s " % gdal_filename)
     ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(1).ReadAsArray()
-    transform = ds.GetGeoTransform()
-    ds = None
-
-    _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, slc)
 
     # put all zero values to nan
     slc = flush_zeros_to_nans(slc)
+    xarray, yarray = read_isce_1d_arrays(gdal_filename)
 
-    return slc
+    return xarray, yarray, slc
 
 
 def read_scalar_data(gdal_filename, band=1, flush_zeros=True):
@@ -60,10 +57,7 @@ def read_scalar_data(gdal_filename, band=1, flush_zeros=True):
         print("WARNING: We usually read band=2 for snaphu unwrapped files. Are you sure you want band 1 ????")
     ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()
-    transform = ds.GetGeoTransform()
-    ds = None
 
-    _xmin, _xmax, _ymin, _ymax = get_xmin_xmax_xinc_from_geotransform(transform, data)
     xarray, yarray = read_isce_1d_arrays(gdal_filename)
 
     # put all zero values to nan
@@ -78,11 +72,11 @@ def read_phase_data(gdal_filename):
     Start with a complex quantity, and return only the phase of that quantity.
 
     :param gdal_filename: string, name of file
-    :returns: 2d raster data representing phase only
+    :returns: x-axis 1d array, y-axis 1d array, 2d raster data representing phase only
     """
-    slc = read_complex_data(gdal_filename)
+    xarr, yarr, slc = read_complex_data(gdal_filename)
     phasearray = np.angle(slc)
-    return phasearray
+    return xarr, yarr, phasearray
 
 
 def read_amplitude_data(gdal_filename):
@@ -90,11 +84,11 @@ def read_amplitude_data(gdal_filename):
     Start with a complex quantity, and return only the amplitude of that quantity.
 
     :param gdal_filename: string, name of file
-    :returns: 2d raster data representing amplitude only
+    :returns: x-axis 1d array, y-axis 1d array, 2d raster data representing amplitude only
     """
-    slc = read_complex_data(gdal_filename)
+    xarr, yarr, slc = read_complex_data(gdal_filename)
     amparray = np.absolute(slc)
-    return amparray
+    return xarr, yarr, amparray
 
 
 def read_scalar_data_no_isce(filename, nx, ny):
@@ -289,7 +283,6 @@ def plot_scalar_data(gdal_filename, band=1, title="", colormap='gray', aspect=1,
     ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     data = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
-    ds = None
 
     # getting the min max of the axes
     # Note: this assumes that the transform is north-up
@@ -320,7 +313,6 @@ def plot_complex_data(gdal_filename, title="", aspect=1, band=1, colormap='rainb
     ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
     slc = ds.GetRasterBand(band).ReadAsArray()
     transform = ds.GetGeoTransform()
-    ds = None
 
     xmin, xmax, ymin, ymax = get_xmin_xmax_xinc_from_geotransform(transform, slc)
 
