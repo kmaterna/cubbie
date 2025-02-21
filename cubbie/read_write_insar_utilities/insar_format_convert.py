@@ -36,7 +36,7 @@ def convert_intf_phase(infilename, outfilename):
     :param infilename: name of isce file, such as filt_fine.int
     :param outfilename: string
     """
-    slc = isce_read_write.read_complex_data(infilename)
+    _, _, slc = isce_read_write.read_complex_data(infilename)
     phase = np.angle(slc)
     ny, nx = np.shape(phase)
     isce_read_write.write_isce_data(phase, nx, ny, "FLOAT", outfilename)
