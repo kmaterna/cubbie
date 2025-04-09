@@ -14,7 +14,7 @@ import os
 from subprocess import call
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
 from Tectonic_Utils.geodesy import haversine, insar_vector_functions
-from ..read_write_insar_utilities import isce_read_write, jpl_uav_read_write
+from ...read_write_insar_utilities import isce_read_write, jpl_uav_read_write
 from . import unwrapping_isce_custom
 
 
@@ -351,7 +351,7 @@ def write_unwrapped_ground_range_displacements(ground_range_phase_file, output_f
 def create_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
     # Make los.rdr.geo given .ann file from JPL website's UAVSAR interferograms and the ground-range sample points.
     # x-axis and y-axis are the x and y arrays where los vectors will be extracted on a corresponding grid.
-    near_angle, far_angle, heading = jpl_uav_read_write.get_nearrange_farrange_heading_angles(ann_file)
+    near_angle, far_angle, heading = jpl_uav_read_write.get_near_range_far_range_heading_angles(ann_file)
     heading_cartesian = insar_vector_functions.bearing_to_cartesian(heading)  # CCW from east
     print("Heading is %f degrees CW from north" % heading)
     print("Cartesian Heading is %f" % heading_cartesian)
