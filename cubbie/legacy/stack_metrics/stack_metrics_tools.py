@@ -26,7 +26,7 @@ def produce_min_max(filename):
 def remove_nans_array(myarray):
     numarray = []
     for i in range(len(myarray)):
-        if ~np.isnan(myarray[i]):
+        if not np.isnan(myarray[i]):
             numarray.append(myarray[i][0])
     return numarray
 

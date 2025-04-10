@@ -5,6 +5,7 @@ Read and process a wrapped JPL UAVSAR interferogram from the UAVSAR website
 import numpy as np
 import struct
 from ..math_tools import phase_math
+from Tectonic_Utils.geodesy import haversine, insar_vector_functions
 
 
 def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
@@ -115,3 +116,98 @@ def get_ground_range_left_corners(ann_file):
         if 'Approximate Lower Left Latitude' in line:
             ll_lat = float(line.split('=')[1].split()[0])
     return ul_lon, ul_lat, ll_lon, ll_lat
+
+
+# ------------ JPL UAVSAR IGRAM FORMATS -------------- #
+# A set of tools designed for handling of ground-range igrams
+# from the JPL website for UAVSAR individual igram products
+
+def read_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
+    """
+    Make los.rdr.geo given .ann file from JPL website's UAVSAR interferograms and the ground-range sample points.
+    x-axis and y-axis are the x and y arrays where los vectors will be extracted on a corresponding grid.
+
+    :param ann_file: filename, string
+    :param x_axis: 1d array
+    :param y_axis: 1d array
+    :return: 2d array of incidence angles, 2d array of azimuths
+    """
+    near_angle, far_angle, heading = get_near_range_far_range_heading_angles(ann_file)
+    heading_cartesian = insar_vector_functions.bearing_to_cartesian(heading)  # CCW from east
+    print("Heading is %f degrees CW from north" % heading)
+    print("Cartesian Heading is %f" % heading_cartesian)
+    # Get the upper and lower left corners, so we can compute the length of the across-track extent in km
+    ul_lon, ul_lat, ll_lon, ll_lat = get_ground_range_left_corners(ann_file)
+
+    cross_track_max = haversine.distance((ll_lat, ll_lon), (ul_lat, ul_lon))  # in km
+
+    # Get the azimuth angle for the pixels looking up to the airplane
+    # My own documentation says CCW from north, even though that's really strange.
+    azimuth = heading_cartesian - 90  # 90 degrees to the right of the airplane heading
+    # (for the look vector from ground to plane)
+    azimuth = insar_vector_functions.cartesian_to_ccw_from_north(azimuth)  # degrees CCW from North
+    print("azimuth from ground to plane is:", azimuth)
+
+    [X, Y] = np.meshgrid(x_axis, y_axis)
+    (ny, nx) = np.shape(X)
+    grid_az = azimuth * np.ones(np.shape(X))
+    grid_inc = np.zeros(np.shape(X))
+    xtp = np.zeros(np.shape(X))
+
+    print("Computing incidence angles for all pixels")
+    for i in range(ny):
+        for j in range(nx):
+            xtp[i, j] = cross_track_pos(X[i, j], Y[i, j], ll_lon, ll_lat, heading_cartesian)  # DIFFERENT FOR ASC AND DESC
+
+    grid_inc = incidence_angle_trig(xtp, cross_track_max, near_angle, far_angle)
+
+    # Finally, write the 2 bands for los.rdr.geo
+    # isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", 'los.rdr.geo')
+    return grid_inc, grid_az
+
+
+def cross_track_pos(target_lon, target_lat, nearrange_lon, nearrange_lat, heading_cartesian):
+    """
+    Get cross-track position of point in a coordinate system centered at (nearrange_lon, nearrange_lat)
+    with given heading of a plane and coordinates of one near-range point
+
+    :param target_lon: float, longitude
+    :param target_lat: float, latitude
+    :param nearrange_lon: float, longitude
+    :param nearrange_lat: float, latitude
+    :param heading_cartesian: float, heading in a cartesian system from the x-axis
+    :return: value across the track, in km
+    """
+    tupleA = (nearrange_lat, nearrange_lon)
+    tupleB = (target_lat, target_lon)
+    distance = haversine.distance(tupleB, tupleA)
+    compass_bearing = haversine.calculate_initial_compass_bearing(tupleA, tupleB)  # this comes CW from north
+    theta = insar_vector_functions.bearing_to_cartesian(compass_bearing)  # angle of position vector, cartesian coords
+    # heading_cartesian is the angle between east unit vector and the flight direction
+    x0 = distance * np.cos(np.deg2rad(theta))
+    y0 = distance * np.sin(np.deg2rad(theta))  # in the east-north coordinate system
+    x_prime, y_prime = insar_vector_functions.rotate_vector_by_angle(x0, y0, heading_cartesian)
+    return y_prime
+
+
+def incidence_angle_trig(xtp, cross_track_max, near_inc_angle, far_inc_angle):
+    """
+    Using the incidence angles (to the vertical) at the upper and lower corners of the track,
+    what's the incidence angle at some location in between (xtp=cross-track-position)?
+    near_angle is the incidence angle between the viewing geometry and the vertical at the near-range.
+    nearcomp is the complement of that angle.
+    This function is kind of like linear interpolation, but a little bit curved
+    It solves an equation I derived on paper from the two near-range and far-range triangles in July 2020
+    Now operates on numpy arrays.
+
+    :param xtp: the cross-track position of the target point, float or 2d array
+    :param cross_track_max: the cross-track position of the farthest range point, float
+    :param near_inc_angle: the incidence angle at the near-range, float
+    :param far_inc_angle: the incidence angle at the far-range, float
+    :return: same data type as xtp, float or 2d array
+    """
+    nearcomp = np.deg2rad(np.subtract(90, near_inc_angle))
+    farcomp = np.deg2rad(np.subtract(90, far_inc_angle))  # angles from ground to satellite
+    h = (np.tan(nearcomp) * np.tan(farcomp) * cross_track_max) / (np.tan(nearcomp) - np.tan(farcomp))
+    angle_to_horizontal = np.rad2deg(np.arctan(h / (xtp + (h / np.tan(nearcomp)))))
+    return np.subtract(90, angle_to_horizontal)

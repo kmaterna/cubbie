@@ -426,7 +426,7 @@ def write_unordered_unwrapping(numproc, swath, sh_file, config_file, multiple_sw
     outfile = open(sh_file, 'w')
     outfile.write("#!/bin/bash\n")
     outfile.write("# Script to batch unwrap Sentinel-1 TOPS mode data sets.\n\n")
-    if ~multiple_swaths:
+    if not multiple_swaths:
         outfile.write("cd F" + swath + "\n")   # for single swath, have this line.  For merged, stay outside
     outfile.write("rm intf?.in\n")
     for i, item in enumerate(intfs):

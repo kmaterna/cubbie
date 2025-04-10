@@ -13,7 +13,7 @@ import glob
 import os
 from subprocess import call
 from Tectonic_Utils.read_write import netcdf_read_write as rwr
-from Tectonic_Utils.geodesy import haversine, insar_vector_functions
+from Tectonic_Utils.geodesy import insar_vector_functions
 from ...read_write_insar_utilities import isce_read_write, jpl_uav_read_write
 from . import unwrapping_isce_custom
 
@@ -86,6 +86,7 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     # assuming there's a giant gap somewhere in the lat array
     # that can tell us how many elements are in the gridded array
     typical_gap = abs(lat[1] - lat[0])
+    llh_pixels_range = 1
     for i in range(1, len(lat)):
         if abs(lat[i] - lat[i - 1]) > 100 * typical_gap:
             print(lat[i] - lat[i - 1])
@@ -151,7 +152,7 @@ def geocode_UAVSAR_stack(config_params, geocoded_folder):
     S, N = np.min(cut_lat), np.max(cut_lat)
 
     # This last thing may not work when finding the reference pixel, only when geocoding at the very last.
-    # Double checking the shape of the interferogram data (should match!)
+    # Double-checking the shape of the interferogram data (should match!)
     _, _, signalspread = isce_read_write.read_scalar_data(os.path.join(config_params.ts_output_dir,
                                                                        'signalspread_cut.nc'))
     print("For comparison, shape of cut data is: ", np.shape(signalspread))
@@ -166,10 +167,9 @@ def create_isce_stack_unw_geo(geocoded_dir, w, e, s, n):
     # After that, the BIL arrangement can be switched to BSQ,
     # So I need to make an adjustment
     folders = glob.glob(os.path.join(geocoded_dir, "scene*"))
-    i = 0
     for folder_i in folders:
         # Run the geocode command.
-        # This places the geocoded .unw.geo into each sub-directory.
+        # This places the geocoded .unw.geo into each subdirectory.
         datafile = glob.glob(os.path.join(folder_i, "*.unw"))
         datafile = datafile[0]
         command = "geocodeGdal.py -l " + geocoded_dir + "/cut_lat.gdal -L " + geocoded_dir + "/cut_lon.gdal " + "-f " +\
@@ -185,7 +185,6 @@ def create_isce_stack_unw_geo(geocoded_dir, w, e, s, n):
                                          outname='test_after_geocode.png', band=2)
 
         print("DANGER! PLEASE FIGURE OUT A SIMPLE WRITE FUNCTION FOR THIS")
-        i = i + 1
         sys.exit(0)
     return
 
@@ -265,35 +264,6 @@ def fix_hacky_BSQ_BIL_problem(geocoded_directory, mynum):
 # A set of tools designed for handling of ground-range igrams
 # from the JPL website for UAVSAR individual igram products
 
-def cross_track_pos(target_lon, target_lat, nearrange_lon, nearrange_lat, heading_cartesian):
-    # Given the heading of a plane and the coordinates of one near-range point
-    # Get the cross-track position of point in a coordinate system centered
-    # at (nearrange_lon, nearrange_lat) with given heading
-    distance = haversine.distance((target_lat, target_lon), (nearrange_lat, nearrange_lon))
-    compass_bearing = haversine.calculate_initial_compass_bearing((nearrange_lat, nearrange_lon),
-                                                                  (target_lat, target_lon))  # this comes CW from north
-    theta = insar_vector_functions.bearing_to_cartesian(compass_bearing)  # angle of position vector, cartesian coords
-    # heading_cartesian is the angle between the east unit vector and the flight direction
-    x0 = distance * np.cos(np.deg2rad(theta))
-    y0 = distance * np.sin(np.deg2rad(theta))  # in the east-north coordinate systeem
-    x_prime, y_prime = insar_vector_functions.rotate_vector_by_angle(x0, y0, heading_cartesian)
-    return y_prime
-
-
-def incidence_angle_trig(xtp, cross_track_max, near_inc_angle, far_inc_angle):
-    # Using the incidence angles (to the vertical) at the upper and lower corners of the track,
-    # what's the incidence angle at some location in between (xtp=cross-track-position)?
-    # near_angle is the incidence angle between the viewing geometry and the vertical at the near-range.
-    # nearcomp is the complement of that angle.
-    # This function is kind of like linear interpolation, but a little bit curved
-    # It solves an equation I derived on paper from the two near-range and far-range triangles in July 2020
-    nearcomp = np.deg2rad(insar_vector_functions.complement_angle(near_inc_angle))
-    farcomp = np.deg2rad(insar_vector_functions.complement_angle(far_inc_angle))  # angles from ground to satellite
-    h = (np.tan(nearcomp) * np.tan(farcomp) * cross_track_max) / (np.tan(nearcomp) - np.tan(farcomp))
-    angle_to_horizontal = np.rad2deg(np.arctan(h / (xtp + (h / np.tan(nearcomp)))))
-    return insar_vector_functions.complement_angle(angle_to_horizontal)
-
-
 def get_geocoded_axes_from_ann(ann_file, cut_rowcol, looks_x, looks_y):
     # Given .ann file and cutting/multilooking scheme, give us the ground-range points of the final pixels
     # in two east-and-north axes
@@ -308,8 +278,7 @@ def get_geocoded_axes_from_ann(ann_file, cut_rowcol, looks_x, looks_y):
     y_cut = y_orig[cut_rowcol[0]: cut_rowcol[1]]  # implement the grid cut
 
     # next, implement the multilooking
-    x_filt = []
-    y_filt = []
+    x_filt, y_filt = [], []
     counter = np.arange(0, len(x_cut), looks_x)
     for i in range(len(counter)):
         region = np.mean(x_cut[counter[i]:counter[i] + looks_x])
@@ -345,42 +314,4 @@ def write_unwrapped_ground_range_displacements(ground_range_phase_file, output_f
     isce_read_write.write_isce_unw(unw, unw, nx, ny, "FLOAT", output_file, firstlat=max(y_axis), firstlon=min(x_axis),
                                    deltalon=lon_inc, deltalat=lat_inc, xmin=min(x_axis),
                                    xmax=max(x_axis))  # 2 bands, floats
-    return
-
-
-def create_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
-    # Make los.rdr.geo given .ann file from JPL website's UAVSAR interferograms and the ground-range sample points.
-    # x-axis and y-axis are the x and y arrays where los vectors will be extracted on a corresponding grid.
-    near_angle, far_angle, heading = jpl_uav_read_write.get_near_range_far_range_heading_angles(ann_file)
-    heading_cartesian = insar_vector_functions.bearing_to_cartesian(heading)  # CCW from east
-    print("Heading is %f degrees CW from north" % heading)
-    print("Cartesian Heading is %f" % heading_cartesian)
-    # Get the upper and lower left corners, so we can compute the length of the across-track extent in km
-    ul_lon, ul_lat, ll_lon, ll_lat = jpl_uav_read_write.get_ground_range_left_corners(ann_file)
-
-    cross_track_max = haversine.distance((ll_lat, ll_lon), (ul_lat, ul_lon))  # in km
-
-    # Get the azimuth angle for the pixels looking up to the airplane
-    # My own documentation says CCW from north, even though that's really strange.
-    azimuth = heading_cartesian - 90  # 90 degrees to the right of the airplane heading
-    # (for the look vector from ground to plane)
-    azimuth = insar_vector_functions.cartesian_to_ccw_from_north(azimuth)  # degrees CCW from North
-    print("azimuth from ground to plane is:", azimuth)
-
-    [X, Y] = np.meshgrid(x_axis, y_axis)
-    (ny, nx) = np.shape(X)
-    grid_az = azimuth * np.ones(np.shape(X))
-    grid_inc = np.zeros(np.shape(X))
-
-    print("Computing incidence angles for all pixels")
-    for i in range(ny):
-        for j in range(nx):
-            xtp = cross_track_pos(X[i, j], Y[i, j], ll_lon, ll_lat,
-                                  heading_cartesian)  # THIS WILL HAVE TO CHANGE FOR ASCENDING AND DESCENDING
-            inc = incidence_angle_trig(xtp, cross_track_max, near_angle, far_angle)
-            grid_inc[i, j] = inc
-
-    # Finally, write the 2 bands for los.rdr.geo
-    isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", 'los.rdr.geo')
-
     return

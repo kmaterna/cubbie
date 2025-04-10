@@ -117,9 +117,9 @@ def compute_loops(all_loops, loops_dir, loops_guide, rowref, colref):
                 znew_raw[j][k] = unwrapped_closure_raw - offset_before_unwrapping
                 znew_fix[j][k] = unwrapped_closure_fix - offset_before_unwrapping
 
-                if ~np.isnan(znew_raw[j][k]):
+                if not np.isnan(znew_raw[j][k]):
                     histdata_raw.append(znew_raw[j][k] / np.pi)
-                if ~np.isnan(znew_fix[j][k]):
+                if not np.isnan(znew_fix[j][k]):
                     histdata_fix.append(znew_fix[j][k] / np.pi)
                 if abs(znew_fix[j][k]) > 0.5:  # if this pixel has
                     errorcount = errorcount + 1
