@@ -1,5 +1,5 @@
 """
-Read and process a wrapped JPL UAVSAR interferogram from the UAVSAR website
+Read and process wrapped JPL UAVSAR interferograms from UAVSAR website
 """
 
 import numpy as np
@@ -17,7 +17,7 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
     :param ann_file: string
     :param dtype: string, default 'f'
     :param igram_type: string, either 'ground' or 'slant'
-    :returns: two 2d arrays, phase-amp
+    :returns: x, y, two 2d arrays, phase-amp
     """
     print("Reading %s-range file %s" % (igram_type, data_file))
     num_rows, num_cols = get_rows_cols(ann_file, igram_type)
@@ -39,9 +39,13 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
 
 def read_corr_data(data_file, ann_file, dtype='f', igram_type='ground'):
     """
-    Data file is not a regular netcdf grd file
-    dtype float works for corr, unwrapped, etc.
-    igram_type is ground or slant
+    Read coherence into a 2D array from UAVSAR data
+
+    :param data_file: filename, binary file of coherence from UAVSAR platform
+    :param ann_file: string, filename of annotation file from UAVSAR platform
+    :param dtype: default 'f'
+    :param igram_type: string, default 'ground'
+    :return: 2d array of coherence values
     """
     print("Reading %s-range file %s" % (igram_type, data_file))
     num_rows, num_cols = get_rows_cols(ann_file, igram_type)
@@ -55,7 +59,12 @@ def read_corr_data(data_file, ann_file, dtype='f', igram_type='ground'):
     return data
 
 
-def get_rows_cols(ann_file, igram_type):
+def get_rows_cols(ann_file, igram_type='ground'):
+    """
+    :param ann_file: string, filename
+    :param igram_type: string, default 'ground'
+    :return: two ints, the size of the data product in nrows, ncols
+    """
     num_rows, num_cols = 0, 0
     for line in open(ann_file):
         if igram_type == 'ground':
@@ -74,6 +83,10 @@ def get_rows_cols(ann_file, igram_type):
 
 
 def get_ground_range_corner_increment(ann_file):
+    """
+    :param ann_file: string, filename
+    :return: four floats, the coordinates of the starting corner for the track, and the lon/lat spacing increments
+    """
     start_lon, start_lat, lon_inc, lat_inc = 0, 0, 0, 0
     for line in open(ann_file):
         if 'Ground Range Data Starting Latitude' in line:
@@ -87,16 +100,30 @@ def get_ground_range_corner_increment(ann_file):
     return start_lon, start_lat, lon_inc, lat_inc
 
 
-def get_near_range_far_range_heading_angles(ann_file):
-    near_range, far_range, heading_angle = 0, 0, 0
+def get_near_range_far_range_incidence_angles(ann_file):
+    """
+    :param ann_file: string, filename
+    :return: two floats, the incidence angle of the near-range and far-range pixels
+    """
+    near_range, far_range = 0, 0
     for line in open(ann_file):
         if 'Average Look Angle in Near Range' in line:
             near_range = float(line.split('=')[1].split()[0])
         if 'Average Look Angle in Far Range' in line:
             far_range = float(line.split('=')[1].split()[0])
+    return near_range, far_range
+
+
+def get_heading_angle(ann_file):
+    """
+    :param ann_file: string, filename
+    :return: float, the angle of the airplane's heading, in degrees CW from north
+    """
+    heading_angle = 0
+    for line in open(ann_file):
         if 'Peg Heading' in line:
             heading_angle = float(line.split('=')[1].split()[0])
-    return near_range, far_range, heading_angle
+    return heading_angle
 
 
 def get_ground_range_left_corners(ann_file):
@@ -118,6 +145,32 @@ def get_ground_range_left_corners(ann_file):
     return ul_lon, ul_lat, ll_lon, ll_lat
 
 
+def get_ground_range_right_corners(ann_file):
+    """
+    :param ann_file: string, filename
+    :return: upper right lon, upper right lat, lower right lon, lower right lat
+    """
+    # upper right and lower right corners of the data in the track
+    ur_lon, ur_lat, lr_lon, lr_lat = 0, 0, 0, 0
+    for line in open(ann_file):
+        if 'Approximate Upper Right Longitude' in line:
+            ur_lon = float(line.split('=')[1].split()[0])
+        if 'Approximate Upper Right Latitude' in line:
+            ur_lat = float(line.split('=')[1].split()[0])
+        if 'Approximate Lower Right Longitude' in line:
+            lr_lon = float(line.split('=')[1].split()[0])
+        if 'Approximate Lower Right Latitude' in line:
+            lr_lat = float(line.split('=')[1].split()[0])
+    return ur_lon, ur_lat, lr_lon, lr_lat
+
+
+def get_four_ground_range_corners(ann_file):
+    ul_lon, ul_lat, ll_lon, ll_lat = get_ground_range_left_corners(ann_file)
+    ur_lon, ur_lat, lr_lon, lr_lat = get_ground_range_right_corners(ann_file)
+    four_corners = [(ul_lon, ul_lat), (ll_lon, ll_lat), (lr_lon, lr_lat), (ur_lon, ur_lat), (ul_lon, ul_lat)]
+    return four_corners
+
+
 # ------------ JPL UAVSAR IGRAM FORMATS -------------- #
 # A set of tools designed for handling of ground-range igrams
 # from the JPL website for UAVSAR individual igram products
@@ -132,10 +185,11 @@ def read_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
     :param y_axis: 1d array
     :return: 2d array of incidence angles, 2d array of azimuths
     """
-    near_angle, far_angle, heading = get_near_range_far_range_heading_angles(ann_file)
-    heading_cartesian = insar_vector_functions.bearing_to_cartesian(heading)  # CCW from east
+    near_angle, far_angle = get_near_range_far_range_incidence_angles(ann_file)
+    heading = get_heading_angle(ann_file)
+    heading_cart = insar_vector_functions.bearing_to_cartesian(heading)  # CCW from east
     print("Heading is %f degrees CW from north" % heading)
-    print("Cartesian Heading is %f" % heading_cartesian)
+    print("Cartesian Heading is %f CCW from East" % heading_cart)
     # Get the upper and lower left corners, so we can compute the length of the across-track extent in km
     ul_lon, ul_lat, ll_lon, ll_lat = get_ground_range_left_corners(ann_file)
 
@@ -143,21 +197,30 @@ def read_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
 
     # Get the azimuth angle for the pixels looking up to the airplane
     # My own documentation says CCW from north, even though that's really strange.
-    azimuth = heading_cartesian - 90  # 90 degrees to the right of the airplane heading
+    azimuth = heading_cart - 90  # 90 degrees to the right of the airplane heading
     # (for the look vector from ground to plane)
     azimuth = insar_vector_functions.cartesian_to_ccw_from_north(azimuth)  # degrees CCW from North
     print("azimuth from ground to plane is:", azimuth)
 
     [X, Y] = np.meshgrid(x_axis, y_axis)
-    (ny, nx) = np.shape(X)
     grid_az = azimuth * np.ones(np.shape(X))
-    grid_inc = np.zeros(np.shape(X))
-    xtp = np.zeros(np.shape(X))
 
+    # Compute the incidence angle for every pixel
     print("Computing incidence angles for all pixels")
-    for i in range(ny):
-        for j in range(nx):
-            xtp[i, j] = cross_track_pos(X[i, j], Y[i, j], ll_lon, ll_lat, heading_cartesian)  # DIFFERENT FOR ASC AND DESC
+    lat_flat, lon_flat = Y.reshape(-1), X.reshape(-1)
+    nr_corner_lon = ll_lon * np.ones(np.shape(lon_flat))  # corner at the near-range
+    nr_corner_lat = ll_lat * np.ones(np.shape(lat_flat))  # corner at the near-range
+    target_coords = np.stack((lat_flat, lon_flat), axis=1)  # Nx2 array of coordinates
+    corner_coords = np.stack((nr_corner_lat, nr_corner_lon), axis=1)  # Nx2 array of coordinates
+
+    distance = haversine.distance_vectorized(target_coords, corner_coords)
+    compass_bearing = haversine.calculate_initial_compass_bearing_vectorized(corner_coords, target_coords)  # CW from N
+    theta = insar_vector_functions.bearing_to_cartesian(compass_bearing)  # angle of position vector, cartesian coords
+    # heading_cartesian is the angle between east unit vector and the flight direction
+    x0 = distance * np.cos(np.deg2rad(theta))
+    y0 = distance * np.sin(np.deg2rad(theta))  # in the east-north coordinate system
+    _, xtp = insar_vector_functions.rotate_vector_by_angle(x0, y0, heading_cart)
+    xtp = xtp.reshape(np.shape(X))
 
     grid_inc = incidence_angle_trig(xtp, cross_track_max, near_angle, far_angle)
 
@@ -169,7 +232,8 @@ def read_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
 def cross_track_pos(target_lon, target_lat, nearrange_lon, nearrange_lat, heading_cartesian):
     """
     Get cross-track position of point in a coordinate system centered at (nearrange_lon, nearrange_lat)
-    with given heading of a plane and coordinates of one near-range point
+    with given heading of a plane and coordinates of one near-range point.
+    Not used anymore for performance reasons.
 
     :param target_lon: float, longitude
     :param target_lat: float, latitude
