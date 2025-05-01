@@ -15,7 +15,7 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
 
     :param data_file: string
     :param ann_file: string
-    :param dtype: string, default 'f'
+    :param dtype: string, default 'f' for float
     :param igram_type: string, either 'ground' or 'slant'
     :returns: x, y, two 2d arrays, phase-amp
     """
@@ -24,6 +24,10 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
     start_lon, start_lat, lon_inc, lat_inc = get_ground_range_corner_increment(ann_file)
     xarray = np.arange(start_lon, start_lon+lon_inc*num_cols, lon_inc)
     yarray = np.arange(start_lat, start_lat+lat_inc*num_rows, lat_inc)
+    if len(yarray) > num_rows:
+        yarray = yarray[0:num_rows]
+    if len(xarray) > num_rows:
+        xarray = xarray[0:num_cols]
     f = open(data_file, 'rb')
     final_shape = (num_rows, num_cols)
     num_data = final_shape[0] * final_shape[1] * 2  # 2 for real/complex
@@ -34,6 +38,10 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
     real = real.reshape(final_shape)
     imag = imag.reshape(final_shape)
     phase, amp = phase_math.real_imag2phase_amp(real, imag)
+    if np.shape(phase) != (len(yarray), len(xarray)):
+        raise ValueError("shape of Phase doesn't match shape of axes: ", len(xarray), len(yarray), np.shape(phase))
+    if np.shape(amp) != (len(yarray), len(xarray)):
+        raise ValueError("shape of Amp doesn't match shape of axes: ", len(xarray), len(yarray), np.shape(amp))
     return xarray, yarray, phase, amp
 
 
@@ -179,37 +187,44 @@ def read_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
     """
     Make los.rdr.geo given .ann file from JPL website's UAVSAR interferograms and the ground-range sample points.
     x-axis and y-axis are the x and y arrays where los vectors will be extracted on a corresponding grid.
+    The azimuth returned is the flight direction, CW from North, in degrees.
 
     :param ann_file: filename, string
-    :param x_axis: 1d array
-    :param y_axis: 1d array
-    :return: 2d array of incidence angles, 2d array of azimuths
+    :param x_axis: 1d array, longitude values
+    :param y_axis: 1d array, latitude values
+    :return: 2d array of incidence angles, 2d array of azimuths, shape matching ((len(y), len(x))
     """
     near_angle, far_angle = get_near_range_far_range_incidence_angles(ann_file)
-    heading = get_heading_angle(ann_file)
+    heading = get_heading_angle(ann_file)  # in degrees CW from north
     heading_cart = insar_vector_functions.bearing_to_cartesian(heading)  # CCW from east
     print("Heading is %f degrees CW from north" % heading)
     print("Cartesian Heading is %f CCW from East" % heading_cart)
-    # Get the upper and lower left corners, so we can compute the length of the across-track extent in km
-    ul_lon, ul_lat, ll_lon, ll_lat = get_ground_range_left_corners(ann_file)
 
-    cross_track_max = haversine.distance((ll_lat, ll_lon), (ul_lat, ul_lon))  # in km
+    # Get coords for upper and lower corners at start of the track, to compute length of across-track extent in km
+    if 0 < heading < 180:
+        far_start_lon, far_start_lat, near_start_lon, near_start_lat = get_ground_range_left_corners(ann_file)
+    else:
+        near_start_lon, near_start_lat, far_start_lon, far_start_lat = get_ground_range_right_corners(ann_file)
+    cross_track_max = haversine.distance((near_start_lat, near_start_lon),
+                                         (far_start_lat, far_start_lon))  # in km
 
-    # Get the azimuth angle for the pixels looking up to the airplane
+    # This code is designed to make an azimuth angle consistent with ISCE format, for the rdr.los.geo file
+    # Get azimuth angle for the pixels looking up to the airplane, consistent with ISCE I guess
     # My own documentation says CCW from north, even though that's really strange.
     azimuth = heading_cart - 90  # 90 degrees to the right of the airplane heading
     # (for the look vector from ground to plane)
     azimuth = insar_vector_functions.cartesian_to_ccw_from_north(azimuth)  # degrees CCW from North
-    print("azimuth from ground to plane is:", azimuth)
+    print("azimuth from ground to plane is: %s degrees CCW from north" % azimuth)
 
     [X, Y] = np.meshgrid(x_axis, y_axis)
-    grid_az = azimuth * np.ones(np.shape(X))
+    _grid_az_isce = azimuth * np.ones(np.shape(X))
+    grid_az_flight = heading * np.ones(np.shape(X))
 
     # Compute the incidence angle for every pixel
     print("Computing incidence angles for all pixels")
     lat_flat, lon_flat = Y.reshape(-1), X.reshape(-1)
-    nr_corner_lon = ll_lon * np.ones(np.shape(lon_flat))  # corner at the near-range
-    nr_corner_lat = ll_lat * np.ones(np.shape(lat_flat))  # corner at the near-range
+    nr_corner_lon = near_start_lon * np.ones(np.shape(lon_flat))  # corner at the near-range
+    nr_corner_lat = near_start_lat * np.ones(np.shape(lat_flat))  # corner at the near-range
     target_coords = np.stack((lat_flat, lon_flat), axis=1)  # Nx2 array of coordinates
     corner_coords = np.stack((nr_corner_lat, nr_corner_lon), axis=1)  # Nx2 array of coordinates
 
@@ -225,8 +240,8 @@ def read_los_rdr_geo_from_ground_ann_file(ann_file, x_axis, y_axis):
     grid_inc = incidence_angle_trig(xtp, cross_track_max, near_angle, far_angle)
 
     # Finally, write the 2 bands for los.rdr.geo
-    # isce_read_write.write_isce_unw(grid_inc, grid_az, nx, ny, "FLOAT", 'los.rdr.geo')
-    return grid_inc, grid_az
+    # isce_read_write.write_isce_unw(grid_inc, grid_az_isce, nx, ny, "FLOAT", 'los.rdr.geo')
+    return grid_inc, grid_az_flight
 
 
 def cross_track_pos(target_lon, target_lat, nearrange_lon, nearrange_lat, heading_cartesian):
