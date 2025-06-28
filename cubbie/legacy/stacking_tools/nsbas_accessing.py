@@ -4,7 +4,7 @@ from s1_batches.read_write_insar_utilities import netcdf_plots
 from s1_batches.intf_generating import sentinel_utilities
 from . import stacking_utilities, nsbas, velo_uncertainties
 from . import readmytupledata as rmd
-from Tectonic_Utils.read_write import netcdf_read_write as rwr
+from tectonic_utils.read_write import netcdf_read_write as rwr
 
 """
 Note: intf_tuple is a named tuple:

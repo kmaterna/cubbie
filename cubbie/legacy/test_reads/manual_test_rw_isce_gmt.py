@@ -5,7 +5,7 @@ March 2020
 Not fully integrated into testing framework, may not have its data right here in the folder.
 """
 from .. import isce_read_write, netcdf_plots
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 import numpy as np
 
 

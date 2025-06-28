@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import subprocess
 import os
 from scipy import interpolate
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 from . import los_projection_tools, file_io
 
 

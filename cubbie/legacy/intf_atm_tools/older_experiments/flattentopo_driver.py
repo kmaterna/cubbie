@@ -19,8 +19,8 @@ import os
 import subprocess
 from read_write_insar_utilities import readbin
 from math_tools import phase_math
-from Tectonic_Utils.read_write import netcdf_read_write
-from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
+from tectonic_utils.read_write import netcdf_read_write
+from tectonic_utils.read_write.netcdf_read_write import read_any_grd
 
 
 def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_rsc):

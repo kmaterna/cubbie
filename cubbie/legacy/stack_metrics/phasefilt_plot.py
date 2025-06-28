@@ -4,8 +4,8 @@ import glob as glob
 import sys
 import os
 import datetime as dt
-from Tectonic_Utils.read_write import netcdf_read_write
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
+from tectonic_utils.read_write import netcdf_read_write
+from tectonic_utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def top_level_driver(skip_file=None):

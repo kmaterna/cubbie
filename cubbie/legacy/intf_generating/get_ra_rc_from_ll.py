@@ -6,7 +6,7 @@ This will use trans.dat, and some inputs of an example .grd file and geographic 
 
 import numpy as np
 import subprocess
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 
 
 def get_nearest_row_col(example_grd, ra, az):

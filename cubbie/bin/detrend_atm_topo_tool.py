@@ -10,7 +10,7 @@ Option: Remove the topography-correlated trend and save the adjusted image to a 
 import numpy as np
 import argparse
 import scipy.linalg
-from Tectonic_Utils.read_write import netcdf_read_write as rw
+from tectonic_utils.read_write import netcdf_read_write as rw
 from cubbie.math_tools import plots, mask_and_interpolate, grid_tools
 
 help_message = "Perform detrending and topo-correlated removal on interferogram files. \nUsage: " \

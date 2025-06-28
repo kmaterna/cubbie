@@ -5,7 +5,7 @@ Read and process wrapped JPL UAVSAR interferograms from UAVSAR website
 import numpy as np
 import struct
 from ..math_tools import phase_math
-from Tectonic_Utils.geodesy import haversine, insar_vector_functions
+from tectonic_utils.geodesy import haversine, insar_vector_functions
 
 
 def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):

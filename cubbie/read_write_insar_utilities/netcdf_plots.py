@@ -5,7 +5,7 @@ The assumption for 2D Netcdf files is 3 variables.
 """
 
 from matplotlib import pyplot as plt
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3, read_any_grd
+from tectonic_utils.read_write.netcdf_read_write import read_netcdf3, read_any_grd
 
 
 def produce_output_contourf(netcdfname, plottitle, plotname, cblabel):

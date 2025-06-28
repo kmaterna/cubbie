@@ -8,10 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import os
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 
 # BROKE AT LOOP # 120 OR # 121. NOT SURE WHY.
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
+from tectonic_utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def identify_all_loops():

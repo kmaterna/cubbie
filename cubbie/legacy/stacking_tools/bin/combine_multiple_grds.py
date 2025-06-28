@@ -10,7 +10,7 @@ import glob
 import os
 from subprocess import call
 from ...read_write_insar_utilities import netcdf_plots
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3, produce_output_netcdf
+from tectonic_utils.read_write.netcdf_read_write import read_netcdf3, produce_output_netcdf
 
 
 def get_input_dirs():

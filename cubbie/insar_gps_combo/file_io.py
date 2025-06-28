@@ -3,7 +3,7 @@
 
 
 import numpy as np
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 from gnss_timeseries_viewers.gps_tools import vel_functions, file_io
 from gnss_timeseries_viewers.gps_tools.file_io import io_nota, io_other, io_magnet_unr
 

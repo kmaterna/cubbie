@@ -12,8 +12,8 @@ import sys
 import glob
 import os
 from subprocess import call
-from Tectonic_Utils.read_write import netcdf_read_write as rwr
-from Tectonic_Utils.geodesy import insar_vector_functions
+from tectonic_utils.read_write import netcdf_read_write as rwr
+from tectonic_utils.geodesy import insar_vector_functions
 from ...read_write_insar_utilities import isce_read_write, jpl_uav_read_write
 from . import unwrapping_isce_custom
 

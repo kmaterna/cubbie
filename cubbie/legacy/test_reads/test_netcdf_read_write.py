@@ -6,7 +6,7 @@ import subprocess
 # Do the read/write functions give the same data afterwards?
 # etc.
 
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf4, read_netcdf3, write_netcdf4
+from tectonic_utils.read_write.netcdf_read_write import read_netcdf4, read_netcdf3, write_netcdf4
 
 
 class NetCDFTests(unittest.TestCase):

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.cm as cm
 import datetime as dt
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 
 
 def produce_min_max(filename):

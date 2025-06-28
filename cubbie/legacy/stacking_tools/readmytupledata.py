@@ -3,7 +3,7 @@ import collections
 import re
 from datetime import datetime
 from s1_batches.read_write_insar_utilities import isce_read_write
-from Tectonic_Utils.read_write import netcdf_read_write as rwr
+from tectonic_utils.read_write import netcdf_read_write as rwr
 from . import stacking_utilities
 
 

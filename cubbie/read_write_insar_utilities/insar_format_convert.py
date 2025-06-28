@@ -5,7 +5,7 @@ A set of functions that read and write vrt gdal grid files compatible with ISCE.
 import numpy as np
 from . import isce_read_write
 from ..math_tools import grid_tools
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 
 
 def isce_to_grd(isce_name, grdname):

@@ -7,7 +7,7 @@ In the LOS-projected case, we use 'e' as LOS velocity and other columns are zero
 """
 
 import numpy as np
-from Tectonic_Utils.geodesy import insar_vector_functions
+from tectonic_utils.geodesy import insar_vector_functions
 
 
 def closest_index(lst, K):

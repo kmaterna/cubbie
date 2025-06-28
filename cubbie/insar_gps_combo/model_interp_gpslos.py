@@ -22,7 +22,7 @@ from scipy import interpolate
 from gnss_timeseries_viewers.gps_tools import vel_functions
 from . import los_projection_tools as los_proj
 from . import file_io
-from Tectonic_Utils.geodesy import haversine
+from tectonic_utils.geodesy import haversine
 
 
 param_object = collections.namedtuple("param_object", ['type_of_interp', 'asc_flight_angle', 'desc_flight_angle',

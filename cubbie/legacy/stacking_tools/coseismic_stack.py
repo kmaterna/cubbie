@@ -7,7 +7,7 @@ Can be used with gmtsar or isce
 import numpy as np
 from s1_batches.read_write_insar_utilities import netcdf_plots
 from . import readmytupledata as rmd
-from Tectonic_Utils.read_write import netcdf_read_write as rwr
+from tectonic_utils.read_write import netcdf_read_write as rwr
 
 
 def drive_coseismic_stack(config_params, intf_files):

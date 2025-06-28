@@ -6,7 +6,7 @@ Ex2: Multiply a bunch of grids by a nanmask
 
 
 import numpy as np
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 import subprocess
 
 

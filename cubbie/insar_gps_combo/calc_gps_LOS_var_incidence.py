@@ -5,7 +5,7 @@ The incidence angle of the look vector varies across the scene!
 The reference pixel must be a GPS station in the Velfield
 """
 import numpy as np
-from Tectonic_Utils.geodesy import insar_vector_functions as ivf
+from tectonic_utils.geodesy import insar_vector_functions as ivf
 from gnss_timeseries_viewers.gps_tools import vel_functions
 from . import los_projection_tools, file_io
 

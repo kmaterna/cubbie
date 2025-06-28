@@ -9,8 +9,8 @@ import sys
 from copy import deepcopy
 import datetime as dt
 from intf_generating import sentinel_utilities
-from Tectonic_Utils.read_write import netcdf_read_write
-from Tectonic_Utils.read_write.netcdf_read_write import read_netcdf3
+from tectonic_utils.read_write import netcdf_read_write
+from tectonic_utils.read_write.netcdf_read_write import read_netcdf3
 
 
 def main_function(staging_directory, out_dir, rowref, colref, starttime, endtime, run_type):

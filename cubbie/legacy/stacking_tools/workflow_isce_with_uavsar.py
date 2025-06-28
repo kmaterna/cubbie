@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from Tectonic_Utils.read_write import netcdf_read_write as rwr
+from tectonic_utils.read_write import netcdf_read_write as rwr
 from s1_batches.intf_generating import isce_geocode_tools, unwrapping_isce_custom
 from s1_batches.read_write_insar_utilities import netcdf_plots
 from . import readmytupledata, stacking_utilities, stack_corr, stacking_configparser

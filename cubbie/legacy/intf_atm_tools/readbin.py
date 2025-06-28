@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import math
 import struct
 from ..math_tools import phase_math
-from Tectonic_Utils.read_write.netcdf_read_write import read_any_grd
+from tectonic_utils.read_write.netcdf_read_write import read_any_grd
 
 
 def read_binary_roipac_real_imag(filename):

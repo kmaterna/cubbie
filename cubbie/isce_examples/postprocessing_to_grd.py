@@ -2,7 +2,7 @@
 
 import s1_batches.read_write_insar_utilities.isce_read_write as rw
 from s1_batches.math_tools import grid_tools
-from Tectonic_Utils.read_write import netcdf_read_write
+from tectonic_utils.read_write import netcdf_read_write
 import numpy as np
 import matplotlib.pyplot as plt
 

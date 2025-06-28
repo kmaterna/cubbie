@@ -11,8 +11,8 @@ import matplotlib
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-from Tectonic_Utils.read_write import netcdf_read_write
-from Tectonic_Utils.geodesy import haversine
+from tectonic_utils.read_write import netcdf_read_write
+from tectonic_utils.geodesy import haversine
 from s1_batches.intf_generating import get_ra_rc_from_ll
 from s1_batches.read_write_insar_utilities import isce_read_write
 
