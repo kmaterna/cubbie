@@ -1,5 +1,8 @@
 """
-Grid tools in Python
+Grid tools in Python.
+For 2D raster data, the y-axis may be north-to-south or south-to-north.
+If the y-axis is south-to-north, the data will look flipped with respect to geographic coordinates.
+However, row-index should always correspond to the matching raster data.
 """
 
 import numpy as np
@@ -8,6 +11,7 @@ import numpy as np
 def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
     """
     Clip an array into a bounding box that's smaller than the original grid. Like grdcut, but python API.
+    The y-axis may be north-to-south or south-to-north.
 
     :param x: 1d array, like lons
     :param y: 1d array, like lats
@@ -26,8 +30,14 @@ def clip_array_by_bbox(x, y, array1, bbox, verbose=True):
     find_s = np.argmin(np.abs(y-bbox[2]))
     find_n = np.argmin(np.abs(y-bbox[3]))
     new_x = np.array(x[find_w:find_e])
-    new_y = np.array(y[find_n:find_s])
-    new_array1 = array1[find_n:find_s, find_w:find_e].copy()  # saving off a subset of the array
+
+    if y[2] - y[1] < 0:  # if the y-array is organized north-to-south
+        new_y = np.array(y[find_n:find_s])
+        new_array1 = array1[find_n:find_s, find_w:find_e].copy()  # saving off a subset of the array
+    else:   # if the y-array is organized south-to-north
+        new_y = np.array(y[find_s:find_n])
+        new_array1 = array1[find_s:find_n, find_w:find_e].copy()  # saving off a subset of the array
+
     revised_bbox = (np.min(new_x), np.max(new_x), np.min(new_y), np.max(new_y))
     if verbose:
         print("  Revised grid and bbox: ", np.shape(new_array1), revised_bbox)
