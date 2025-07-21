@@ -45,6 +45,38 @@ def read_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
     return xarray, yarray, phase, amp
 
 
+def read_unw_igram_data(data_file, ann_file, dtype='f', igram_type='ground'):
+    """
+    Data file for unwrapped igrams
+    Igram_type is ground or slant.
+
+    :param data_file: string
+    :param ann_file: string
+    :param dtype: string, default 'f' for float
+    :param igram_type: string, either 'ground' or 'slant'
+    :returns: x, y, 2d array for unwrapped phase
+    """
+    print("Reading %s-range file %s" % (igram_type, data_file))
+    num_rows, num_cols = get_rows_cols(ann_file, igram_type)
+    start_lon, start_lat, lon_inc, lat_inc = get_ground_range_corner_increment(ann_file)
+    xarray = np.arange(start_lon, start_lon+lon_inc*num_cols, lon_inc)
+    yarray = np.arange(start_lat, start_lat+lat_inc*num_rows, lat_inc)
+    if len(yarray) > num_rows:
+        yarray = yarray[0:num_rows]
+    if len(xarray) > num_rows:
+        xarray = xarray[0:num_cols]
+    f = open(data_file, 'rb')
+    final_shape = (num_rows, num_cols)
+    num_data = final_shape[0] * final_shape[1]  # unwrapped phase values
+    rawnum = f.read()
+    f.close()
+    floats = np.array(struct.unpack(dtype * num_data, rawnum))
+    unw = floats.reshape(final_shape)
+    if np.shape(unw) != (len(yarray), len(xarray)):
+        raise ValueError("shape of Unw phase doesn't match shape of axes: ", len(xarray), len(yarray), np.shape(unw))
+    return xarray, yarray, unw
+
+
 def read_corr_data(data_file, ann_file, dtype='f', igram_type='ground'):
     """
     Read coherence into a 2D array from UAVSAR data
