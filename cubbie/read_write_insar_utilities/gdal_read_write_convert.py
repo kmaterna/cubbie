@@ -7,6 +7,8 @@ from . import isce_read_write
 
 def read_geotiff(filename):
     """
+    Read a standard geotiff file into raster data.
+
     :param filename: string, name of geotiff
     :return: xarray, yarray, zarray raster
     """
@@ -74,6 +76,8 @@ def write_as_geotiff(x, y, zdata, out_tif):
 def write_colored_geotiff(x, y, zdata, out_tif, cmap='viridis'):
     """
     Write raster data into a colored geoTiff. In the process, the data will be truncated to exactly 256 values.
+
+    Note: the raster should not have any NANs inside. The color determination will be confused by NANs.
 
     :param x: 1d array associated with longitude values, in degrees
     :param y: 1d array associated with latitude values, in degrees
