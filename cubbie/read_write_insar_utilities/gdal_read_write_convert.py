@@ -2,6 +2,21 @@
 import numpy as np
 from osgeo import gdal, osr
 import matplotlib.pyplot as plt
+from . import isce_read_write
+
+
+def read_geotiff(filename):
+    """
+    :param filename: string, name of geotiff
+    :return: xarray, yarray, zarray raster
+    """
+    ds = gdal.Open(filename, gdal.GA_ReadOnly)
+    rb = ds.GetRasterBand(1)
+    img_array = rb.ReadAsArray()
+    transform = ds.GetGeoTransform()
+    ylen, xlen = np.shape(img_array)
+    xs, ys = isce_read_write.get_xarray_yarray_from_transform(transform, xlen, ylen)
+    return xs, ys, img_array
 
 
 def write_as_geotiff(x, y, zdata, out_tif):

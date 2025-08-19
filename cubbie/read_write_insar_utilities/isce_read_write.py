@@ -395,6 +395,17 @@ def get_xarray_yarray_from_xml(filename):
     return xarray, yarray
 
 
+def get_xarray_yarray_from_transform(transform, xlen, ylen):
+    """
+    :param transform: list of six floating point numbers
+    :param xlen: integer, size of x-dimension of raster
+    :param ylen: integer, size of y-dimension of raster
+    :return: xarray, yarray
+    """
+    xs, ys = get_xarray_yarray_from_shape(transform[0], transform[3], transform[1], transform[5], xlen, ylen)
+    return xs, ys
+
+
 def get_xarray_yarray_from_shape(firstlon, firstlat, dlon, dlat, x, y):
     """
     Build x and y arrays of latitude and longitude from the elements of the transform.
