@@ -1,7 +1,6 @@
 import os
 import unittest
 import numpy as np
-import subprocess
 
 # Do the read/write functions give the same data afterwards?
 # etc.
@@ -35,7 +34,7 @@ class NetCDFTests(unittest.TestCase):
         self.assertTrue(np.allclose(lon, lon2))
         self.assertTrue(np.allclose(lat, lat2))
         self.assertTrue(np.allclose(z, z2))
-        subprocess.call(['rm', 'gmt.history'], shell=False)
+        os.remove('gmt.history')
 
     # Should write a test that affirms both files have the same gridline/pixel node registration
 

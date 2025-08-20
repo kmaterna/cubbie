@@ -16,9 +16,10 @@ Then, this script does the following:
 import numpy as np
 import glob
 import os
+import shutil
 import subprocess
 from read_write_insar_utilities import readbin
-from math_tools import phase_math
+from cubbie.math_tools import phase_math
 from tectonic_utils.read_write import netcdf_read_write
 from tectonic_utils.read_write.netcdf_read_write import read_any_grd
 
@@ -36,7 +37,7 @@ def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_r
     ivar = 1
     alt_ref = 100   # changing this during experiments
     thresh_amp = 0.2   # changing this during experiments
-    bin_demfile = flattentopo_directory+"/topo_radar.hgt"          # binary topo file
+    bin_demfile = os.path.join(flattentopo_directory, "topo_radar.hgt")          # binary topo file
 
     # INPUTS
     intf_list = glob.glob(intf_directory + "/???????_???????")
@@ -51,46 +52,46 @@ def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_r
         print(data_dir)
         intf_name = data_dir.split('/')[1]   # is this general or specific to one-level-deep directories?
         outdir = flattentopo_directory + intf_name + '/'
-        if os.path.isfile(outdir+'/phase.grd'):
+        if os.path.isfile(os.path.join(outdir, 'phase.grd')):
             print("skipping %s " % outdir)
             continue
-        subprocess.call(["mkdir", "-p", outdir], shell=False)
+        os.makedirs(outdir, exist_ok=True)
 
-        infile = outdir + "/intf_sd.int"
-        infile_filtered = outdir + "/intf_filt.int"
-        stratfile = outdir + "/strat.unw"
-        outfile = outdir + "/out.int"
-        outfile_filtered = outdir + "/out_filtered.int"
+        infile = os.path.join(outdir, "intf_sd.int")
+        infile_filtered = os.path.join(outdir, "intf_filt.int")
+        stratfile = os.path.join(outdir, "strat.unw")
+        outfile = os.path.join(outdir, "out.int")
+        outfile_filtered = os.path.join(outdir, "out_filtered.int")
 
         # GMTSAR files.
-        orig_phasefile = data_dir + "/phase.grd"
-        orig_phasefilt_file = data_dir + "/phasefilt.grd"
-        orig_ampfile = data_dir + "/amp.grd"
-        orig_corrfile = data_dir + "/corr.grd"
-        orig_maskfile = data_dir + "/mask.grd"
-        out_phasefile = outdir + "/phase.grd"
-        out_phasefilt_file = outdir + "/phasefilt.grd"
-        out_ampfile = outdir + "/amp.grd"
-        out_corrfile = outdir + "/corr.grd"
-        out_maskfile = outdir + "/mask.grd"
+        orig_phasefile = os.path.join(data_dir, "phase.grd")
+        orig_phasefilt_file = os.path.join(data_dir, "phasefilt.grd")
+        orig_ampfile = os.path.join(data_dir, "amp.grd")
+        orig_corrfile = os.path.join(data_dir, "corr.grd")
+        orig_maskfile = os.path.join(data_dir, "mask.grd")
+        out_phasefile = os.path.join(outdir, "phase.grd")
+        out_phasefilt_file = os.path.join(outdir, "phasefilt.grd")
+        out_ampfile = os.path.join(outdir, "amp.grd")
+        out_corrfile = os.path.join(outdir, "corr.grd")
+        out_maskfile = os.path.join(outdir, "mask.grd")
 
         # MAKE BINARY INTERFEROGRAMS
         readbin.write_gmtsar2roipac_phase(orig_phasefile, orig_phasefilt_file, orig_ampfile, infile, infile_filtered)
 
         # # # RUN THE FORTRAN
         print("\nRunning the fortran code to remove atmospheric artifacts from interferogram.")
-        subprocess.call(['cp', example_rsc, outdir + '/intf_sd.int.rsc'], shell=False)
+        shutil.copy(example_rsc, os.path.join(outdir, 'intf_sd.int.rsc'))
         print(
             "flattentopo " + infile + " " + infile_filtered + " " + bin_demfile + " " + outfile + " " + outfile_filtered
             + " " + str(nfit) + " " + str(ivar) + " " + str(alt_ref) + " " + str(thresh_amp) + " " + stratfile + "\n")
         subprocess.call(
             ["flattentopo", infile, infile_filtered, bin_demfile, outfile, outfile_filtered, str(nfit), str(ivar),
              str(alt_ref), str(thresh_amp), stratfile], shell=False)
-        subprocess.call(['mv', 'ncycle_topo', outdir + '/ncycle_topo'], shell=False)
-        subprocess.call(['mv', 'ncycle_topo_az', outdir + '/ncycle_topo_az'], shell=False)
-        subprocess.call(['cp', orig_ampfile, out_ampfile], shell=False)
-        subprocess.call(['cp', orig_corrfile, out_corrfile], shell=False)
-        subprocess.call(['cp', orig_maskfile, out_maskfile], shell=False)
+        os.rename('ncycle_topo', os.path.join(outdir, 'ncycle_topo'))
+        os.rename('ncycle_topo_az', os.path.join(outdir, 'ncycle_topo_az'))
+        shutil.copy(orig_ampfile, out_ampfile)
+        shutil.copy(orig_corrfile, out_corrfile)
+        shutil.copy(orig_maskfile, out_maskfile)
 
         # Output handling. First reading 1D arrays
         [real, imag] = readbin.read_binary_roipac_real_imag(outfile)
@@ -110,6 +111,6 @@ def main_function(intf_directory, flattentopo_directory, topo_ra_file, example_r
 
         # Making plot
         readbin.output_plots(phasefilt_early, phasefilt_out, width, length,
-                             outdir + "/" + intf_name + "_corrected.eps")
+                             os.path.join(outdir, intf_name + "_corrected.eps"))
 
     return

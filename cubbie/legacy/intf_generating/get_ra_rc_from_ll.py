@@ -6,6 +6,7 @@ This will use trans.dat, and some inputs of an example .grd file and geographic 
 
 import numpy as np
 import subprocess
+import os
 from tectonic_utils.read_write import netcdf_read_write
 
 
@@ -78,8 +79,13 @@ def get_ra_from_ll(trans_dat, example_grd, lon, lat):
     subprocess.call(['gmt', 'grdtrack', ll_temp, '-N', '-nn', '-Gllr.grd', '>', 'llpr'], shell=False)
     subprocess.call(['gmt', 'grdtrack', 'llpr', '-N', '-nn', '-Glla.grd', '>', 'llpra'], shell=False)
     subprocess.call("awk '{print $4,$5,$3}' < llpra > " + ra_temp, shell=True)
-    subprocess.call(['rm', 'llr', 'lla', 'llpr', 'llpra', 'llr.grd', 'lla.grd'], shell=False)
-    subprocess.call(['rm', 'gmt.history'], shell=False)
+    os.remove('llr')
+    os.remove('lla')
+    os.remove('llpr')
+    os.remove('llpra')
+    os.remove('llr.grd')
+    os.remove('lla.grd')
+    os.remove('gmt.history')
 
     # Here we read the results
     # We determine whether they're inside the range and azimuth box
@@ -118,10 +124,13 @@ def get_ll_from_ra(trans_dat, ra, az):
     ofile.write("%f %f 0\n" % (ra + 100, az + 150))
     ofile.write("%f %f 0\n" % (ra + 150, az))
     ofile.close()
-    subprocess.call(['rm', 'raln', 'raln.grd', 'ralt', 'ralt.grd'], shell=False)  # just to be clean.
+    os.remove('raln')
+    os.remove('raln.grd')
+    os.remove('ralt')
+    os.remove('ralt.grd')
     print("calling proj_ra2ll_ascii.csh " + trans_dat + ' ra_temp.txt ' + ll_temp)
     subprocess.call(['proj_ra2ll_ascii.csh', trans_dat, 'ra_temp.txt', ll_temp], shell=False)
-    subprocess.call(['rm', 'gmt.history'], shell=False)
+    os.remove('gmt.history')
     [lon, lat, _] = np.loadtxt(ll_temp, unpack=True)
     lon = lon[0]
     lat = lat[0]
@@ -137,8 +146,8 @@ def get_ll_from_row_col(row, col, example_grd, trans_dat):
 
 
 if __name__ == "__main__":
-    trans_dat = "topo/trans.dat"
-    example_grd = "stacking/unwrapped/2015157_2018177_unwrap.grd"
+    trans_dat = os.path.join("topo", "trans.dat")
+    example_grd = os.path.join("stacking", "unwrapped", "2015157_2018177_unwrap.grd")
     lon, lat = [-116.572], [35.321]  # P617. Corresponding RA maybe equal to: ra = 10296.8986328, az = 5984.77251953
     [ra, az] = get_ra_from_ll(trans_dat, example_grd, lon, lat)
     [lon1, lat1] = get_ll_from_ra(trans_dat, ra, az)

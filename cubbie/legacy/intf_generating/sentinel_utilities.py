@@ -4,6 +4,7 @@ import glob
 import os
 import re
 import sys
+import shutil
 import subprocess
 import datetime as dt
 from subprocess import check_output
@@ -321,7 +322,7 @@ def write_super_master_batch_config(masterid):
             ofile.write(line)
     ifile.close()
     ofile.close()
-    subprocess.call(['mv', 'batch.config.new', 'batch.config'], shell=False)
+    os.rename('batch.config.new', 'batch.config')
     print("Writing master_image into batch.config")
     return
 
@@ -330,8 +331,8 @@ def set_up_merge_unwrap(desired_swaths, outdir):
     print("Setting up merged unwrapping for swaths:")
     print(desired_swaths)
     os.makedirs(outdir, exist_ok=True)
-    subprocess.call(["cp", "F"+desired_swaths[0]+"/topo/dem.grd", outdir], shell=False)  # need copy, not soft link.
-    subprocess.call(["cp", "batch.config", outdir], shell=False)
+    shutil.copy("F"+desired_swaths[0]+"/topo/dem.grd", outdir)  # need copy, not soft link.
+    shutil.copy("batch.config", outdir)
     intf_all = get_common_intfs(desired_swaths)
     check_intf_all_sanity(desired_swaths, intf_all, 'phase.grd')  # defensive programming
     check_intf_all_sanity(desired_swaths, intf_all, 'corr.grd')  # defensive programming

@@ -7,11 +7,11 @@ These may change with distance from the coast or elevation.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import subprocess
+import os
 from tectonic_utils.read_write.netcdf_read_write import read_netcdf3
 
 
-def main_function(input_dir='intf_all/', outdir='atm_topo/'):
+def main_function(input_dir='intf_all', outdir='atm_topo'):
     [filename, demfile, rowsample, colsample] = configure(input_dir, outdir)
     [topo, _, _, zdata] = inputs(filename, demfile)
     [slope_array] = local_compute(topo, zdata, rowsample, colsample)
@@ -22,10 +22,10 @@ def main_function(input_dir='intf_all/', outdir='atm_topo/'):
 # ------ CONFIGURE THE MAJOR LOOP ------------ #
 def configure(input_dir, outdir):
     # input_file=input_dir+'2016196_2016220'+'/'+'phasefilt.grd'
-    input_file = input_dir + '2016244_2016268' + '/' + 'phasefilt.grd'
+    input_file = os.path.join(input_dir, '2016244_2016268', 'phasefilt.grd')
     print("Detrending atm/topo file %s" % input_file)
-    demfile = 'topo/topo_ra.grd'
-    subprocess.call(['mkdir', '-p', outdir], shell=False)
+    demfile = os.path.join('topo', 'topo_ra.grd')
+    os.makedirs(outdir, exist_ok=True)
     rowsample = 50
     colsample = 30
     return [input_file, demfile, rowsample, colsample]
@@ -88,7 +88,7 @@ def local_compute(topo, zdata, rowsample, colsample):
                 axarr[0].set_ylim([-np.pi, np.pi])
                 axarr[1].imshow(zdata[startrow:startrow + rowsample, startcol:startcol + colsample], cmap='jet')
                 axarr[2].imshow(topo[startrow:startrow + rowsample, startcol:startcol + colsample], cmap='gray')
-                plt.savefig('atm_topo/testbox' + str(i) + '.eps')
+                plt.savefig(os.path.join('atm_topo', 'testbox' + str(i) + '.eps'))
                 plt.close()
 
     return [slope_array]
@@ -100,7 +100,7 @@ def outputs(zdata, topo, slope_array, outdir):
     axarr[1].imshow(topo, cmap='gray')
     ax2 = axarr[2].imshow(slope_array, cmap='hsv')
     plt.colorbar(ax2)
-    plt.savefig(outdir + 'testbox.eps')
+    plt.savefig(os.path.join(outdir, 'testbox.eps'))
     plt.close()
     return
 
